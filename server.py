@@ -52,23 +52,28 @@ def db():
 
 # دالة إرسال البريد
 def send_email(to_email, subject, body):
-    # إذا لم يتم إعداد البريد الحقيقي، نطبع الكود في Render Logs
-    if not SMTP_USER or not SMTP_PASS:
-        print("EMAIL MESSAGE:", body)
+    try:
+        if not SMTP_USER or not SMTP_PASS:
+            print("EMAIL MESSAGE:", body)
+            return True
+
+        msg = EmailMessage()
+        msg["From"] = SMTP_USER
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASS)
+            smtp.send_message(msg)
+
+        print("EMAIL SENT SUCCESS")
         return True
 
-    msg = EmailMessage()
-    msg["From"] = SMTP_USER
-    msg["To"] = to_email
-    msg["Subject"] = subject
-    msg.set_content(body)
-
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-        smtp.starttls()
-        smtp.login(SMTP_USER, SMTP_PASS)
-        smtp.send_message(msg)
-
-    return True
+    except Exception as e:
+        print("EMAIL ERROR:", e)
+        return False
 
 
 # إنشاء الجداول إذا لم تكن موجودة
