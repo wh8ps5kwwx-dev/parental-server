@@ -63,8 +63,7 @@ def send_email(to_email, subject, body):
         msg["Subject"] = subject
         msg.set_content(body)
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
-            smtp.starttls()
+       with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
             smtp.login(SMTP_USER, SMTP_PASS)
             smtp.send_message(msg)
 
