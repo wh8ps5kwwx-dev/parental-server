@@ -547,7 +547,8 @@ def add_alert():
     return jsonify({"status": "success"})
 
 
-# عرض التنبيهات للأم
+# 
+عرض التنبيهات للأم
 @app.route("/alerts", methods=["GET"])
 def alerts():
     child_code = request.args.get("child_code", "")
