@@ -1,6 +1,6 @@
 # ==============================
-# سيرفر مشروع الرقابة الأبوية
 # Parental Control Server
+# سيرفر مشروع الرقابة الأبوية
 #
 # وظائف السيرفر:
 # 1) إرسال رمز تحقق لبريد ولي الأمر
@@ -29,12 +29,20 @@ DB = "parent_control.db"
 # مفتاح حماية الطلبات بين التطبيق والسيرفر
 API_KEY = os.environ.get("API_KEY", "graduation-secret-key")
 
-# بيانات البريد لإرسال رموز التحقق
-# إذا لم تضعي SMTP_USER و SMTP_PASS في Render
-# سيظهر الرمز في Logs فقط
-SMTP_USER = os.environ.get("SMTP_USER", "")
+# ==============================
+# إعدادات البريد
+# ==============================
+# البريد المرسل للأكواد
+SMTP_USER = os.environ.get("SMTP_USER", "parent.controll.app@gmail.com")
+
+# كلمة مرور التطبيقات من Gmail
+# ضعيها في Render Environment باسم SMTP_PASS
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
+
+# سيرفر Gmail
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+
+# بورت Gmail الصحيح هو 587
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 
 
@@ -50,20 +58,27 @@ def db():
     return conn
 
 
+# ==============================
 # دالة إرسال البريد
+# ==============================
 def send_email(to_email, subject, body):
     try:
+        # إذا لم يتم وضع كلمة مرور التطبيقات
+        # يظهر الرمز في Render Logs فقط
         if not SMTP_USER or not SMTP_PASS:
             print("EMAIL MESSAGE:", body)
             return True
 
+        # إنشاء رسالة البريد
         msg = EmailMessage()
         msg["From"] = SMTP_USER
         msg["To"] = to_email
         msg["Subject"] = subject
         msg.set_content(body)
 
-       with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+        # الاتصال بسيرفر Gmail باستخدام STARTTLS
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+            smtp.starttls()
             smtp.login(SMTP_USER, SMTP_PASS)
             smtp.send_message(msg)
 
@@ -75,7 +90,9 @@ def send_email(to_email, subject, body):
         return False
 
 
+# ==============================
 # إنشاء الجداول إذا لم تكن موجودة
+# ==============================
 def init_db():
     conn = db()
     cur = conn.cursor()
@@ -173,19 +190,26 @@ def init_db():
     conn.close()
 
 
-# حماية كل الروابط باستخدام API_KEY
+# ==============================
+# حماية الروابط باستخدام API_KEY
+# ==============================
 @app.before_request
 def protect():
-    # الصفحة الرئيسية لا تحتاج حماية
+    # الصفحة الرئيسية لا تحتاج مفتاح
     if request.path == "/":
         return
 
     # التحقق من مفتاح الحماية
     if request.headers.get("X-API-KEY") != API_KEY:
-        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized"
+        }), 401
 
 
+# ==============================
 # اختبار أن السيرفر يعمل
+# ==============================
 @app.route("/")
 def home():
     return jsonify({
@@ -194,20 +218,27 @@ def home():
     })
 
 
+# ==============================
 # إرسال رمز تحقق لبريد ولي الأمر
+# ==============================
 @app.route("/send-email-code", methods=["POST"])
 def send_email_code():
     data = request.get_json() or {}
     email = data.get("email", "").strip()
 
     if not email:
-        return jsonify({"status": "error", "message": "email required"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "email required"
+        }), 400
 
+    # توليد رمز تحقق عشوائي
     code = str(random.randint(100000, 999999))
 
     conn = db()
     cur = conn.cursor()
 
+    # حفظ الرمز في قاعدة البيانات
     cur.execute("""
     INSERT INTO email_codes (email, code, verified, created_at)
     VALUES (?, ?, ?, ?)
@@ -216,16 +247,22 @@ def send_email_code():
     conn.commit()
     conn.close()
 
+    # إرسال الرمز إلى البريد
     send_email(
         email,
         "Parental Control Verification Code",
         f"Your verification code is: {code}"
     )
 
-    return jsonify({"status": "success", "message": "Verification code sent"})
+    return jsonify({
+        "status": "success",
+        "message": "Verification code sent"
+    })
 
 
+# ==============================
 # التحقق من رمز البريد
+# ==============================
 @app.route("/verify-email-code", methods=["POST"])
 def verify_email_code():
     data = request.get_json() or {}
@@ -235,6 +272,7 @@ def verify_email_code():
     conn = db()
     cur = conn.cursor()
 
+    # البحث عن آخر رمز مطابق للبريد
     cur.execute("""
     SELECT * FROM email_codes
     WHERE email = ? AND code = ?
@@ -246,16 +284,30 @@ def verify_email_code():
 
     if not row:
         conn.close()
-        return jsonify({"status": "error", "message": "Invalid code"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Invalid code"
+        }), 400
 
-    cur.execute("UPDATE email_codes SET verified = 1 WHERE id = ?", (row["id"],))
+    # تحديث حالة الرمز إلى تم التحقق
+    cur.execute("""
+    UPDATE email_codes
+    SET verified = 1
+    WHERE id = ?
+    """, (row["id"],))
+
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success", "message": "Email verified"})
+    return jsonify({
+        "status": "success",
+        "message": "Email verified"
+    })
 
 
+# ==============================
 # تسجيل جهاز الطفل من تطبيق الطفل
+# ==============================
 @app.route("/register-child-device", methods=["POST"])
 def register_child_device():
     data = request.get_json() or {}
@@ -266,13 +318,18 @@ def register_child_device():
     android_version = data.get("android_version", "").strip()
 
     if not child_code or not child_email or not device_name:
-        return jsonify({"status": "error", "message": "missing data"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "missing data"
+        }), 400
 
+    # توليد رمز تحقق خاص بجهاز الطفل
     device_code = str(random.randint(100000, 999999))
 
     conn = db()
     cur = conn.cursor()
 
+    # حفظ بيانات جهاز الطفل
     cur.execute("""
     INSERT OR REPLACE INTO child_devices
     (child_code, child_email, device_name, android_version, device_verify_code, linked, created_at)
@@ -290,6 +347,7 @@ def register_child_device():
     conn.commit()
     conn.close()
 
+    # إرسال رمز تحقق الجهاز إلى بريد الطفل
     send_email(
         child_email,
         "Child Device Verification Code",
@@ -303,7 +361,9 @@ def register_child_device():
     })
 
 
+# ==============================
 # إضافة وربط الطفل بحساب ولي الأمر
+# ==============================
 @app.route("/add-child", methods=["POST"])
 def add_child():
     data = request.get_json() or {}
@@ -321,7 +381,7 @@ def add_child():
     conn = db()
     cur = conn.cursor()
 
-    # التحقق أن جهاز الطفل مسجل فعلاً وأن الرمز صحيح
+    # التحقق أن جهاز الطفل مسجل فعلًا وأن الرمز صحيح
     cur.execute("""
     SELECT * FROM child_devices
     WHERE child_code = ?
@@ -357,7 +417,11 @@ def add_child():
     ))
 
     # تحديث حالة جهاز الطفل إلى مرتبط
-    cur.execute("UPDATE child_devices SET linked = 1 WHERE child_code = ?", (child_code,))
+    cur.execute("""
+    UPDATE child_devices
+    SET linked = 1
+    WHERE child_code = ?
+    """, (child_code,))
 
     # إضافة تقرير عملية الربط
     cur.execute("""
@@ -373,25 +437,36 @@ def add_child():
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success", "message": "Child linked successfully"})
+    return jsonify({
+        "status": "success",
+        "message": "Child linked successfully"
+    })
 
 
+# ==============================
 # إرسال أمر من تطبيق الأم إلى جهاز الطفل
+# ==============================
 @app.route("/send-command", methods=["POST"])
 def send_command():
     data = request.get_json() or {}
 
+    action = data.get("action", "")
+    value = data.get("value", "")
+    child_code = data.get("child_code", "")
+    guardian_email = data.get("guardian_email", "")
+
     conn = db()
     cur = conn.cursor()
 
+    # حفظ الأمر في قاعدة البيانات
     cur.execute("""
     INSERT INTO commands (action, value, child_code, guardian_email, executed, time)
     VALUES (?, ?, ?, ?, ?, ?)
     """, (
-        data.get("action", ""),
-        data.get("value", ""),
-        data.get("child_code", ""),
-        data.get("guardian_email", ""),
+        action,
+        value,
+        child_code,
+        guardian_email,
         0,
         now()
     ))
@@ -402,18 +477,23 @@ def send_command():
     VALUES (?, ?, ?, ?)
     """, (
         "command_sent",
-        f"{data.get('action', '')}: {data.get('value', '')}",
-        data.get("child_code", ""),
+        f"{action}: {value}",
+        child_code,
         now()
     ))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success", "message": "Command sent"})
+    return jsonify({
+        "status": "success",
+        "message": "Command sent"
+    })
 
 
+# ==============================
 # جهاز الطفل يسحب آخر أمر غير منفذ
+# ==============================
 @app.route("/get-command", methods=["GET"])
 def get_command():
     child_code = request.args.get("child_code", "")
@@ -421,6 +501,7 @@ def get_command():
     conn = db()
     cur = conn.cursor()
 
+    # جلب آخر أمر غير منفذ
     cur.execute("""
     SELECT * FROM commands
     WHERE child_code = ? AND executed = 0
@@ -432,78 +513,112 @@ def get_command():
 
     if not cmd:
         conn.close()
-        return jsonify({"action": "none", "value": "", "child_code": child_code})
+        return jsonify({
+            "action": "none",
+            "value": "",
+            "child_code": child_code
+        })
 
     # بعد إرسال الأمر للطفل نعتبره منفذًا حتى لا يتكرر
-    cur.execute("UPDATE commands SET executed = 1 WHERE id = ?", (cmd["id"],))
+    cur.execute("""
+    UPDATE commands
+    SET executed = 1
+    WHERE id = ?
+    """, (cmd["id"],))
+
     conn.commit()
     conn.close()
 
     return jsonify(dict(cmd))
 
 
+# ==============================
 # إضافة جدول تحكم زمني
+# ==============================
 @app.route("/add-schedule", methods=["POST"])
 def add_schedule():
     data = request.get_json() or {}
 
+    child_code = data.get("child_code", "")
+    action = data.get("action", "")
+    value = data.get("value", "")
+    start_time = data.get("start_time", "")
+    end_time = data.get("end_time", "")
+
     conn = db()
     cur = conn.cursor()
 
+    # حفظ الجدول الزمني
     cur.execute("""
     INSERT INTO schedules (child_code, action, value, start_time, end_time, active, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
-        data.get("child_code", ""),
-        data.get("action", ""),
-        data.get("value", ""),
-        data.get("start_time", ""),
-        data.get("end_time", ""),
+        child_code,
+        action,
+        value,
+        start_time,
+        end_time,
         1,
         now()
     ))
 
+    # حفظ تقرير عن الجدول الزمني
     cur.execute("""
     INSERT INTO reports (event, value, child_code, time)
     VALUES (?, ?, ?, ?)
     """, (
         "schedule_added",
-        f"{data.get('action', '')}: {data.get('value', '')}",
-        data.get("child_code", ""),
+        f"{action}: {value}",
+        child_code,
         now()
     ))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success", "message": "Schedule added"})
+    return jsonify({
+        "status": "success",
+        "message": "Schedule added"
+    })
 
 
+# ==============================
 # إرسال تقرير من جهاز الطفل
+# ==============================
 @app.route("/add-report", methods=["POST"])
 def add_report():
     data = request.get_json() or {}
 
+    event = data.get("event", "")
+    value = data.get("value", "")
+    child_code = data.get("child_code", "")
+
     conn = db()
     cur = conn.cursor()
 
+    # حفظ التقرير
     cur.execute("""
     INSERT INTO reports (event, value, child_code, time)
     VALUES (?, ?, ?, ?)
     """, (
-        data.get("event", ""),
-        data.get("value", ""),
-        data.get("child_code", ""),
+        event,
+        value,
+        child_code,
         now()
     ))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success", "message": "Report added"})
+    return jsonify({
+        "status": "success",
+        "message": "Report added"
+    })
 
 
+# ==============================
 # عرض التقارير للأم
+# ==============================
 @app.route("/reports", methods=["GET"])
 def reports():
     child_code = request.args.get("child_code", "")
@@ -511,6 +626,7 @@ def reports():
     conn = db()
     cur = conn.cursor()
 
+    # جلب آخر 50 تقرير
     cur.execute("""
     SELECT * FROM reports
     WHERE child_code = ?
@@ -524,31 +640,41 @@ def reports():
     return jsonify([dict(r) for r in rows])
 
 
+# ==============================
 # إضافة تنبيه من جهاز الطفل
+# ==============================
 @app.route("/add-alert", methods=["POST"])
 def add_alert():
     data = request.get_json() or {}
 
+    message = data.get("message", "")
+    child_code = data.get("child_code", "")
+
     conn = db()
     cur = conn.cursor()
 
+    # حفظ التنبيه
     cur.execute("""
     INSERT INTO alerts (message, child_code, time)
     VALUES (?, ?, ?)
     """, (
-        data.get("message", ""),
-        data.get("child_code", ""),
+        message,
+        child_code,
         now()
     ))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"status": "success"})
+    return jsonify({
+        "status": "success",
+        "message": "Alert added"
+    })
 
 
-# 
-عرض التنبيهات للأم
+# ==============================
+# عرض التنبيهات للأم
+# ==============================
 @app.route("/alerts", methods=["GET"])
 def alerts():
     child_code = request.args.get("child_code", "")
@@ -556,6 +682,7 @@ def alerts():
     conn = db()
     cur = conn.cursor()
 
+    # جلب آخر 50 تنبيه
     cur.execute("""
     SELECT * FROM alerts
     WHERE child_code = ?
@@ -569,9 +696,15 @@ def alerts():
     return jsonify([dict(r) for r in rows])
 
 
-# إنشاء الجداول عند تشغيل السيرفر
+# ==============================
+# تشغيل قاعدة البيانات عند بدء السيرفر
+# ==============================
 init_db()
 
-# تشغيل محلي فقط، أما Render يستخدم gunicorn
+
+# ==============================
+# تشغيل السيرفر محليًا
+# Render يستخدم gunicorn
+# ==============================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
