@@ -19,6 +19,8 @@ import sqlite3
 import os
 import random
 import smtplib
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 # إنشاء تطبيق Flask
@@ -38,6 +40,11 @@ SMTP_PASS = os.environ.get("SMTP_PASS", "").replace(" ", "").strip()
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
 SMTP_LAST_ERROR = ""
+# Render المجاني يحظر SMTP — استخدمي Resend API (HTTPS) بدلاً من Gmail SMTP
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+RESEND_FROM = os.environ.get(
+    "RESEND_FROM", "MYRana <onboarding@resend.dev>"
+).strip()
 
 
 # دالة ترجع الوقت الحالي
@@ -56,10 +63,15 @@ def smtp_configured():
     return bool(SMTP_USER and SMTP_PASS)
 
 
+def email_configured():
+    """SMTP أو Resend API — Render المجاني يحتاج Resend."""
+    return bool(RESEND_API_KEY) or smtp_configured()
+
+
 def verification_payload(code, email_sent, success_message, dev_message):
     """استجابة API: الرمز يُعاد في JSON فقط عند فشل SMTP (وضع تطوير)."""
     global SMTP_LAST_ERROR
-    if not email_sent and smtp_configured() and SMTP_LAST_ERROR:
+    if not email_sent and email_configured() and SMTP_LAST_ERROR:
         dev_message = f"فشل إرسال البريد — تحققي من App Password على Render ({SMTP_LAST_ERROR})"
     payload = {
         "status": "success",
@@ -73,12 +85,52 @@ def verification_payload(code, email_sent, success_message, dev_message):
     return payload
 
 
-# دالة إرسال البريد — 465 SSL أو 587 STARTTLS
+def send_email_resend(to_email, subject, body):
+    """إرسال عبر Resend HTTPS — يعمل على Render المجاني."""
+    global SMTP_LAST_ERROR
+    if not RESEND_API_KEY:
+        return False
+    payload = json.dumps({
+        "from": RESEND_FROM,
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            if resp.status in (200, 201):
+                SMTP_LAST_ERROR = ""
+                print("EMAIL SENT (Resend) to", to_email)
+                return True
+            SMTP_LAST_ERROR = f"Resend HTTP {resp.status}"
+            return False
+    except urllib.error.HTTPError as e:
+        SMTP_LAST_ERROR = f"Resend HTTP {e.code}: {e.read().decode()[:120]}"
+        print("EMAIL ERROR (Resend):", SMTP_LAST_ERROR)
+        return False
+    except Exception as e:
+        SMTP_LAST_ERROR = f"{type(e).__name__}: {str(e)[:120]}"
+        print("EMAIL ERROR (Resend):", SMTP_LAST_ERROR)
+        return False
+
+
+# دالة إرسال البريد — Resend (Render مجاني) أو SMTP (سيرفر مدفوع)
 def send_email(to_email, subject, body):
     global SMTP_LAST_ERROR
+    if RESEND_API_KEY:
+        return send_email_resend(to_email, subject, body)
     if not smtp_configured():
-        SMTP_LAST_ERROR = "missing SMTP_USER or SMTP_PASS"
-        print("EMAIL NOT SENT (no SMTP):", body)
+        SMTP_LAST_ERROR = "missing SMTP_USER or SMTP_PASS (or set RESEND_API_KEY)"
+        print("EMAIL NOT SENT (no email config):", body)
         return False
 
     msg = EmailMessage()
@@ -449,7 +501,8 @@ def home():
     return jsonify({
         "status": "running",
         "message": "Parental Control Server is running",
-        "smtp_ready": smtp_configured(),
+        "smtp_ready": email_configured(),
+        "email_via": "resend" if RESEND_API_KEY else ("smtp" if smtp_configured() else "none"),
         "smtp_user_set": bool(SMTP_USER),
         "smtp_pass_set": bool(SMTP_PASS),
         "smtp_last_error": SMTP_LAST_ERROR or None,
