@@ -32,10 +32,12 @@ API_KEY = os.environ.get("API_KEY", "graduation-secret-key")
 
 # بيانات البريد لإرسال رموز التحقق (Gmail App Password على Render)
 # SMTP_USER=your@gmail.com  SMTP_PASS=16-char-app-password  SMTP_PORT=465
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+# App Password: أحياناً يُلصق مع مسافات — نزيلها
+SMTP_PASS = os.environ.get("SMTP_PASS", "").replace(" ", "").strip()
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
+SMTP_LAST_ERROR = ""
 
 
 # دالة ترجع الوقت الحالي
@@ -56,6 +58,9 @@ def smtp_configured():
 
 def verification_payload(code, email_sent, success_message, dev_message):
     """استجابة API: الرمز يُعاد في JSON فقط عند فشل SMTP (وضع تطوير)."""
+    global SMTP_LAST_ERROR
+    if not email_sent and smtp_configured() and SMTP_LAST_ERROR:
+        dev_message = f"فشل إرسال البريد — تحققي من App Password على Render ({SMTP_LAST_ERROR})"
     payload = {
         "status": "success",
         "message": success_message if email_sent else dev_message,
@@ -70,7 +75,9 @@ def verification_payload(code, email_sent, success_message, dev_message):
 
 # دالة إرسال البريد — 465 SSL أو 587 STARTTLS
 def send_email(to_email, subject, body):
+    global SMTP_LAST_ERROR
     if not smtp_configured():
+        SMTP_LAST_ERROR = "missing SMTP_USER or SMTP_PASS"
         print("EMAIL NOT SENT (no SMTP):", body)
         return False
 
@@ -92,10 +99,12 @@ def send_email(to_email, subject, body):
                 smtp.ehlo()
                 smtp.login(SMTP_USER, SMTP_PASS)
                 smtp.send_message(msg)
+        SMTP_LAST_ERROR = ""
         print("EMAIL SENT SUCCESS to", to_email)
         return True
     except Exception as e:
-        print("EMAIL ERROR:", e)
+        SMTP_LAST_ERROR = f"{type(e).__name__}: {str(e)[:120]}"
+        print("EMAIL ERROR:", SMTP_LAST_ERROR)
         return False
 # إنشاء الجداول إذا لم تكن موجودة
 def init_db():
@@ -443,6 +452,7 @@ def home():
         "smtp_ready": smtp_configured(),
         "smtp_user_set": bool(SMTP_USER),
         "smtp_pass_set": bool(SMTP_PASS),
+        "smtp_last_error": SMTP_LAST_ERROR or None,
         "smtp_host": SMTP_HOST,
         "smtp_port": SMTP_PORT,
     })
