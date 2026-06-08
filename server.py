@@ -439,7 +439,12 @@ def protect():
 def home():
     return jsonify({
         "status": "running",
-        "message": "Parental Control Server is running"
+        "message": "Parental Control Server is running",
+        "smtp_ready": smtp_configured(),
+        "smtp_user_set": bool(SMTP_USER),
+        "smtp_pass_set": bool(SMTP_PASS),
+        "smtp_host": SMTP_HOST,
+        "smtp_port": SMTP_PORT,
     })
 
 
