@@ -1,42 +1,62 @@
 # MYRana — مشروع التخرج (رقابة أبوية)
 
-## تحميل التطبيقات على الجوال (روابط مباشرة)
+## روابط مباشرة — افتحي من الجوال (Chrome)
 
-بعد الرفع على GitHub، افتحي هذه الروابط **في Chrome على الجوال** → حمّلي → ثبّتي:
+### تحميل APK (ثبّتي مباشرة)
 
 | الجهاز | الرابط |
 |--------|--------|
-| **جوال الطفل** | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-child-debug.apk |
-| **جوال الأم** | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-parent-debug.apk |
+| **جوال الطفل** — أكاديمية العباقرة | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk |
+| **جوال الأم** — MY Rana ولي الأمر | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk |
 
-> اسمحي بتثبيت تطبيقات من مصادر غير معروفة في إعدادات الجوال.
+> اسمحي بتثبيت تطبيقات من **مصادر غير معروفة** في إعدادات الجوال.
 
-## المشروع الكامل على GitHub
+### تطبيق الأم Python (Pydroid 3 — اختياري)
 
-- **المستودع:** https://github.com/wh8ps5kwwx-dev/parental-server
-- **أندرويد (هذا المجلد):** [MYRana/](https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/MYRana)
-- **تطبيق الأم Python (Kivy):** [mother-app/](https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/mother-app)
-- **السيرفر:** [server.py](https://github.com/wh8ps5kwwx-dev/parental-server/blob/main/server.py)
-- **أكاديمية Python:** [child-academy/](https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/child-academy)
+| الملف | الرابط |
+|-------|--------|
+| حزمة Pydroid كاملة | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/mother-app/myrana_mother_phone.zip |
 
-## السيرفر (Render)
+### السيرفر
 
-- https://parental-server-4mms.onrender.com
+| الخدمة | الرابط |
+|--------|--------|
+| حالة السيرفر (يفتح في المتصفح) | https://parental-server-4mms.onrender.com |
+| لوحة Render | https://dashboard.render.com |
 
-## خطوات الربط (جوالين)
+---
 
-1. **الطفل:** افتحي «أكاديمية العباقرة» → تسجيل جهاز → **نسخ الكود** → أرسليه للأم
-2. **الأم:** افتحي «MY Rana - ولي الأمر» → بريد `parent.controll.app@gmail.com` → رمز التحقق من Gmail
-3. **الأم:** لصق كود الطفل → إرسال رمز الربط → رمز الربط من Gmail → ربط الطفل
-4. **اختبار:** حظر تطبيق `Granny` من جوال الأم
+## المشروع على GitHub
 
-تفاصيل أكثر: [تشغيل_جوالين.md](تشغيل_جوالين.md)
+| الجزء | الرابط |
+|-------|--------|
+| **المستودع الرئيسي** | https://github.com/wh8ps5kwwx-dev/parental-server |
+| مشروع Android (MYRana) | https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/MYRana |
+| تطبيق الأم Python | https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/mother-app |
+| السيرفر server.py | https://github.com/wh8ps5kwwx-dev/parental-server/blob/main/server.py |
+| أكاديمية Python | https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/child-academy |
 
-## البناء من Android Studio
+---
+
+## خطوات الربط السريعة
+
+1. **الطفل:** ثبّتي APK الطفل → تسجيل جهاز → انسخي `CHILD-...`
+2. **الأم:** ثبّتي APK الأم → بريد Gmail → رمز التحقق
+3. **الأم:** اسم + عمر → لصق كود الطفل → رمز الربط من Gmail → **ربط الطفل**
+4. **الطفل:** فعّلي الصلاحيات (استخدام + وصول + إشعارات)
+5. **الأم:** جرّبي حظر تطبيق من لوحة التحكم
+
+تفاصيل كاملة: [تشغيل_جوالين.md](تشغيل_جوالين.md)
+
+---
+
+## البناء المحلي (Android Studio)
 
 ```powershell
-cd MYRana
+cd c:\Users\rannn\AndroidStudioProjects\MYRana
 .\gradlew assembleChildDebug assembleParentDebug
 ```
 
-APK الناتج في `app/build/outputs/apk/` — انسخيه إلى `releases/` عند التحديث.
+APK محلياً:
+- `releases\myrana-child-debug.apk`
+- `releases\myrana-parent-debug.apk`
