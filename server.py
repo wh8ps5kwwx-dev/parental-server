@@ -102,6 +102,7 @@ def send_email_resend(to_email, subject, body):
         headers={
             "Authorization": f"Bearer {RESEND_API_KEY}",
             "Content-Type": "application/json",
+            "User-Agent": "MYRana/1.0",
         },
         method="POST",
     )
