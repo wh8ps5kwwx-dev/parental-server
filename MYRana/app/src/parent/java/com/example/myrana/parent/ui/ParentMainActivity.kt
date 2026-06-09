@@ -447,9 +447,12 @@ class ParentMainActivity : AppCompatActivity() {
                     GuardianApi.addChild(
                         name = name,
                         age = age,
-                        childEmail = guardianEmail,
-                        device = "Android",
-                        androidVersion = "Android",
+                        childEmail = ParentSession.pendingLinkChildEmail(this@ParentMainActivity)
+                            ?: guardianEmail,
+                        device = ParentSession.pendingLinkDeviceName(this@ParentMainActivity)
+                            ?: "Android",
+                        androidVersion = ParentSession.pendingLinkAndroidVersion(this@ParentMainActivity)
+                            ?: "Android",
                         childCode = childCode,
                         deviceVerifyCode = verify,
                         guardianEmail = guardianEmail,

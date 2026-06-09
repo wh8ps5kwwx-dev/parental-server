@@ -10,6 +10,7 @@ import com.example.myrana.enforcement.EnforcementEngine
 import com.example.myrana.permissions.ChildProjectRuntime
 import com.example.myrana.session.ChildSession
 import com.example.myrana.sync.BackgroundMonitoring
+import com.example.myrana.sync.ScreenTimeSyncHelper
 import com.example.myrana.sync.UsageUploadHelper
 
 /**
@@ -36,6 +37,7 @@ class BackgroundLoopWorker(
             engine.refreshFromServer(deviceId)
             engine.tick()
             UsageUploadHelper.uploadPeriodicIfDue(applicationContext, childCode)
+            ScreenTimeSyncHelper.syncIfDue(applicationContext)
             OutboxRepository.get(applicationContext).flushPending()
         } catch (_: Exception) {
             MonitoringScheduler.scheduleBackgroundLoop(applicationContext, 2)

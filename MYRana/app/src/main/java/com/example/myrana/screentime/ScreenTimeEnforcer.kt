@@ -68,6 +68,37 @@ class ScreenTimeEnforcer(private val context: Context) {
         }
     }
 
+    fun enforceMaxAppsOpen(packageName: String, policy: ScreenTimePolicy) {
+        val now = System.currentTimeMillis()
+        val key = "maxapps:$packageName"
+        val last = lastEnforcedAt[key] ?: 0L
+        if (now - last < ENFORCE_COOLDOWN_MS) return
+        lastEnforcedAt[key] = now
+
+        val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        am.killBackgroundProcesses(packageName)
+
+        val home = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        appContext.startActivity(home)
+
+        val limit = Intent(appContext, ScreenTimeLimitActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(ScreenTimeLimitActivity.EXTRA_PACKAGE, packageName)
+            putExtra(ScreenTimeLimitActivity.EXTRA_MINUTES, policy.blockMinutes)
+        }
+        appContext.startActivity(limit)
+
+        scope.launch {
+            val label = appLabel(packageName)
+            val msg = "تجاوز عدد التطبيقات المفتوحة اليوم: $label (الحد ${policy.maxOpenApps})"
+            repo.logEvent(EVENT_MAX_APPS, packageName, msg, 0L)
+            notifyParent(msg)
+        }
+    }
+
     fun enforceSleepBlock(packageName: String) {
         val now = System.currentTimeMillis()
         val key = "sleep:$packageName"
@@ -146,6 +177,7 @@ class ScreenTimeEnforcer(private val context: Context) {
         const val EVENT_WARN = "screen_warn"
         const val EVENT_STRONG_WARN = "screen_strong_warn"
         const val EVENT_BLOCKED = "screen_blocked"
+        const val EVENT_MAX_APPS = "screen_max_apps"
         private const val ENFORCE_COOLDOWN_MS = 5_000L
     }
 }

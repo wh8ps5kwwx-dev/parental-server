@@ -82,6 +82,17 @@ def send_command(
     )
 
 
+def send_guardian_message(child_code: str, guardian_role: str, message: str) -> dict[str, Any]:
+    return _post(
+        "/send-guardian-message",
+        {
+            "child_code": child_code.strip(),
+            "guardian_role": guardian_role.strip() or "ولي الأمر",
+            "message": message.strip(),
+        },
+    )
+
+
 def apply_default_blocklist(child_code: str) -> dict[str, Any]:
     return _post(
         "/apply-default-blocklist",

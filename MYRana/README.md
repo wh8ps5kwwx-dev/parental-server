@@ -11,11 +11,17 @@
 
 > اسمحي بتثبيت تطبيقات من مصادر غير معروفة في إعدادات الجوال.
 
+## المشروع الكامل على GitHub
+
+- **المستودع:** https://github.com/wh8ps5kwwx-dev/parental-server
+- **أندرويد (هذا المجلد):** [MYRana/](https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/MYRana)
+- **تطبيق الأم Python (Kivy):** [mother-app/](https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/mother-app)
+- **السيرفر:** [server.py](https://github.com/wh8ps5kwwx-dev/parental-server/blob/main/server.py)
+- **أكاديمية Python:** [child-academy/](https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/child-academy)
+
 ## السيرفر (Render)
 
 - https://parental-server-4mms.onrender.com
-- مستودع المشروع الكامل (سيرفر + أندرويد): https://github.com/wh8ps5kwwx-dev/parental-server
-- كود الأندرويد على GitHub: https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/MYRana
 
 ## خطوات الربط (جوالين)
 

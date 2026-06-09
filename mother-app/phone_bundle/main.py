@@ -393,7 +393,7 @@ class ControlScreen(Screen):
         self.status = ALabel("جاهز", font_size=15, size_hint_y=None, height=45)
 
         grid = GridLayout(cols=2, spacing=8, size_hint_y=None)
-        grid.height = 360
+        grid.height = 400
         actions = [
             ("حظر تطبيق", lambda *_: self.cmd("block_app")),
             ("تجميد تطبيق", lambda *_: self.cmd("freeze_app")),
@@ -403,6 +403,7 @@ class ControlScreen(Screen):
             ("التقارير", lambda *_: setattr(self.manager, "current", "reports")),
             ("التنبيهات", lambda *_: setattr(self.manager, "current", "alerts")),
             ("استخدام أسبوعي", lambda *_: setattr(self.manager, "current", "usage")),
+            ("رسالة للطفل", self.send_message),
             ("إضافة طفل آخر", self.add_another),
         ]
         for label, handler in actions:
@@ -448,6 +449,25 @@ class ControlScreen(Screen):
 
         if api_ok(body):
             self.status.text = ar(api_msg(body, "تم إرسال الأمر"))
+        else:
+            self.status.text = ar(api_msg(body))
+
+    def send_message(self, *_):
+        if not self._need_linked():
+            return
+        app = App.get_running_app()
+        text = self.target_input.text.strip()
+        if not text:
+            self.status.text = ar("اكتبي الرسالة في الحقل أعلاه")
+            return
+        self.status.text = ar("جاري الإرسال...")
+        try:
+            body = guardian_api.send_guardian_message(app.child_code, app.role, text)
+        except Exception:
+            self.status.text = ar("فشل الاتصال بالسيرفر")
+            return
+        if api_ok(body):
+            self.status.text = ar(api_msg(body, "تم إرسال الرسالة"))
         else:
             self.status.text = ar(api_msg(body))
 
