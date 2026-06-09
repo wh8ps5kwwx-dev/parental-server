@@ -606,15 +606,16 @@ def send_email_code():
 
     email_sent = send_email(
         email,
-        "Parental Control Verification Code",
-        f"Your verification code is: {code}"
+        "MYRana — رمز التحقق من البريد",
+        f"رمز التحقق لبريدك ({email}):\n\n{code}\n\n"
+        f"أدخليه في تطبيق الأم لتأكيد أن البريد ملكك.",
     )
 
     return jsonify(verification_payload(
         code,
         email_sent,
-        "Verification code sent to your email",
-        "SMTP not configured — code returned for development only",
+        f"تم إرسال رمز التحقق إلى {email}",
+        "لم يُرسل البريد — الرمز للتطوير فقط",
     ))
 
 
@@ -702,6 +703,18 @@ def send_link_code():
 
     conn = db()
     cur = conn.cursor()
+    cur.execute("""
+    SELECT verified FROM email_codes
+    WHERE email = ? AND verified = 1
+    ORDER BY id DESC LIMIT 1
+    """, (guardian_email,))
+    if not cur.fetchone():
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "يجب التحقق من بريد ولي الأمر أولاً (رمز التحقق)",
+        }), 400
+
     cur.execute(
         "SELECT * FROM child_devices WHERE child_code = ? LIMIT 1",
         (child_code,),
@@ -818,6 +831,18 @@ def add_child():
     cur = conn.cursor()
 
     cur.execute("""
+    SELECT verified FROM email_codes
+    WHERE email = ? AND verified = 1
+    ORDER BY id DESC LIMIT 1
+    """, (guardian_email,))
+    if not cur.fetchone():
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "يجب التحقق من بريد ولي الأمر أولاً",
+        }), 400
+
+    cur.execute("""
     SELECT * FROM child_devices
     WHERE child_code = ? AND device_verify_code = ?
     LIMIT 1
@@ -829,7 +854,7 @@ def add_child():
         conn.close()
         return jsonify({
             "status": "error",
-            "message": "Child device verification failed"
+            "message": "رمز الربط غير صحيح — تحققي من البريد",
         }), 400
 
     if device_row["linked"]:
