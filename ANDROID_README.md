@@ -1,21 +1,25 @@
 # تحميل تطبيقات MYRana على الجوال
 
-## روابط التحميل (تفتح في Chrome على الجوال)
+## روابط التحميل (افتحيها في Chrome على الجوال)
 
 | الجهاز | الرابط |
 |--------|--------|
-| **جوال الطفل** — أكاديمية العباقرة | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk |
-| **جوال الأم** — MY Rana | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk |
+| **جوال الطفل** — أكاديمية العباقرة | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-child-debug.apk |
+| **جوال الأم** — MY Rana | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-parent-debug.apk |
 
-1. افتحي الرابط على الجوال
-2. حمّلي الملف
-3. ثبّتي (فعّلي «مصادر غير معروفة» إذا طُلب)
+### خطوات التثبيت
+1. افتحي الرابط في **Chrome** على الجوال
+2. سيُحمّل ملف `.apk` تلقائياً
+3. اضغطي **تثبيت** (فعّلي «مصادر غير معروفة» إذا طُلب)
 
 ## السيرفر
-
 https://parental-server-4mms.onrender.com
 
-## الربط
+## الربط بين الجوالين
+1. **الطفل أولاً:** تسجيل جهاز → نسخ الكود → واتساب
+2. **الأم:** بريد `parent.controll.app@gmail.com` → رمز التحقق من Gmail
+3. **الأم:** لصق كود الطفل → إرسال رمز الربط → رمز الربط من Gmail → ربط الطفل
+4. **اختبار:** حظر `Granny` من جوال الأم
 
-1. **الطفل:** تسجيل جهاز → نسخ الكود → واتساب
-2. **الأم:** `parent.controll.app@gmail.com` → رمز Gmail → لصق كود → رمز ربط Gmail → ربط
+## مستودع المشروع
+- السيرفر + APK: https://github.com/wh8ps5kwwx-dev/parental-server
