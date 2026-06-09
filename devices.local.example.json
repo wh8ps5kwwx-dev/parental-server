@@ -1,0 +1,20 @@
+{
+  "androidProject": "c:/Users/rannn/AndroidStudioProjects/MYRana",
+  "serverRoot": "https://parental-server-4mms.onrender.com",
+  "childEmail": "child@example.com",
+  "childCode": "",
+  "child": {
+    "serial": "",
+    "avd": "Emulator_Child",
+    "package": "com.example.myrana.child",
+    "activity": "com.example.myrana.ui.PermissionsLauncherActivity",
+    "gradleTask": "installChildDebug"
+  },
+  "parent": {
+    "serial": "",
+    "avd": "Emulator_Parent",
+    "package": "com.example.myrana.parent",
+    "activity": "com.example.myrana.parent.ui.ParentMainActivity",
+    "gradleTask": "installParentDebug"
+  }
+}

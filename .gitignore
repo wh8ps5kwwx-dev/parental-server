@@ -1,0 +1,12 @@
+.env
+*.db
+__pycache__/
+*.pyc
+devices.local.json
+parent_control.db
+*.vmem
+*.vmdk
+Network Security managament/
+MYRana/.gradle/
+MYRana/build/
+MYRana/local.properties
