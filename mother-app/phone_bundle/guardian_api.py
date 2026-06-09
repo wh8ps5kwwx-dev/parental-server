@@ -1,4 +1,4 @@
-"""نسخة للجوال — نفس common/guardian_api.py (لتعبئة APK بدون مجلد المشروع)."""
+"""واجهة السيرفر لتطبيق الأم — نسخة جوال (بدون مجلد المشروع الكامل)."""
 from __future__ import annotations
 
 import os
@@ -18,7 +18,7 @@ def _post(path: str, data: dict[str, Any]) -> dict[str, Any]:
         f"{SERVER_URL}{path}",
         json=data,
         headers=HEADERS,
-        timeout=20,
+        timeout=25,
     )
     try:
         body = r.json()
@@ -27,6 +27,19 @@ def _post(path: str, data: dict[str, Any]) -> dict[str, Any]:
     if r.status_code >= 400:
         body.setdefault("status", "error")
     return body
+
+
+def _get(path: str, params: dict[str, Any] | None = None) -> Any:
+    r = requests.get(
+        f"{SERVER_URL}{path}",
+        params=params or {},
+        headers={"X-API-KEY": API_KEY},
+        timeout=25,
+    )
+    try:
+        return r.json()
+    except Exception:
+        return []
 
 
 def send_email_code(email: str) -> dict[str, Any]:
@@ -44,5 +57,50 @@ def send_link_code(guardian_email: str, child_code: str) -> dict[str, Any]:
     )
 
 
+def verify_child_device_code(child_code: str, code: str) -> dict[str, Any]:
+    return _post(
+        "/verify-child-device-code",
+        {"child_code": child_code.strip(), "code": code.strip()},
+    )
+
+
 def add_child(payload: dict[str, Any]) -> dict[str, Any]:
     return _post("/add-child", payload)
+
+
+def send_command(
+    action: str, value: str, child_code: str, guardian_email: str
+) -> dict[str, Any]:
+    return _post(
+        "/send-command",
+        {
+            "action": action,
+            "value": value,
+            "child_code": child_code.strip(),
+            "guardian_email": guardian_email.strip(),
+        },
+    )
+
+
+def apply_default_blocklist(child_code: str) -> dict[str, Any]:
+    return _post(
+        "/apply-default-blocklist",
+        {"child_code": child_code.strip()},
+    )
+
+
+def fetch_alerts(child_code: str) -> list[dict[str, Any]]:
+    data = _get("/alerts", {"child_code": child_code.strip()})
+    return data if isinstance(data, list) else []
+
+
+def fetch_reports(child_code: str) -> list[dict[str, Any]]:
+    data = _get("/reports", {"child_code": child_code.strip()})
+    return data if isinstance(data, list) else []
+
+
+def fetch_weekly_usage(child_code: str) -> list[dict[str, Any]]:
+    data = _get("/weekly-report", {"child_code": child_code.strip()})
+    if isinstance(data, dict):
+        return data.get("apps") or []
+    return []

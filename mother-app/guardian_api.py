@@ -68,7 +68,9 @@ def add_child(payload: dict[str, Any]) -> dict[str, Any]:
     return _post("/add-child", payload)
 
 
-def send_command(action: str, value: str, child_code: str, guardian_email: str) -> dict[str, Any]:
+def send_command(
+    action: str, value: str, child_code: str, guardian_email: str
+) -> dict[str, Any]:
     return _post(
         "/send-command",
         {
@@ -77,6 +79,13 @@ def send_command(action: str, value: str, child_code: str, guardian_email: str) 
             "child_code": child_code.strip(),
             "guardian_email": guardian_email.strip(),
         },
+    )
+
+
+def apply_default_blocklist(child_code: str) -> dict[str, Any]:
+    return _post(
+        "/apply-default-blocklist",
+        {"child_code": child_code.strip()},
     )
 
 

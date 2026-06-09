@@ -1,646 +1,592 @@
-import re
-import sys
-from pathlib import Path
+"""MY Rana — تطبيق الأم (Pydroid 3). نفس تدفق تطبيق Android: بريد → طفل → ربط → تحكم."""
+from __future__ import annotations
 
-import requests
+import re
+
 import arabic_reshaper
 from bidi.algorithm import get_display
-
-APP_DIR = Path(__file__).resolve().parent
-# سطح المكتب: common من المشروع | جوال أندرويد: guardian_api.py بجانب main.py
-sys.path.insert(0, str(APP_DIR))
-sys.path.insert(0, str(APP_DIR.parent))
-
-try:
-    from guardian_api import add_child, send_email_code, send_link_code, verify_email_code
-except ImportError:
-    from common.guardian_api import add_child, send_email_code, send_link_code, verify_email_code  # noqa: E402
-
 from kivy.app import App
-from kivy.utils import platform as kivy_platform
-from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.core.text import LabelBase
+from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.button import Button
+from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
-from kivy.core.window import Window
-from kivy.core.text import LabelBase
+from kivy.uix.textinput import TextInput
 
-if kivy_platform not in ("android", "ios"):
-    Window.size = (390, 720)
+import guardian_api
 
-# بعد رفع السيرفر على Render حطي الرابط هنا
-SERVER_URL = "https://parental-server-4mms.onrender.com"
+Window.size = (390, 720)
 
-API_KEY = "graduation-secret-key"
-HEADERS = {"X-API-KEY": API_KEY}
+LabelBase.register(name="Arabic", fn_regular="Arabic.ttf")
 
-CHILD_CODE = "CHILD-001"
-
-_arabic_font = APP_DIR / "Arabic.ttf"
-UI_FONT = "Roboto"
-if _arabic_font.is_file():
-    LabelBase.register(name="Arabic", fn_regular=str(_arabic_font))
-    UI_FONT = "Arabic"
+ROLE_CHOOSE = "choose_role"
+ROLES = ("أم", "أب", "ولي أمر")
 
 
-def ar(text):
+def ar(text: str) -> str:
     return get_display(arabic_reshaper.reshape(str(text)))
 
 
-def valid_email(email):
-    return re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", email)
+def valid_email(email: str) -> bool:
+    return bool(re.match(r"^[\w.\-+]+@[\w.\-]+\.[A-Za-z]{2,}$", email.strip()))
 
 
-def ALabel(text, **kwargs):
-    kwargs.setdefault("font_name", UI_FONT)
-    return Label(text=ar(text), **kwargs)
+def normalize_child_code(raw: str) -> str:
+    text = raw.strip().upper().replace(" ", "")
+    if not text:
+        return ""
+    if text.startswith("CHILD-"):
+        return text
+    return f"CHILD-{text}"
 
 
-def AButton(text, **kwargs):
-    kwargs.setdefault("font_name", UI_FONT)
-    return Button(text=ar(text), **kwargs)
+def api_ok(body: dict) -> bool:
+    return body.get("status") == "success"
 
 
-def AInput(hint_text, **kwargs):
-    return TextInput(
-        hint_text=ar(hint_text),
-        font_name=UI_FONT,
-        multiline=False,
-        halign="right",
-        **kwargs
-    )
+def api_msg(body: dict, default: str = "حدث خطأ") -> str:
+    return str(body.get("message") or default)
+
+
+def fill_code_field(field: TextInput, body: dict) -> None:
+    if body.get("dev_fallback") and body.get("verification_code"):
+        field.text = str(body["verification_code"])
+
+
+class ALabel(Label):
+    def __init__(self, text: str = "", **kwargs):
+        super().__init__(text=ar(text), font_name="Arabic", **kwargs)
+
+
+class AButton(Button):
+    def __init__(self, text: str = "", **kwargs):
+        super().__init__(text=ar(text), font_name="Arabic", **kwargs)
+
+
+class AInput(TextInput):
+    def __init__(self, hint_text: str = "", **kwargs):
+        super().__init__(
+            hint_text=ar(hint_text),
+            font_name="Arabic",
+            multiline=False,
+            halign="right",
+            **kwargs,
+        )
+
+
+def screen_box() -> BoxLayout:
+    return BoxLayout(orientation="vertical", padding=20, spacing=12)
 
 
 class LoginScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        layout = screen_box()
 
-        layout = BoxLayout(orientation="vertical", padding=25, spacing=15)
-
-        title = Label(
-            text="Parental Control",
-            font_size=28,
-            bold=True,
-            size_hint_y=None,
-            height=70
+        layout.add_widget(
+            Label(
+                text="MY Rana",
+                font_size=28,
+                bold=True,
+                size_hint_y=None,
+                height=60,
+            )
         )
-
-        subtitle = ALabel(
-            "تسجيل دخول ولي الأمر",
-            font_size=20,
-            size_hint_y=None,
-            height=45
-        )
+        layout.add_widget(ALabel("تسجيل ولي الأمر", font_size=20, size_hint_y=None, height=40))
 
         self.role = Spinner(
-            text=ar("اختاري الصفة"),
-            values=[ar("أم"), ar("أب"), ar("ولي أمر")],
-            font_name=UI_FONT,
+            text=ar(ROLE_CHOOSE),
+            values=[ar(r) for r in ROLES],
+            font_name="Arabic",
             size_hint_y=None,
-            height=55
+            height=50,
         )
-
         self.email = TextInput(
-            hint_text="Gmail",
+            hint_text="Email",
             multiline=False,
-            font_size=18
-        )
-
-        self.password = TextInput(
-            hint_text="Password",
-            password=True,
-            multiline=False,
-            font_size=18
-        )
-
-        self.email_code = AInput(
-            "رمز التحقق من بريدك",
             font_size=18,
             size_hint_y=None,
-            height=0,
-            opacity=0,
-            disabled=True,
+            height=45,
         )
+        send_btn = AButton("إرسال رمز التحقق", size_hint_y=None, height=55)
+        send_btn.bind(on_press=self.send_code)
+        self.message = ALabel("", font_size=15, color=(1, 0.2, 0.2, 1), size_hint_y=None, height=80)
 
-        self.login_btn = AButton(
-            "إرسال رمز التحقق للبريد",
-            font_size=20,
-            size_hint_y=None,
-            height=55
-        )
-        self.login_btn.bind(on_press=self.login)
-
-        self.message = ALabel("", font_size=16, color=(1, 0, 0, 1))
-        self._code_sent = False
-
-        layout.add_widget(title)
-        layout.add_widget(subtitle)
         layout.add_widget(self.role)
         layout.add_widget(self.email)
-        layout.add_widget(self.password)
-        layout.add_widget(self.email_code)
-        layout.add_widget(self.login_btn)
+        layout.add_widget(send_btn)
         layout.add_widget(self.message)
-
         self.add_widget(layout)
 
-    def _validate_form(self):
-        role = self.role.text
+    def _role_value(self) -> str:
+        text = self.role.text
+        for role in ROLES:
+            if text == ar(role):
+                return role
+        return ""
+
+    def send_code(self, *_):
+        app = App.get_running_app()
+        role = self._role_value()
         email = self.email.text.strip()
-        password = self.password.text.strip()
 
-        if role == ar("اختاري الصفة"):
-            self.message.text = ar("اختاري الصفة أولًا")
-            return None
+        if not role:
+            self.message.text = ar("اختاري الصفة أولاً")
+            return
         if not valid_email(email):
-            self.message.text = ar("اكتبي بريدًا صحيحًا")
-            return None
-        if len(password) < 6:
-            self.message.text = ar("كلمة السر لازم تكون 6 أحرف على الأقل")
-            return None
-        return role, email, password
-
-    def login(self, instance):
-        validated = self._validate_form()
-        if not validated:
+            self.message.text = ar("أدخلي بريداً صحيحاً")
             return
-        role, email, password = validated
-        if not self._code_sent:
-            self._send_verification_code(role, email, password)
-            return
-        self._verify_and_enter(role, email, password)
 
-    def _send_verification_code(self, role, email, password):
-        """يرسل رمزاً للبريد الذي أدخلته الأم — أي بريد صحيح."""
+        app.email = email
+        app.role = role
+        self.message.text = ar("جاري الإرسال...")
+
         try:
-            result = send_email_code(email)
-            if result.get("status") != "success":
-                self.message.text = ar(result.get("message", "فشل الإرسال"))
-                return
-            App.get_running_app().guardian = {"role": role, "email": email, "password": password}
-            self._code_sent = True
-            self.email_code.disabled = False
-            self.email_code.opacity = 1
-            self.email_code.height = 50
-            self.login_btn.text = ar("تحقق والدخول")
-            if result.get("dev_fallback"):
-                dev_code = result.get("verification_code", "")
-                self.message.text = ar("وضع تطوير — الرمز: ") + str(dev_code)
-                if dev_code:
-                    self.email_code.text = str(dev_code)
-            else:
-                self.message.text = ar("تم إرسال الرمز إلى ") + email + ar(" — أدخليه من بريدك")
+            body = guardian_api.send_email_code(email)
         except Exception:
             self.message.text = ar("فشل الاتصال بالسيرفر")
-
-    def _verify_and_enter(self, role, email, password):
-        code = self.email_code.text.strip()
-        if not code:
-            self.message.text = ar("أدخلي رمز التحقق من بريدك")
             return
-        try:
-            result = verify_email_code(email, code)
-            if result.get("status") != "success":
-                self.message.text = ar(result.get("message", "رمز غير صحيح"))
-                return
-            app = App.get_running_app()
-            app.guardian = {"role": role, "email": email, "password": password}
-            app.email_verified = True
-            self.message.text = ar("تم التحقق من بريدك — مرحبًا")
-            self.manager.current = "home"
-        except Exception:
-            self.message.text = ar("فشل الاتصال بالسيرفر")
+
+        if api_ok(body):
+            verify = self.manager.get_screen("verify")
+            verify.email_label.text = ar(f"البريد: {email}")
+            verify.code_input.text = ""
+            fill_code_field(verify.code_input, body)
+            self.message.text = ar(api_msg(body, "تم إرسال الرمز — تحققي من Gmail"))
+            self.manager.current = "verify"
+        else:
+            self.message.text = ar(api_msg(body))
 
 
-class HomeScreen(Screen):
+class VerifyScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        layout = screen_box()
 
-        main = BoxLayout(orientation="vertical", padding=20, spacing=12)
+        layout.add_widget(ALabel("تحقق من البريد", font_size=22, size_hint_y=None, height=50))
+        self.email_label = ALabel("", font_size=16, size_hint_y=None, height=35)
+        self.code_input = AInput("رمز التحقق من Gmail", size_hint_y=None, height=45)
+        verify_btn = AButton("تأكيد الرمز", size_hint_y=None, height=55)
+        verify_btn.bind(on_press=self.verify)
+        back_btn = AButton("رجوع", size_hint_y=None, height=45)
+        back_btn.bind(on_press=lambda *_: setattr(self.manager, "current", "login"))
+        self.message = ALabel("", font_size=15, color=(1, 0.2, 0.2, 1), size_hint_y=None, height=70)
 
-        self.title = ALabel(
-            "لوحة تحكم ولي الأمر",
-            font_size=24,
-            bold=True,
-            size_hint_y=None,
-            height=60
+        layout.add_widget(self.email_label)
+        layout.add_widget(self.code_input)
+        layout.add_widget(verify_btn)
+        layout.add_widget(back_btn)
+        layout.add_widget(self.message)
+        self.add_widget(layout)
+
+    def verify(self, *_):
+        app = App.get_running_app()
+        code = self.code_input.text.strip()
+        if not code:
+            self.message.text = ar("أدخلي رمز التحقق")
+            return
+
+        self.message.text = ar("جاري التحقق...")
+        try:
+            body = guardian_api.verify_email_code(app.email, code)
+        except Exception:
+            self.message.text = ar("فشل الاتصال بالسيرفر")
+            return
+
+        if api_ok(body):
+            app.email_verified = True
+            self.message.text = ar(api_msg(body, "تم التحقق"))
+            self.manager.current = "add_child"
+        else:
+            self.message.text = ar(api_msg(body))
+
+
+class AddChildScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = screen_box()
+
+        layout.add_widget(ALabel("إضافة طفل", font_size=22, size_hint_y=None, height=50))
+        layout.add_widget(
+            ALabel("الخطوة 1: اسم الطفل والعمر", font_size=16, size_hint_y=None, height=35)
         )
+        self.name_input = AInput("اسم الطفل", size_hint_y=None, height=45)
+        self.age_input = AInput("العمر من 5 إلى 13", size_hint_y=None, height=45)
+        cont_btn = AButton("متابعة إلى ربط الجهاز", size_hint_y=None, height=55)
+        cont_btn.bind(on_press=self.continue_to_link)
+        self.message = ALabel("", font_size=15, color=(1, 0.2, 0.2, 1), size_hint_y=None, height=60)
 
-        self.input_box = AInput(
-            "اكتبي اسم التطبيق أو الموقع هنا",
-            font_size=18,
-            size_hint_y=None,
-            height=50
+        layout.add_widget(self.name_input)
+        layout.add_widget(self.age_input)
+        layout.add_widget(cont_btn)
+        layout.add_widget(self.message)
+        self.add_widget(layout)
+
+    def continue_to_link(self, *_):
+        app = App.get_running_app()
+        name = self.name_input.text.strip()
+        age_text = self.age_input.text.strip()
+
+        if not name:
+            self.message.text = ar("أدخلي اسم الطفل")
+            return
+        if not age_text.isdigit():
+            self.message.text = ar("أدخلي العمر رقماً")
+            return
+
+        age = int(age_text)
+        if age < 5 or age > 13:
+            self.message.text = ar("العمر من 5 إلى 13")
+            return
+
+        app.child_name = name
+        app.child_age = age
+        app.child_code = ""
+        app.device_verify_code = ""
+        app.device_name = ""
+        app.android_version = ""
+        app.linked = False
+
+        link = self.manager.get_screen("link")
+        link.child_code_input.text = ""
+        link.verify_input.text = ""
+        link.message.text = ar("الصقي كود الطفل من جواله (CHILD-...)")
+        self.manager.current = "link"
+
+
+class LinkScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        layout = screen_box()
+
+        layout.add_widget(ALabel("ربط جهاز الطفل", font_size=22, size_hint_y=None, height=50))
+        layout.add_widget(
+            ALabel("الخطوة 2: كود الطفل + رمز الربط", font_size=16, size_hint_y=None, height=35)
         )
+        self.child_code_input = AInput("كود الطفل CHILD-...", size_hint_y=None, height=45)
+        send_link_btn = AButton("إرسال رمز الربط للبريد", size_hint_y=None, height=50)
+        send_link_btn.bind(on_press=self.send_link_code)
+        self.verify_input = AInput("رمز الربط من Gmail", size_hint_y=None, height=45)
+        verify_btn = AButton("تحقق من رمز الربط", size_hint_y=None, height=50)
+        verify_btn.bind(on_press=self.verify_device)
+        link_btn = AButton("ربط الطفل وحفظ", size_hint_y=None, height=55)
+        link_btn.bind(on_press=self.link_child)
+        self.message = ALabel("", font_size=14, size_hint_y=None, height=100)
 
-        grid = GridLayout(cols=2, spacing=10, size_hint_y=None)
-        grid.height = 320
+        layout.add_widget(self.child_code_input)
+        layout.add_widget(send_link_btn)
+        layout.add_widget(self.verify_input)
+        layout.add_widget(verify_btn)
+        layout.add_widget(link_btn)
+        layout.add_widget(self.message)
+        self.add_widget(layout)
 
-        buttons = [
-            ("حظر تطبيق", self.block_app),
-            ("السماح", self.allow),
-            ("حظر موقع", self.block_site),
-            ("التقارير", self.open_reports),
-            ("التنبيهات", self.open_alerts),
-            ("إضافة طفل", self.add_child),
+    def _child_code(self) -> str:
+        code = normalize_child_code(self.child_code_input.text)
+        if code:
+            self.child_code_input.text = code
+        return code
+
+    def send_link_code(self, *_):
+        app = App.get_running_app()
+        child_code = self._child_code()
+        if not child_code:
+            self.message.text = ar("أدخلي كود الطفل من جواله")
+            return
+
+        self.message.text = ar("جاري إرسال رمز الربط...")
+        try:
+            body = guardian_api.send_link_code(app.email, child_code)
+        except Exception:
+            self.message.text = ar("فشل الاتصال بالسيرفر")
+            return
+
+        if api_ok(body):
+            fill_code_field(self.verify_input, body)
+            self.message.text = ar(api_msg(body, "تم إرسال رمز الربط — تحققي من Gmail"))
+        else:
+            self.message.text = ar(api_msg(body))
+
+    def verify_device(self, *_):
+        app = App.get_running_app()
+        child_code = self._child_code()
+        code = self.verify_input.text.strip()
+        if not child_code or not code:
+            self.message.text = ar("أدخلي كود الطفل ورمز الربط")
+            return
+
+        self.message.text = ar("جاري التحقق...")
+        try:
+            body = guardian_api.verify_child_device_code(child_code, code)
+        except Exception:
+            self.message.text = ar("فشل الاتصال بالسيرفر")
+            return
+
+        if api_ok(body):
+            app.child_code = child_code
+            app.device_verify_code = code
+            app.device_name = str(body.get("device_name") or "")
+            app.android_version = str(body.get("android_version") or "")
+            info = app.device_name or "Android"
+            self.message.text = ar(f"تم التحقق — الجهاز: {info}. اضغطي «ربط الطفل وحفظ»")
+        else:
+            self.message.text = ar(api_msg(body))
+
+    def link_child(self, *_):
+        app = App.get_running_app()
+        child_code = self._child_code()
+        verify = self.verify_input.text.strip()
+
+        if not app.child_name:
+            self.message.text = ar("ارجعي وأضيفي بيانات الطفل أولاً")
+            return
+        if not child_code or not verify:
+            self.message.text = ar("أدخلي كود الطفل ورمز الربط")
+            return
+
+        payload = {
+            "name": app.child_name,
+            "age": app.child_age,
+            "child_email": app.email,
+            "device": app.device_name or "Android",
+            "android_version": app.android_version or "Android",
+            "child_code": child_code,
+            "device_verify_code": verify,
+            "guardian_email": app.email,
+            "guardian_role": app.role,
+        }
+
+        self.message.text = ar("جاري الربط...")
+        try:
+            body = guardian_api.add_child(payload)
+        except Exception:
+            self.message.text = ar("فشل الاتصال بالسيرفر")
+            return
+
+        if api_ok(body):
+            app.child_code = child_code
+            app.device_verify_code = verify
+            app.linked = True
+            try:
+                guardian_api.apply_default_blocklist(child_code)
+            except Exception:
+                pass
+            control = self.manager.get_screen("control")
+            control.refresh_header()
+            self.message.text = ar(api_msg(body, "تم ربط الطفل بنجاح"))
+            self.manager.current = "control"
+        else:
+            self.message.text = ar(api_msg(body))
+
+
+class ControlScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        main = screen_box()
+
+        self.header = ALabel("لوحة التحكم", font_size=22, size_hint_y=None, height=55)
+        self.target_input = AInput("اسم التطبيق أو الموقع", size_hint_y=None, height=45)
+        self.status = ALabel("جاهز", font_size=15, size_hint_y=None, height=45)
+
+        grid = GridLayout(cols=2, spacing=8, size_hint_y=None)
+        grid.height = 360
+        actions = [
+            ("حظر تطبيق", lambda *_: self.cmd("block_app")),
+            ("تجميد تطبيق", lambda *_: self.cmd("freeze_app")),
+            ("حظر موقع", lambda *_: self.cmd("block_site")),
+            ("السماح", lambda *_: self.cmd("allow", "")),
+            ("قائمة حظر كاملة", self.apply_blocklist),
+            ("التقارير", lambda *_: setattr(self.manager, "current", "reports")),
+            ("التنبيهات", lambda *_: setattr(self.manager, "current", "alerts")),
+            ("استخدام أسبوعي", lambda *_: setattr(self.manager, "current", "usage")),
+            ("إضافة طفل آخر", self.add_another),
         ]
-
-        for text, func in buttons:
-            btn = AButton(text, font_size=17)
-            btn.bind(on_press=func)
+        for label, handler in actions:
+            btn = AButton(label, font_size=16)
+            btn.bind(on_press=handler)
             grid.add_widget(btn)
 
-        self.status = ALabel(
-            "جاهز",
-            font_size=16,
-            size_hint_y=None,
-            height=45
-        )
-
-        main.add_widget(self.title)
-        main.add_widget(self.input_box)
+        main.add_widget(self.header)
+        main.add_widget(self.target_input)
         main.add_widget(grid)
         main.add_widget(self.status)
-
         self.add_widget(main)
 
-    def send_command(self, action, value=""):
+    def refresh_header(self):
+        app = App.get_running_app()
+        if app.linked and app.child_code:
+            self.header.text = ar(f"الطفل: {app.child_name} — {app.child_code}")
+        else:
+            self.header.text = ar("لوحة التحكم")
+
+    def _need_linked(self) -> bool:
+        app = App.get_running_app()
+        if not app.linked or not app.child_code:
+            self.status.text = ar("اربطي الطفل أولاً من شاشة الربط")
+            return False
+        return True
+
+    def cmd(self, action: str, value: str | None = None):
+        if not self._need_linked():
+            return
+        app = App.get_running_app()
+        val = value if value is not None else self.target_input.text.strip()
+        if action != "allow" and not val:
+            self.status.text = ar("اكتبي اسم التطبيق أو الموقع")
+            return
+
+        self.status.text = ar("جاري الإرسال...")
         try:
-            app = App.get_running_app()
-            guardian = app.guardian
-            child_code = getattr(app, "selected_child_code", CHILD_CODE) or CHILD_CODE
-
-            data = {
-                "action": action,
-                "value": value,
-                "child_code": child_code,
-                "guardian_email": guardian.get("email", "")
-            }
-
-            response = requests.post(
-                SERVER_URL + "/send-command",
-                json=data,
-                headers=HEADERS,
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                self.status.text = ar("تم إرسال الأمر بنجاح")
-            else:
-                self.status.text = ar("فشل إرسال الأمر")
-
+            body = guardian_api.send_command(action, val, app.child_code, app.email)
         except Exception:
             self.status.text = ar("فشل الاتصال بالسيرفر")
-
-    def block_app(self, instance):
-        app_name = self.input_box.text.strip()
-
-        if not app_name:
-            self.status.text = ar("اكتبي اسم التطبيق أولًا")
             return
 
-        self.send_command("block_app", app_name)
+        if api_ok(body):
+            self.status.text = ar(api_msg(body, "تم إرسال الأمر"))
+        else:
+            self.status.text = ar(api_msg(body))
 
-    def allow(self, instance):
-        self.send_command("allow", "")
-
-    def block_site(self, instance):
-        site = self.input_box.text.strip()
-
-        if not site:
-            self.status.text = ar("اكتبي اسم الموقع أولًا")
+    def apply_blocklist(self, *_):
+        if not self._need_linked():
             return
-
-        self.send_command("block_site", site)
-
-    def open_reports(self, instance):
-        self.manager.current = "reports"
-
-    def open_alerts(self, instance):
-        self.manager.current = "alerts"
-
-    def add_child(self, instance):
-        self.manager.current = "children"
-
-
-class ChildrenScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        layout = BoxLayout(orientation="vertical", padding=20, spacing=12)
-
-        title = ALabel(
-            "إضافة وربط طفل",
-            font_size=24,
-            bold=True,
-            size_hint_y=None,
-            height=60
-        )
-
-        self.child_name = AInput(
-            "اسم الطفل",
-            font_size=18,
-            size_hint_y=None,
-            height=50
-        )
-
-        self.child_age = AInput(
-            "العمر من 5 إلى 13",
-            font_size=18,
-            size_hint_y=None,
-            height=50
-        )
-
-        self.device = AInput(
-            "نوع الجهاز مثل Samsung A32",
-            font_size=18,
-            size_hint_y=None,
-            height=50
-        )
-
-        self.android_version = AInput(
-            "إصدار النظام مثل Android 13",
-            font_size=18,
-            size_hint_y=None,
-            height=50
-        )
-
-        self.child_code_input = AInput(
-            "كود الطفل مثل CHILD-001",
-            font_size=18,
-            size_hint_y=None,
-            height=50
-        )
-        self.child_code_input.text = CHILD_CODE
-
-        self.device_verify_input = AInput(
-            "رمز الربط من بريدك (6 أرقام)",
-            font_size=18,
-            size_hint_y=None,
-            height=50
-        )
-
-        send_link = AButton(
-            "إرسال رمز الربط للبريد",
-            size_hint_y=None,
-            height=55
-        )
-        send_link.bind(on_press=self.send_link_code)
-
-        save = AButton(
-            "حفظ وربط الطفل",
-            size_hint_y=None,
-            height=55
-        )
-        save.bind(on_press=self.save_child)
-
-        self.msg = ALabel("", font_size=16)
-        self._link_code_sent = False
-
-        back = AButton(
-            "رجوع",
-            size_hint_y=None,
-            height=55
-        )
-        back.bind(on_press=lambda x: setattr(self.manager, "current", "home"))
-
-        layout.add_widget(title)
-        layout.add_widget(self.child_name)
-        layout.add_widget(self.child_age)
-        layout.add_widget(self.device)
-        layout.add_widget(self.android_version)
-        layout.add_widget(self.child_code_input)
-        layout.add_widget(send_link)
-        layout.add_widget(self.device_verify_input)
-        layout.add_widget(save)
-        layout.add_widget(self.msg)
-        layout.add_widget(back)
-
-        self.add_widget(layout)
-
-    def send_link_code(self, instance):
-        child_code = self.child_code_input.text.strip()
-        guardian = App.get_running_app().guardian
-        email = guardian.get("email", "").strip()
-        if not child_code:
-            self.msg.text = ar("أدخلي كود الطفل من جواله أولًا")
-            return
-        if not email:
-            self.msg.text = ar("سجّلي دخولك من الشاشة الأولى")
-            return
+        app = App.get_running_app()
+        self.status.text = ar("جاري تطبيق القائمة...")
         try:
-            result = send_link_code(email, child_code)
-            if result.get("status") != "success":
-                self.msg.text = ar(result.get("message", "فشل الإرسال"))
-                return
-            self._link_code_sent = True
-            if result.get("dev_fallback"):
-                dev_code = result.get("verification_code", "")
-                self.msg.text = ar("وضع تطوير — الرمز: ") + str(dev_code)
-                if dev_code:
-                    self.device_verify_input.text = str(dev_code)
-            else:
-                self.msg.text = ar("تم إرسال رمز الربط — تحققي من بريدك")
+            body = guardian_api.apply_default_blocklist(app.child_code)
         except Exception:
-            self.msg.text = ar("فشل الاتصال بالسيرفر")
-
-    def save_child(self, instance):
-        name = self.child_name.text.strip()
-        age = self.child_age.text.strip()
-        device = self.device.text.strip()
-        android_version = self.android_version.text.strip()
-        child_code = self.child_code_input.text.strip()
-        device_verify_code = self.device_verify_input.text.strip()
-
-        if not name or not age.isdigit() or not child_code or not device_verify_code:
-            self.msg.text = ar("أدخلي كل البيانات بما فيها رمز الربط من البريد")
+            self.status.text = ar("فشل الاتصال بالسيرفر")
             return
+        if api_ok(body):
+            self.status.text = ar(api_msg(body, "تم تطبيق قائمة الحظر"))
+        else:
+            self.status.text = ar(api_msg(body))
 
-        age = int(age)
-
-        if age < 5 or age > 13:
-            self.msg.text = ar("العمر لازم يكون من 5 إلى 13")
-            return
-
-        try:
-            guardian = App.get_running_app().guardian
-
-            app = App.get_running_app()
-            if not getattr(app, "email_verified", False):
-                self.msg.text = ar("يجب التحقق من بريدك أولًا من شاشة الدخول")
-                return
-
-            data = {
-                "name": name,
-                "age": age,
-                "device": device,
-                "android_version": android_version,
-                "child_code": child_code,
-                "device_verify_code": device_verify_code,
-                "guardian_email": guardian.get("email", ""),
-                "guardian_role": guardian.get("role", "")
-            }
-
-            result = add_child(data)
-            if result.get("status") == "success":
-                global CHILD_CODE
-                CHILD_CODE = child_code
-                app.selected_child_code = child_code
-                self.msg.text = ar("تم ربط الطفل بنجاح")
-            else:
-                self.msg.text = ar(result.get("message", "فشل الربط — تحققي من الرموز"))
-
-        except Exception:
-            self.msg.text = ar("فشل الاتصال بالسيرفر")
+    def add_another(self, *_):
+        app = App.get_running_app()
+        app.child_name = ""
+        app.child_age = 0
+        app.child_code = ""
+        app.device_verify_code = ""
+        app.device_name = ""
+        app.android_version = ""
+        app.linked = False
+        add = self.manager.get_screen("add_child")
+        add.name_input.text = ""
+        add.age_input.text = ""
+        add.message.text = ""
+        self.manager.current = "add_child"
 
 
-class ReportsScreen(Screen):
-    def __init__(self, **kwargs):
+class ListScreen(Screen):
+    """شاشة مشتركة للتقارير والتنبيهات والاستخدام."""
+
+    def __init__(self, title: str, loader, **kwargs):
         super().__init__(**kwargs)
+        self._loader = loader
+        layout = screen_box()
 
-        layout = BoxLayout(orientation="vertical", padding=20, spacing=10)
+        layout.add_widget(ALabel(title, font_size=22, size_hint_y=None, height=50))
+        scroll = ScrollView(size_hint=(1, 1))
+        self.content = ALabel("اضغطي تحميل", font_size=14, text_size=(340, None), halign="right", valign="top")
+        self.content.bind(size=self._resize_label)
+        scroll.add_widget(self.content)
+        load_btn = AButton("تحميل", size_hint_y=None, height=50)
+        load_btn.bind(on_press=self.load)
+        back_btn = AButton("رجوع", size_hint_y=None, height=45)
+        back_btn.bind(on_press=lambda *_: setattr(self.manager, "current", "control"))
 
-        title = ALabel(
-            "تقارير نشاط الطفل",
-            font_size=24,
-            bold=True,
-            size_hint_y=None,
-            height=60
-        )
-
-        self.reports = ALabel(
-            "اضغطي تحميل التقارير",
-            font_size=16
-        )
-
-        load_btn = AButton(
-            "تحميل التقارير",
-            size_hint_y=None,
-            height=55
-        )
-        load_btn.bind(on_press=self.load_reports)
-
-        back_btn = AButton(
-            "رجوع",
-            size_hint_y=None,
-            height=55
-        )
-        back_btn.bind(on_press=lambda x: setattr(self.manager, "current", "home"))
-
-        layout.add_widget(title)
-        layout.add_widget(self.reports)
+        layout.add_widget(scroll)
         layout.add_widget(load_btn)
         layout.add_widget(back_btn)
-
         self.add_widget(layout)
 
-    def load_reports(self, instance):
+    @staticmethod
+    def _resize_label(instance, _size):
+        instance.text_size = (instance.width, None)
+
+    def load(self, *_):
+        app = App.get_running_app()
+        if not app.linked or not app.child_code:
+            self.content.text = ar("اربطي الطفل أولاً")
+            return
+        self.content.text = ar("جاري التحميل...")
         try:
-            data = requests.get(
-                SERVER_URL + "/reports",
-                params={"child_code": CHILD_CODE},
-                headers=HEADERS,
-                timeout=10
-            ).json()
-
-            if not data:
-                self.reports.text = ar("لا توجد تقارير بعد")
-                return
-
-            text = ""
-            for r in data[:8]:
-                text += f"{ar('الحدث')}: {r.get('event')}\n"
-                text += f"{ar('القيمة')}: {r.get('value')}\n"
-                text += f"{ar('الوقت')}: {r.get('time')}\n"
-                text += "-------------------\n"
-
-            self.reports.text = text
-
+            self.content.text = self._loader(app)
         except Exception:
-            self.reports.text = ar("فشل تحميل التقارير")
+            self.content.text = ar("فشل التحميل")
 
 
-class AlertsScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+def load_reports(app) -> str:
+    rows = guardian_api.fetch_reports(app.child_code)
+    if not rows:
+        return ar("لا توجد تقارير بعد")
+    lines = []
+    for row in rows[:12]:
+        lines.append(f"{row.get('event', '')}: {row.get('value', '')}")
+        lines.append(str(row.get("time", "")))
+        lines.append("---")
+    return ar("\n".join(lines))
 
-        layout = BoxLayout(orientation="vertical", padding=20, spacing=10)
 
-        title = ALabel(
-            "التنبيهات",
-            font_size=24,
-            bold=True,
-            size_hint_y=None,
-            height=60
-        )
+def load_alerts(app) -> str:
+    rows = guardian_api.fetch_alerts(app.child_code)
+    if not rows:
+        return ar("لا توجد تنبيهات")
+    lines = []
+    for row in rows[:12]:
+        lines.append(str(row.get("message", "")))
+        lines.append(str(row.get("time", "")))
+        lines.append("---")
+    return ar("\n".join(lines))
 
-        self.alerts = ALabel(
-            "لا توجد تنبيهات حالياً",
-            font_size=16
-        )
 
-        refresh = AButton(
-            "تحديث التنبيهات",
-            size_hint_y=None,
-            height=55
-        )
-        refresh.bind(on_press=self.load_alerts)
-
-        back = AButton(
-            "رجوع",
-            size_hint_y=None,
-            height=55
-        )
-        back.bind(on_press=lambda x: setattr(self.manager, "current", "home"))
-
-        layout.add_widget(title)
-        layout.add_widget(self.alerts)
-        layout.add_widget(refresh)
-        layout.add_widget(back)
-
-        self.add_widget(layout)
-
-    def load_alerts(self, instance):
-        try:
-            data = requests.get(
-                SERVER_URL + "/alerts",
-                params={"child_code": CHILD_CODE},
-                headers=HEADERS,
-                timeout=10
-            ).json()
-
-            if not data:
-                self.alerts.text = ar("لا توجد تنبيهات")
-                return
-
-            text = ""
-            for a in data[:8]:
-                text += f"{ar('تنبيه')}: {a.get('message')}\n"
-                text += f"{ar('الوقت')}: {a.get('time')}\n"
-                text += "-------------------\n"
-
-            self.alerts.text = text
-
-        except Exception:
-            self.alerts.text = ar("فشل تحميل التنبيهات")
+def load_usage(app) -> str:
+    rows = guardian_api.fetch_weekly_usage(app.child_code)
+    if not rows:
+        return ar("لا بيانات استخدام بعد")
+    lines = []
+    for row in rows[:15]:
+        pkg = row.get("package") or row.get("app") or "?"
+        mins = row.get("minutes") or row.get("total_minutes") or 0
+        lines.append(f"{pkg}: {mins} د")
+    return ar("\n".join(lines))
 
 
 class MotherApp(App):
-    guardian = {}
-    email_verified = False
-    selected_child_code = CHILD_CODE
+    email: str = ""
+    role: str = ""
+    email_verified: bool = False
+    child_name: str = ""
+    child_age: int = 0
+    child_code: str = ""
+    device_verify_code: str = ""
+    device_name: str = ""
+    android_version: str = ""
+    linked: bool = False
 
     def build(self):
         sm = ScreenManager()
         sm.add_widget(LoginScreen(name="login"))
-        sm.add_widget(HomeScreen(name="home"))
-        sm.add_widget(ReportsScreen(name="reports"))
-        sm.add_widget(AlertsScreen(name="alerts"))
-        sm.add_widget(ChildrenScreen(name="children"))
+        sm.add_widget(VerifyScreen(name="verify"))
+        sm.add_widget(AddChildScreen(name="add_child"))
+        sm.add_widget(LinkScreen(name="link"))
+        sm.add_widget(ControlScreen(name="control"))
+        sm.add_widget(
+            ListScreen("تقارير الطفل", load_reports, name="reports")
+        )
+        sm.add_widget(
+            ListScreen("التنبيهات", load_alerts, name="alerts")
+        )
+        sm.add_widget(
+            ListScreen("استخدام أسبوعي", load_usage, name="usage")
+        )
         return sm
 
 
-MotherApp().run()
+if __name__ == "__main__":
+    MotherApp().run()

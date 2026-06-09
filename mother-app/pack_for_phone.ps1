@@ -4,11 +4,6 @@ $root = $PSScriptRoot
 $out = Join-Path $root "phone_bundle"
 $mainSrc = Join-Path $root "main.py"
 
-# Ensure main.py exists (phone_bundle is rebuilt each run)
-$bundleMain = Join-Path $root "phone_bundle\main.py"
-if (Test-Path $bundleMain) {
-    Copy-Item $bundleMain $mainSrc -Force
-}
 if (-not (Test-Path $mainSrc)) {
     Write-Error "main.py missing in mother-app"
 }
