@@ -321,6 +321,38 @@ def init_db():
     )
     """)
 
+    # سياسة وقت الشاشة لكل طفل
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS screen_time_policies (
+        child_code TEXT PRIMARY KEY,
+        policy_json TEXT NOT NULL,
+        updated_at TEXT
+    )
+    """)
+
+    # آخر اتصال لجهاز الطفل
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS child_status (
+        child_code TEXT PRIMARY KEY,
+        last_seen_ms INTEGER DEFAULT 0,
+        device_name TEXT
+    )
+    """)
+
+    # أحداث وقت الشاشة (تحذيرات / إغلاق)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS screen_time_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        child_code TEXT,
+        event_type TEXT,
+        package_name TEXT,
+        message TEXT,
+        seconds_used INTEGER DEFAULT 0,
+        created_at_ms INTEGER,
+        time TEXT
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -1214,6 +1246,224 @@ def alerts():
     conn.close()
 
     return jsonify([dict(r) for r in rows])
+
+
+DEFAULT_SCREEN_TIME_POLICY = {
+    "monitored_packages": [],
+    "unlimited_packages": [],
+    "warn_minutes": 60,
+    "strong_warn_minutes": 90,
+    "block_minutes": 120,
+    "max_open_apps": 8,
+    "max_open_sites": 8,
+    "sleep_start": "22:00",
+    "sleep_end": "07:00",
+    "allow_during_sleep": False,
+    "vacation_mode": False,
+    "vacation_same_rules": True,
+}
+
+
+def _screen_time_policy_get(conn, child_code: str) -> dict:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT policy_json FROM screen_time_policies WHERE child_code = ?",
+        (child_code,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return dict(DEFAULT_SCREEN_TIME_POLICY)
+    try:
+        data = json.loads(row["policy_json"] or "{}")
+        merged = dict(DEFAULT_SCREEN_TIME_POLICY)
+        merged.update(data)
+        return merged
+    except Exception:
+        return dict(DEFAULT_SCREEN_TIME_POLICY)
+
+
+def _screen_time_policy_save(conn, child_code: str, policy: dict) -> None:
+    merged = dict(DEFAULT_SCREEN_TIME_POLICY)
+    merged.update(policy or {})
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT OR REPLACE INTO screen_time_policies (child_code, policy_json, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        (child_code, json.dumps(merged, ensure_ascii=False), now()),
+    )
+
+
+@app.route("/screen-time-policy", methods=["GET", "POST"])
+def screen_time_policy():
+    if request.method == "GET":
+        child_code = normalize_child_code(request.args.get("child_code", ""))
+        if not child_code:
+            return jsonify({"status": "error", "message": "child_code required"}), 400
+        conn = db()
+        policy = _screen_time_policy_get(conn, child_code)
+        conn.close()
+        return jsonify({"child_code": child_code, "policy": policy})
+
+    data = request.get_json() or {}
+    child_code = normalize_child_code(data.get("child_code", ""))
+    if not child_code:
+        return jsonify({"status": "error", "message": "child_code required"}), 400
+    policy = data.get("policy") or {}
+    conn = db()
+    _screen_time_policy_save(conn, child_code, policy)
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success", "message": "Screen time policy saved"})
+
+
+@app.route("/child-heartbeat", methods=["POST"])
+def child_heartbeat():
+    data = request.get_json() or {}
+    child_code = normalize_child_code(data.get("child_code", ""))
+    ts_ms = int(data.get("ts_ms") or 0)
+    if not child_code:
+        return jsonify({"status": "error", "message": "child_code required"}), 400
+    conn = db()
+    cur = conn.cursor()
+    device_name = ""
+    cur.execute(
+        "SELECT device_name FROM child_devices WHERE child_code = ? LIMIT 1",
+        (child_code,),
+    )
+    row = cur.fetchone()
+    if row:
+        device_name = row["device_name"] or ""
+    cur.execute(
+        """
+        INSERT OR REPLACE INTO child_status (child_code, last_seen_ms, device_name)
+        VALUES (?, ?, ?)
+        """,
+        (child_code, ts_ms or int(datetime.now().timestamp() * 1000), device_name),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success"})
+
+
+@app.route("/screen-time-events", methods=["POST"])
+def screen_time_events():
+    data = request.get_json() or {}
+    child_code = normalize_child_code(data.get("child_code", ""))
+    events = data.get("events") or []
+    if not child_code:
+        return jsonify({"status": "error", "message": "child_code required"}), 400
+    conn = db()
+    cur = conn.cursor()
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        cur.execute(
+            """
+            INSERT INTO screen_time_events
+            (child_code, event_type, package_name, message, seconds_used, created_at_ms, time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                child_code,
+                ev.get("event_type", ""),
+                ev.get("package_name", ""),
+                ev.get("message", ""),
+                int(ev.get("seconds_used") or 0),
+                int(ev.get("created_at_ms") or 0),
+                now(),
+            ),
+        )
+        msg = (ev.get("message") or "").strip()
+        if msg:
+            cur.execute(
+                "INSERT INTO alerts (message, child_code, time) VALUES (?, ?, ?)",
+                (msg, child_code, now()),
+            )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success"})
+
+
+@app.route("/child-dashboard", methods=["GET"])
+def child_dashboard():
+    child_code = normalize_child_code(request.args.get("child_code", ""))
+    if not child_code:
+        return jsonify({"status": "error", "message": "child_code required"}), 400
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = db()
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM children WHERE child_code = ? LIMIT 1", (child_code,))
+    child_row = cur.fetchone()
+    child_name = child_row["name"] if child_row else child_code
+
+    cur.execute(
+        "SELECT last_seen_ms, device_name FROM child_status WHERE child_code = ?",
+        (child_code,),
+    )
+    status_row = cur.fetchone()
+    last_seen_ms = int(status_row["last_seen_ms"]) if status_row else 0
+    device_name = status_row["device_name"] if status_row else ""
+
+    online = False
+    if last_seen_ms > 0:
+        online = (int(datetime.now().timestamp() * 1000) - last_seen_ms) < 180_000
+
+    cur.execute(
+        """
+        SELECT COALESCE(SUM(total_seconds), 0) AS total
+        FROM usage_daily WHERE child_code = ? AND day = ?
+        """,
+        (child_code, today),
+    )
+    today_seconds = int(cur.fetchone()["total"] or 0)
+
+    cur.execute(
+        """
+        SELECT COUNT(DISTINCT package_name) AS cnt
+        FROM usage_daily WHERE child_code = ? AND day = ? AND total_seconds > 0
+        """,
+        (child_code, today),
+    )
+    apps_opened = int(cur.fetchone()["cnt"] or 0)
+
+    policy = _screen_time_policy_get(conn, child_code)
+    conn.close()
+
+    return jsonify({
+        "child_code": child_code,
+        "child_name": child_name,
+        "device_name": device_name,
+        "online": online,
+        "last_seen_ms": last_seen_ms,
+        "today_seconds": today_seconds,
+        "apps_opened": apps_opened,
+        "policy": policy,
+    })
+
+
+@app.route("/daily-report", methods=["GET"])
+def daily_report():
+    child_code = normalize_child_code(request.args.get("child_code", ""))
+    if not child_code:
+        return jsonify({"status": "error", "message": "child_code required"}), 400
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT package_name, total_seconds
+        FROM usage_daily
+        WHERE child_code = ? AND day = ?
+        ORDER BY total_seconds DESC
+        LIMIT 30
+        """,
+        (child_code, today),
+    )
+    apps = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return jsonify({"child_code": child_code, "day": today, "apps": apps})
 
 
 # إنشاء الجداول عند تشغيل السيرفر
