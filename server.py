@@ -1170,6 +1170,10 @@ def reports():
 @app.route("/add-alert", methods=["POST"])
 def add_alert():
     data = request.get_json() or {}
+    child_code = normalize_child_code(data.get("child_code", ""))
+    message = (data.get("message") or "").strip()
+    if not child_code or not message:
+        return jsonify({"status": "error", "message": "child_code and message required"}), 400
 
     conn = db()
     cur = conn.cursor()
@@ -1178,8 +1182,8 @@ def add_alert():
     INSERT INTO alerts (message, child_code, time)
     VALUES (?, ?, ?)
     """, (
-        data.get("message", ""),
-        data.get("child_code", ""),
+        message,
+        child_code,
         now()
     ))
 
@@ -1192,7 +1196,9 @@ def add_alert():
 # عرض التنبيهات للأم
 @app.route("/alerts", methods=["GET"])
 def alerts():
-    child_code = request.args.get("child_code", "")
+    child_code = normalize_child_code(request.args.get("child_code", ""))
+    if not child_code:
+        return jsonify({"status": "error", "message": "child_code required"}), 400
 
     conn = db()
     cur = conn.cursor()
