@@ -14,7 +14,8 @@
 ## السيرفر (Render)
 
 - https://parental-server-4mms.onrender.com
-- مستودع السيرفر: https://github.com/wh8ps5kwwx-dev/parental-server
+- مستودع المشروع الكامل (سيرفر + أندرويد): https://github.com/wh8ps5kwwx-dev/parental-server
+- كود الأندرويد على GitHub: https://github.com/wh8ps5kwwx-dev/parental-server/tree/main/MYRana
 
 ## خطوات الربط (جوالين)
 
