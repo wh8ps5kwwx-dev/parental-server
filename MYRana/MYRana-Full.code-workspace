@@ -1,0 +1,25 @@
+{
+  "folders": [
+    {
+      "name": "Android (MYRana)",
+      "path": "."
+    },
+    {
+      "name": "Python (parent_monitor)",
+      "path": "E:/parent_monitor_project"
+    }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "python",
+    "files.exclude": {
+      "**/.gradle": true,
+      "**/app/build": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.debugpy"
+    ]
+  }
+}

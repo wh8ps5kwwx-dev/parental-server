@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/inputChildCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_child_code"
+            android:inputType="text"
+            android:importantForAutofill="no" />
+
+        <Button
+            android:id="@+id/btnSetChildCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/btn_set_child_code" />
+
+        <EditText
+            android:id="@+id/inputHost"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_host"
+            android:inputType="textUri"
+            android:importantForAutofill="no" />
+
+        <EditText
+            android:id="@+id/inputPackage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/hint_package"
+            android:inputType="text"
+            android:importantForAutofill="no" />
+
+        <Button
+            android:id="@+id/btnPermissions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/btn_permissions" />
+
+        <Button
+            android:id="@+id/btnSyncStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_sync_start" />
+
+        <Button
+            android:id="@+id/btnSyncStop"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_sync_stop" />
+
+        <Button
+            android:id="@+id/btnSyncOnce"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_sync_once" />
+
+        <Button
+            android:id="@+id/btnAddSite"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_add_site" />
+
+        <Button
+            android:id="@+id/btnAddApp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_add_app" />
+
+        <TextView
+            android:id="@+id/labelLists"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/label_local_lists"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textLists"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            tools:text="blockedHosts: …" />
+    </LinearLayout>
+</ScrollView>

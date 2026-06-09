@@ -1,0 +1,8 @@
+# انسخي هذا الملف إلى emulators.local.properties وعدّلي أرقام المحاكيات
+# اعرفي الأرقام من: adb devices
+#
+# child.serial=emulator-5554
+# parent.serial=emulator-5556
+
+child.serial=emulator-5554
+parent.serial=emulator-5556

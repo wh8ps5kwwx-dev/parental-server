@@ -1,0 +1,48 @@
+package com.example.myrana.sync
+
+import android.content.Context
+import com.example.myrana.data.remote.NetworkModule
+import com.example.myrana.device.DeviceIdentity
+import com.example.myrana.screentime.ScreenTimePolicyStore
+import com.example.myrana.screentime.ScreenTimeRepository
+import com.example.myrana.session.ChildSession
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/** مزامنة سياسة وقت الشاشة وأحداث التحذير مع السيرفر. */
+object ScreenTimeSyncHelper {
+
+    suspend fun syncIfDue(context: Context) = withContext(Dispatchers.IO) {
+        val childCode = ChildSession.childCode(context)
+            ?: DeviceIdentity.childDeviceId(context)
+        try {
+            NetworkModule.fetchScreenTimePolicy(childCode)?.let {
+                ScreenTimePolicyStore.save(context, it)
+            }
+            NetworkModule.postChildHeartbeat(childCode)
+            uploadPendingEvents(context, childCode)
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun uploadPendingEvents(context: Context, childCode: String) {
+        val repo = ScreenTimeRepository.get(context)
+        val pending = repo.flushPendingEvents()
+        if (pending.isEmpty()) return
+        val ok = NetworkModule.postScreenTimeEvents(
+            childCode,
+            pending.map {
+                mapOf(
+                    "event_type" to it.eventType,
+                    "package_name" to it.packageName,
+                    "message" to it.message,
+                    "seconds_used" to it.secondsUsed,
+                    "created_at_ms" to it.createdAtMs,
+                )
+            },
+        )
+        if (ok) {
+            repo.markEventsUploaded(pending.map { it.id })
+        }
+    }
+}
