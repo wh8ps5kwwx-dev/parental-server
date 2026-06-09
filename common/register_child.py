@@ -1,4 +1,4 @@
-"""تسجيل جهاز الطفل على السيرفر من Python (قبل فتح صلاحيات Android)."""
+"""تسجيل جهاز الطفل على السيرفر من Python (محاكي أو اختبار)."""
 
 from __future__ import annotations
 
@@ -20,6 +20,12 @@ def register_child_device(
     device_name: str = "Python-Emulator",
     android_version: str = "Android-Emulator",
 ) -> dict:
+    """
+    يسجّل جهاز طفل ويعيد child_code.
+
+    رمز الربط (device_verify_code) لا يُرجع من التسجيل — يُرسل لبريد ولي الأمر
+    عبر POST /send-link-code بعد التحقق من بريد الأم.
+    """
     root = (server_root or os.environ.get("MYRANA_SERVER_ROOT") or DEFAULT_SERVER).rstrip("/")
     key = api_key or os.environ.get("MYRANA_API_KEY") or DEFAULT_API_KEY
     child_code = f"CHILD-{uuid.uuid4().hex[:8].upper()}"
@@ -46,14 +52,10 @@ def register_child_device(
     except URLError as exc:
         raise RuntimeError(f"لا اتصال بالسيرفر: {exc}") from exc
 
-    verify = (
-        body.get("device_verify_code")
-        or body.get("verification_code")
-        or ""
-    )
     return {
         "child_code": body.get("child_code") or child_code,
-        "verify_code": str(verify).strip(),
+        "verify_code": "",
         "child_email": child_email.strip(),
         "message": body.get("message") or "registered",
+        "link_hint": "استخدمي send_link_code من guardian_api ثم رمز Gmail لربط الطفل",
     }
