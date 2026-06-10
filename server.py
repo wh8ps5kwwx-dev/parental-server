@@ -1223,10 +1223,10 @@ def send_link_code():
         row = find_child_device(cur, raw_child, log_on_miss=False)
         if not row:
             conn.close()
-    return _child_not_found_response(
-            raw_child,
-            "Child not found",
-        )
+            return _child_not_found_response(
+                raw_child,
+                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (تسجيل الجهاز)",
+            )
 
         child_code = row["child_code"]
         if row["linked"]:
