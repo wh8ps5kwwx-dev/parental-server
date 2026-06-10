@@ -509,22 +509,23 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
-    # توحيد صيغ child_code المخزّنة (CHILD-1DF71288)
+    # FIX: normalize child_code to support codes with or without CHILD- prefix
+    # التخزين في DB بالصيغة النظيفة فقط: 1DF71288
     cur.execute("SELECT id, child_code FROM child_devices WHERE child_code IS NOT NULL")
     for row in cur.fetchall():
-        canon = normalize_child_code(row["child_code"])
-        if canon and canon != row["child_code"]:
+        suffix = clean_child_code(row["child_code"])
+        if suffix and suffix != row["child_code"]:
             cur.execute(
                 "UPDATE child_devices SET child_code = ? WHERE id = ?",
-                (canon, row["id"]),
+                (suffix, row["id"]),
             )
     cur.execute("SELECT id, child_code FROM children WHERE child_code IS NOT NULL")
     for row in cur.fetchall():
-        canon = normalize_child_code(row["child_code"])
-        if canon and canon != row["child_code"]:
+        suffix = clean_child_code(row["child_code"])
+        if suffix and suffix != row["child_code"]:
             cur.execute(
                 "UPDATE children SET child_code = ? WHERE id = ?",
-                (canon, row["id"]),
+                (suffix, row["id"]),
             )
 
     # جدول الأطفال المرتبطين بولي الأمر
