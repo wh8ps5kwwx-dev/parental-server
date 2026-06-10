@@ -31,9 +31,15 @@
 
 ---
 
-## APK
+## APK — تحميل مباشر (اضغطي على الجوال)
 
-> **APK غير مرفوعة على GitHub.** ابنيها محلياً أو انقلي من `MYRana/releases/` عبر USB / WhatsApp / Drive.
+| الجهاز | الرابط |
+|--------|--------|
+| **جوال الطفل** | [app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk) |
+| **جوال الأم** | [app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk) |
+
+> بعد التحميل: فعّلي **مصادر غير معروفة** ثم ثبّتي APK.  
+> المزيد: [MYRana/LINKS.md](MYRana/LINKS.md)
 
 ```powershell
 cd MYRana

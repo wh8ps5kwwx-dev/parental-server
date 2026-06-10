@@ -11,5 +11,5 @@ MYRana/.gradle/
 MYRana/build/
 MYRana/local.properties
 
-releases/*.apk
-*.apk
+# APK داخل build فقط — releases/ مرفوعة للتحميل المباشر
+MYRana/**/build/**/*.apk
