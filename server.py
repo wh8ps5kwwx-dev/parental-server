@@ -292,14 +292,10 @@ def _link_child_transaction(cur, conn, data: dict):
     _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "checking device")
 
     if not device_row:
-        cleaned = clean_child_code(raw_child)
-        logger.warning("add-child child_not_found original=%r cleaned=%r", raw_child, cleaned)
-        return _fail(
-            "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (CHILD-...)",
-            404,
-            error_code="child_not_found",
-            child_code_input=raw_child,
-            child_code_clean=cleaned,
+        conn.rollback()
+        return _child_not_found_response(
+            raw_child,
+            "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً ثم أعيدي الربط",
         )
 
     child_code = device_row["child_code"]
