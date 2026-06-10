@@ -395,9 +395,10 @@ def _link_child_transaction(cur, conn, data: dict):
             parent_id = _ensure_guardian(cur, parent_email)
             _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "already linked same parent")
             conn.commit()
+            # 200 وليس 409 — Android يقرأ JSON فقط عند isSuccessful
             return _json_success(
                 "Child linked successfully",
-                409,
+                200,
                 already_linked=True,
                 parent_id=parent_id,
                 child_id=int(existing["id"]),
