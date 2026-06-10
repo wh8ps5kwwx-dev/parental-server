@@ -2,17 +2,45 @@
 
 مشروع رقابة أبوية: سيرفر Python + تطبيقات أندرويد + تطبيق أم Python (Kivy).
 
+**روابط قابلة للفتح:** [MYRana/LINKS.md](MYRana/LINKS.md)
+
+---
+
+## روابط سريعة
+
+| ماذا | الرابط |
+|------|--------|
+| **السيرفر** | [parental-server-4mms.onrender.com](https://parental-server-4mms.onrender.com) |
+| **GitHub** | [wh8ps5kwwx-dev/parental-server](https://github.com/wh8ps5kwwx-dev/parental-server) |
+| **Android MYRana** | [MYRana/](MYRana/) |
+| **Python zip للأم** | [myrana_mother_phone.zip](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/mother-app/myrana_mother_phone.zip) |
+| **دليل الربط** | [تشغيل_جوالين.md](MYRana/%D8%AA%D8%B4%D8%BA%D9%8A%D9%84_%D8%AC%D9%88%D8%A7%D9%84%D9%8A%D9%86.md) |
+
+---
+
 ## هيكل المشروع
 
 | المجلد | الوصف |
 |--------|--------|
 | [server.py](server.py) | السيرفر الرئيسي (Flask) — Render |
 | [mother-app/](mother-app/) | تطبيق الأم Python (Kivy) |
-| [common/](common/) | مكتبات مشتركة (API، تسجيل الطفل، محاكيات) |
+| [common/](common/) | مكتبات مشتركة |
 | [child-academy/](child-academy/) | لعبة الأكاديمية Python |
 | [MYRana/](MYRana/) | تطبيقات أندرويد (طفل + أم) |
-| [blocklists/](blocklists/) | قوائم الحظر والكلمات |
-| [releases/](releases/) | APK جاهزة للتثبيت |
+| [blocklists/](blocklists/) | قوائم الحظر |
+
+---
+
+## APK
+
+> **APK غير مرفوعة على GitHub.** ابنيها محلياً أو انقلي من `MYRana/releases/` عبر USB / WhatsApp / Drive.
+
+```powershell
+cd MYRana
+.\gradlew assembleChildDebug assembleParentDebug
+```
+
+---
 
 ## تشغيل سريع
 
@@ -29,26 +57,10 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### واجهة أم بديلة
-```powershell
-python run_parent_ui.py
-```
-
-### أندرويد
-```powershell
-cd MYRana
-.\gradlew assembleChildDebug assembleParentDebug
-```
+---
 
 ## السيرفر على Render
 
-- https://parental-server-4mms.onrender.com
-- إعداد البريد: [EMAIL_SETUP.md](EMAIL_SETUP.md)
-- خطوات التخرج: [GRADUATION_SETUP.md](GRADUATION_SETUP.md)
-
-## APK على الجوال
-
-| الجهاز | الرابط |
-|--------|--------|
-| الطفل | [releases/app-child-debug.apk](releases/app-child-debug.apk) |
-| الأم | [releases/app-parent-debug.apk](releases/app-parent-debug.apk) |
+- [parental-server-4mms.onrender.com](https://parental-server-4mms.onrender.com)
+- [EMAIL_SETUP.md](EMAIL_SETUP.md)
+- [GRADUATION_SETUP.md](GRADUATION_SETUP.md)
