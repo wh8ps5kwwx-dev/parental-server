@@ -134,17 +134,18 @@ def find_child_device(cur, child_code_raw, log_on_miss=True):
     return row
 
 
-def _child_not_found_response(raw, message):
-    """JSON واضح عند عدم وجود الطفل — مع الكود الأصلي والمنظّف في السجلات."""
+def _child_not_found_response(raw, detail_ar: str = ""):
+    """JSON موحّد — Child not found + الكود الأصلي والمنظّف في السجلات."""
     cleaned = clean_child_code(raw)
     logger.warning("child_not_found original=%r cleaned=%r", raw, cleaned)
-    return _json_error(
-        message,
-        404,
-        error_code="child_not_found",
-        child_code_input=(raw or "").strip(),
-        child_code_clean=cleaned,
-    )
+    extra = {
+        "error_code": "child_not_found",
+        "child_code_input": (raw or "").strip(),
+        "child_code_clean": cleaned,
+    }
+    if detail_ar:
+        extra["detail_ar"] = detail_ar
+    return _json_error("Child not found", 404, **extra)
 
 
 def _migrate_child_codes_in_db(cur):
@@ -372,7 +373,7 @@ def _link_child_transaction(cur, conn, data: dict):
         )
         return _child_not_found_response(
             raw_child,
-            "Child not found",
+            "سجّلي الجهاز من تطبيق الطفل أولاً (CHILD-...)",
         )
 
     # مفتاح الصف الفعلي في child_devices (قد يكون 1DF71288 أو CHILD-1DF71288 قبل الترحيل)
@@ -1223,7 +1224,7 @@ def send_link_code():
             conn.close()
             return _child_not_found_response(
                 raw_child,
-                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (CHILD-...)",
+                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً",
             )
 
         child_code = row["child_code"]
@@ -1283,7 +1284,7 @@ def child_link_status():
     if not row:
         return _child_not_found_response(
             raw,
-            "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً",
+            "لم يُعثر على جهاز الطفل — افتحي تطبيق الطفل واضغطي تسجيل الجهاز",
         )
 
     return jsonify({
@@ -1317,7 +1318,7 @@ def verify_child_device_code():
             conn.close()
             return _child_not_found_response(
                 raw_child,
-                "لم يُعثر على جهاز الطفل — من جوال الطفل اضغطي «تسجيل الجهاز» مرة أخرى ثم أعيدي الربط",
+                "من جوال الطفل اضغطي «تسجيل الجهاز» ثم أعيدي الربط",
             )
 
         if not stored or stored != code:
