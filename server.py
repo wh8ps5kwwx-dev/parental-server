@@ -286,18 +286,19 @@ def _link_child_transaction(cur, conn, data: dict):
             error_code="parent_email_not_verified",
         )
 
-    device_row = find_child_device(cur, child_code)
+    raw_child = str(data.get("child_code") or data.get("childCode") or child_code).strip()
+    device_row = find_child_device(cur, raw_child)
     stored_code = str(device_row["device_verify_code"] or "").strip() if device_row else None
     _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "checking device")
 
     if not device_row:
-        cleaned = clean_child_code(child_code)
-        logger.warning("add-child child_not_found original=%r cleaned=%r", child_code, cleaned)
+        cleaned = clean_child_code(raw_child)
+        logger.warning("add-child child_not_found original=%r cleaned=%r", raw_child, cleaned)
         return _fail(
-            "الطفل غير موجود — سجّلي الجهاز من تطبيق الطفل أولاً (CHILD-...)",
+            "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (CHILD-...)",
             404,
             error_code="child_not_found",
-            child_code_input=child_code,
+            child_code_input=raw_child,
             child_code_clean=cleaned,
         )
 
@@ -511,6 +512,24 @@ def init_db():
         cur.execute("ALTER TABLE child_devices ADD COLUMN device_verified INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
+
+    # توحيد صيغ child_code المخزّنة (CHILD-1DF71288)
+    cur.execute("SELECT id, child_code FROM child_devices WHERE child_code IS NOT NULL")
+    for row in cur.fetchall():
+        canon = normalize_child_code(row["child_code"])
+        if canon and canon != row["child_code"]:
+            cur.execute(
+                "UPDATE child_devices SET child_code = ? WHERE id = ?",
+                (canon, row["id"]),
+            )
+    cur.execute("SELECT id, child_code FROM children WHERE child_code IS NOT NULL")
+    for row in cur.fetchall():
+        canon = normalize_child_code(row["child_code"])
+        if canon and canon != row["child_code"]:
+            cur.execute(
+                "UPDATE children SET child_code = ? WHERE id = ?",
+                (canon, row["id"]),
+            )
 
     # جدول الأطفال المرتبطين بولي الأمر
     cur.execute("""
@@ -1020,7 +1039,8 @@ def verify_email_code():
 def register_child_device():
     try:
         data = request.get_json(silent=True) or {}
-        child_code = _extract_child_code(data)
+        raw_child = str(data.get("child_code") or data.get("childCode") or "").strip()
+        child_code = normalize_child_code(raw_child)
         child_email = (data.get("child_email") or "").strip()
         device_name = (data.get("device_name") or data.get("device") or "").strip()
         android_version = (data.get("android_version") or "").strip()
@@ -1030,7 +1050,7 @@ def register_child_device():
 
         conn = db()
         cur = conn.cursor()
-        existing = find_child_device(cur, child_code)
+        existing = find_child_device(cur, raw_child)
 
         if existing and existing["linked"]:
             conn.close()
