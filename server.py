@@ -375,8 +375,14 @@ def _link_child_transaction(cur, conn, data: dict):
             "Child not found",
         )
 
-    child_code = db_child_code(device_row["child_code"])
-    logger.info("[link-child] step=child_lookup OK child_code_db=%r", child_code)
+    # مفتاح الصف الفعلي في child_devices (قد يكون 1DF71288 أو CHILD-1DF71288 قبل الترحيل)
+    device_db_key = str(device_row["child_code"] or "").strip()
+    child_code = db_child_code(device_db_key)
+    logger.info(
+        "[link-child] step=child_lookup OK device_db_key=%r child_code_db=%r",
+        device_db_key,
+        child_code,
+    )
 
     if device_row["linked"]:
         cur.execute(
@@ -432,7 +438,7 @@ def _link_child_transaction(cur, conn, data: dict):
     )
     cur.execute(
         "UPDATE child_devices SET linked = 1, device_verified = 1 WHERE child_code = ?",
-        (child_code,),
+        (device_db_key,),
     )
 
     try:
@@ -1349,6 +1355,14 @@ def add_child():
     conn = None
     try:
         data = request.get_json(silent=True) or {}
+        raw_cc = str(data.get("child_code") or data.get("childCode") or "").strip()
+        logger.info(
+            "[link-child] step=receive endpoint=%s parent_email=%s child_code_raw=%r cleaned=%r",
+            request.path,
+            _extract_parent_email(data) or "(empty)",
+            raw_cc,
+            clean_child_code(raw_cc),
+        )
         conn = db()
         cur = conn.cursor()
         result = _link_child_transaction(cur, conn, data)

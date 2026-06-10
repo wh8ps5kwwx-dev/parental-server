@@ -25,7 +25,10 @@
     <string name="parent_btn_add_another_child">إضافة طفل آخر</string>
     <string name="parent_pending_child_label">الطفل: %1$s (عمر %2$d)</string>
     <string name="parent_add_child_name_required">أدخلي اسم الطفل</string>
-    <string name="parent_link_subtitle">من جوال الطفل: سجّلي الجهاز وانسخي الكود. أرسلي رمز الربط لبريدك ثم أدخلي الرمز هنا.</string>
+    <string name="parent_link_subtitle">من جوال الطفل: سجّلي الجهاز وانسخي الكود. اضغطي «ربط تلقائي» — يُرسل الرمز ويكمّل الربط وحده.</string>
+    <string name="parent_btn_auto_link">ربط تلقائي</string>
+    <string name="parent_auto_linking">جاري الربط التلقائي…</string>
+    <string name="parent_auto_link_success">تم الربط — جوال الطفل سيفتح اللعبة تلقائياً</string>
     <string name="parent_hint_child_name">اسم الطفل</string>
     <string name="parent_hint_child_code">كود الطفل — CHILD-XXXXXXXX (يُضاف تلقائياً)</string>
     <string name="parent_hint_verify_code">رمز الربط من بريدك (6 أرقام)</string>

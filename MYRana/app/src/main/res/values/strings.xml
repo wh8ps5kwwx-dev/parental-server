@@ -99,6 +99,7 @@
     <string name="btn_confirm_verify">تحقق من الرمز</string>
     <string name="register_verifying">جاري التحقق من الرمز على السيرفر…</string>
     <string name="register_sending">جاري التسجيل على السيرفر…</string>
+    <string name="register_reregistering">إعادة تسجيل الجهاز على السيرفر — انتظري ثم أعيدي الربط من جوال الأم</string>
     <string name="verify_code_sent">أدخلي رمز الربط أدناه. انسخي كود الطفل والرمز وأرسليهما لخالتك (واتساب).</string>
     <string name="verify_codes_on_screen">كود الطفل (للأم):\n%1$s\n\nرمز التحقق الإلكتروني:\n%2$s\n\nانسخي وأرسلي لولي الأمر — يُتحقق منه على السيرفر.</string>
     <string name="verify_child_code_only">كود الطفل (للأم):\n%1$s\n\nرمز التحقق أُرسل إلى بريدك — أدخله أدناه. أرسلي الكود لولي الأمر لربط الجهاز.</string>

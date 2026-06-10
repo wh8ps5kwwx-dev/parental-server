@@ -145,6 +145,14 @@
                 android:layout_height="wrap_content"
                 android:text="@string/parent_btn_paste_child_code" />
 
+            <Button
+                android:id="@+id/btnAutoLink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_auto_link"
+                android:textStyle="bold" />
+
             <EditText
                 android:id="@+id/inputDeviceVerify"
                 android:layout_width="match_parent"

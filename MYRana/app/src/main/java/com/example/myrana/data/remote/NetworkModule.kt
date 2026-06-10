@@ -71,25 +71,44 @@ object NetworkModule {
         return gson.fromJson(text, RegisterChildResponse::class.java)
     }
 
-    /** هل اكتمل ربط ولي الأمر بجهاز الطفل؟ */
-    fun fetchChildLinkStatus(childCode: String): Boolean {
-        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
+    enum class ChildRegistrationState {
+        LINKED,
+        WAITING,
+        NOT_ON_SERVER,
+        ERROR,
+    }
+
+    /** حالة تسجيل/ربط الطفل على السيرفر. */
+    fun queryChildRegistrationState(childCode: String): ChildRegistrationState {
+        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return ChildRegistrationState.ERROR
+        val code = com.example.myrana.util.ChildCodeNormalizer.forApi(childCode)
         val url = base.newBuilder()
             .addPathSegments("child-link-status")
-            .addQueryParameter("child_code", childCode)
+            .addQueryParameter("child_code", code)
             .build()
         val request = Request.Builder()
             .url(url)
             .header("X-API-KEY", BuildConfig.API_KEY)
             .get()
             .build()
-        val response = client().newCall(request).execute()
-        val text = response.body?.string().orEmpty()
-        if (!response.isSuccessful) return false
-        val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
-        val json: Map<String, Any?> = gson.fromJson(text, mapType)
-        return json["linked"] == true
+        return try {
+            client().newCall(request).execute().use { response ->
+                if (response.code == 404) return ChildRegistrationState.NOT_ON_SERVER
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) return ChildRegistrationState.ERROR
+                val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
+                val json: Map<String, Any?> = gson.fromJson(text, mapType)
+                if (json["linked"] == true) ChildRegistrationState.LINKED
+                else ChildRegistrationState.WAITING
+            }
+        } catch (_: Exception) {
+            ChildRegistrationState.ERROR
+        }
     }
+
+    /** هل اكتمل ربط ولي الأمر بجهاز الطفل؟ */
+    fun fetchChildLinkStatus(childCode: String): Boolean =
+        queryChildRegistrationState(childCode) == ChildRegistrationState.LINKED
 
     /** جداول زمنية نشطة الآن — تطبيقات تُحظر مؤقتاً (freeze / block_app). */
     fun fetchActiveSchedulePackages(childCode: String): Set<String> {
@@ -230,7 +249,7 @@ object NetworkModule {
 
     /** تنبيه للأم عند حظر تطبيق على جهاز الطفل. */
     fun postAlertSync(childCode: String, message: String): Boolean {
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank() || message.isBlank()) return false
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val url = base.newBuilder().addPathSegments("add-alert").build()
@@ -250,7 +269,7 @@ object NetworkModule {
 
     /** جلب سياسة وقت الشاشة من السيرفر. */
     fun fetchScreenTimePolicy(childCode: String): ScreenTimePolicy? {
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return null
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return null
         val url = base.newBuilder()
@@ -279,7 +298,7 @@ object NetworkModule {
 
     /** حفظ سياسة وقت الشاشة (تطبيق الأم). */
     fun saveScreenTimePolicy(childCode: String, policy: ScreenTimePolicy): Boolean {
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return false
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val url = base.newBuilder().addPathSegments("screen-time-policy").build()
@@ -299,7 +318,7 @@ object NetworkModule {
 
     /** نبضة اتصال من جهاز الطفل. */
     fun postChildHeartbeat(childCode: String): Boolean {
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return false
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val url = base.newBuilder().addPathSegments("child-heartbeat").build()
@@ -319,7 +338,7 @@ object NetworkModule {
 
     /** رفع أحداث وقت الشاشة. */
     fun postScreenTimeEvents(childCode: String, events: List<Map<String, Any?>>? = null): Boolean {
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return false
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val url = base.newBuilder().addPathSegments("screen-time-events").build()
@@ -343,7 +362,7 @@ object NetworkModule {
 
     /** لوحة مؤشرات الطفل لولي الأمر. */
     fun fetchChildDashboard(childCode: String): Map<String, Any?>? {
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return null
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return null
         val url = base.newBuilder()

@@ -24,11 +24,12 @@ object GuardianApi {
             if (json["status"]?.toString() == "success") {
                 val devFallback = json["dev_fallback"] == true
                 val emailSent = json["email_sent"] == true
-                val code = if (devFallback) {
-                    json["verification_code"]?.toString()?.trim().orEmpty()
-                } else {
-                    ""
-                }
+                val code = json["email_verify_code"]?.toString()?.trim()
+                    ?: if (devFallback) {
+                        json["verification_code"]?.toString()?.trim().orEmpty()
+                    } else {
+                        ""
+                    }
                 val baseMsg = json["message"]?.toString() ?: "تم"
                 val display = when {
                     emailSent -> "$baseMsg\n\nتحققي من صندوق البريد وأدخلي الرمز."
@@ -55,7 +56,7 @@ object GuardianApi {
                 "send-link-code",
                 mapOf(
                     "guardian_email" to guardianEmail.trim(),
-                    "child_code" to ChildCodeNormalizer.normalize(childCode),
+                    "child_code" to ChildCodeNormalizer.forApi(childCode),
                 )
             )
             val mapType = object : TypeToken<Map<String, Any?>>() {}.type
@@ -63,15 +64,13 @@ object GuardianApi {
             if (json["status"]?.toString() == "success") {
                 val devFallback = json["dev_fallback"] == true
                 val emailSent = json["email_sent"] == true
-                val code = if (devFallback) {
-                    json["verification_code"]?.toString()?.trim().orEmpty()
-                } else {
-                    ""
-                }
+                val code = json["link_code"]?.toString()?.trim()
+                    ?: json["verification_code"]?.toString()?.trim().orEmpty()
                 val baseMsg = json["message"]?.toString() ?: "تم"
                 val display = when {
+                    code.isNotEmpty() ->
+                        "$baseMsg\n\nجاري الربط تلقائياً…"
                     emailSent -> "$baseMsg\n\nتحققي من بريدك وأدخلي رمز الربط."
-                    code.isNotEmpty() -> "$baseMsg\n\nرمز الربط (تطوير): $code"
                     else -> baseMsg
                 }
                 ApiResult.EmailCodeSent(
@@ -80,7 +79,11 @@ object GuardianApi {
                     devFallback = devFallback,
                 )
             } else {
-                ApiResult.Error(translateServerMessage(json["message"]?.toString() ?: response))
+                val extra = json["child_code_clean"]?.toString()?.trim().orEmpty()
+                val msg = translateServerMessage(json["message"]?.toString() ?: response)
+                ApiResult.Error(
+                    if (extra.isNotEmpty()) "$msg\n(كود منظّف: $extra)" else msg
+                )
             }
         } catch (e: Exception) {
             ApiResult.Error(friendlyError(e))
@@ -104,7 +107,7 @@ object GuardianApi {
             val response = NetworkModule.postRoot(
                 "verify-child-device-code",
                 mapOf(
-                    "child_code" to ChildCodeNormalizer.normalize(childCode),
+                    "child_code" to ChildCodeNormalizer.forApi(childCode),
                     "code" to code.trim(),
                 )
             )
@@ -144,26 +147,25 @@ object GuardianApi {
         guardianRole: String
     ): ApiResult {
         val email = guardianEmail.trim()
-        val code = ChildCodeNormalizer.normalize(childCode)
+        val code = ChildCodeNormalizer.forApi(childCode)
         val verify = deviceVerifyCode.trim()
-        val displayName = name.trim().ifBlank { "طفل" }
         return post(
             "add-child",
             mapOf(
-                "name" to displayName,
-                "child_name" to displayName,
+                "parent_email" to email,
+                "child_code" to code,
+                "verification_code" to verify,
+                "name" to name.trim().ifBlank { "طفل" },
+                "child_name" to name.trim().ifBlank { "طفل" },
                 "age" to age,
                 "child_email" to childEmail.trim(),
                 "device" to device.trim(),
                 "android_version" to androidVersion.trim(),
-                "child_code" to code,
                 "device_verify_code" to verify,
-                "verification_code" to verify,
                 "otp" to verify,
                 "guardian_email" to email,
-                "parent_email" to email,
                 "email" to email,
-                "guardian_role" to guardianRole.trim()
+                "guardian_role" to guardianRole.trim(),
             )
         )
     }
@@ -179,7 +181,7 @@ object GuardianApi {
         return post(
             "add-schedule",
             mapOf(
-                "child_code" to childCode.trim(),
+                "child_code" to ChildCodeNormalizer.forApi(childCode),
                 "action" to action.trim(),
                 "value" to value.trim(),
                 "start_time" to startTime.trim(),
@@ -244,7 +246,7 @@ object GuardianApi {
         return try {
             val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
             val url = java.net.URL(
-                "$base/daily-report?child_code=${URLEncoder.encode(ChildCodeNormalizer.normalize(childCode), "UTF-8")}"
+                "$base/daily-report?child_code=${URLEncoder.encode(ChildCodeNormalizer.forApi(childCode), "UTF-8")}"
             )
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.requestMethod = "GET"
@@ -288,7 +290,7 @@ object GuardianApi {
         return try {
             val response = NetworkModule.postRoot(
                 "apply-default-blocklist",
-                mapOf("child_code" to childCode.trim(), "merge" to merge)
+                mapOf("child_code" to ChildCodeNormalizer.forApi(childCode), "merge" to merge)
             )
             val mapType = object : TypeToken<Map<String, Any?>>() {}.type
             val json: Map<String, Any?> = gson.fromJson(response, mapType)
@@ -310,7 +312,7 @@ object GuardianApi {
     /** جلب تنبيهات محاولات الحظر. */
     fun fetchAlerts(childCode: String): ApiResult.Alerts {
         return try {
-            val code = ChildCodeNormalizer.normalize(childCode)
+            val code = ChildCodeNormalizer.forApi(childCode)
             val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
             val url = java.net.URL("$base/alerts?child_code=${URLEncoder.encode(code, "UTF-8")}")
             val conn = url.openConnection() as java.net.HttpURLConnection
@@ -340,7 +342,7 @@ object GuardianApi {
         return post(
             "send-guardian-message",
             mapOf(
-                "child_code" to childCode.trim(),
+                "child_code" to ChildCodeNormalizer.forApi(childCode),
                 "guardian_role" to guardianRole.trim().ifBlank { "ولي الأمر" },
                 "message" to message.trim()
             )
@@ -359,10 +361,37 @@ object GuardianApi {
             mapOf(
                 "action" to action,
                 "value" to value.trim(),
-                "child_code" to childCode.trim(),
+                "child_code" to ChildCodeNormalizer.forApi(childCode),
                 "guardian_email" to guardianEmail.trim()
             )
         )
+    }
+
+    /** قائمة الأطفال المرتبطين بولي الأمر — دعم تعدد الأطفال. */
+    fun fetchLinkedChildren(parentEmail: String): ApiResult {
+        return try {
+            val email = parentEmail.trim()
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            val url = "$base/list-children?parent_email=${URLEncoder.encode(email, "UTF-8")}" +
+                "&email=${URLEncoder.encode(email, "UTF-8")}"
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            conn.connectTimeout = 30_000
+            conn.readTimeout = 30_000
+            val text = conn.inputStream.bufferedReader().readText()
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(text, mapType)
+            if (json["success"] == true || json["status"]?.toString() == "success") {
+                @Suppress("UNCHECKED_CAST")
+                val list = (json["children"] as? List<Map<String, Any?>>).orEmpty()
+                ApiResult.ChildrenList(list)
+            } else {
+                ApiResult.Error(translateServerMessage(json["message"]?.toString() ?: text))
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(friendlyError(e))
+        }
     }
 
     private fun post(path: String, body: Map<String, Any?>): ApiResult {
@@ -370,9 +399,21 @@ object GuardianApi {
             val response = NetworkModule.postRoot(path, body)
             val mapType = object : TypeToken<Map<String, Any?>>() {}.type
             val json: Map<String, Any?> = gson.fromJson(response, mapType)
-            val status = json["status"]?.toString()
-            if (status == "success") {
-                ApiResult.Ok(json["message"]?.toString() ?: "تم")
+            val ok = json["success"] == true || json["status"]?.toString() == "success"
+            if (ok) {
+                val parentId = (json["parent_id"] as? Number)?.toInt()
+                val childId = (json["child_id"] as? Number)?.toInt()
+                val linkedCode = json["child_code"]?.toString()?.trim()
+                if (path.contains("add-child") || path.contains("link-child")) {
+                    ApiResult.LinkSuccess(
+                        message = json["message"]?.toString() ?: "تم",
+                        parentId = parentId,
+                        childId = childId,
+                        childCode = linkedCode,
+                    )
+                } else {
+                    ApiResult.Ok(json["message"]?.toString() ?: "تم")
+                }
             } else {
                 ApiResult.Error(translateServerMessage(json["message"]?.toString() ?: response))
             }
@@ -388,15 +429,18 @@ object GuardianApi {
             message.contains("Device already linked", ignoreCase = true) ->
                 "الجهاز مربوط مسبقاً — امسحي بيانات التطبيقين وأعيدي المحاولة"
             message.contains("Invalid verification code", ignoreCase = true) ||
+                message.contains("Invalid or expired verification code", ignoreCase = true) ||
                 message.contains("invalid_verification_code", ignoreCase = true) ||
                 message.contains("كود التحقق غير صحيح", ignoreCase = true) ->
                 "رمز الربط غير صحيح — أرسلي رمز الربط من جديد واستخدمي آخر رمز من Gmail (ليس رمز البريد الأول)"
             message.contains("expired_code", ignoreCase = true) ||
                 message.contains("منتهي الصلاحية", ignoreCase = true) ->
                 "كود التحقق منتهي الصلاحية — أرسلي رمزاً جديداً"
-            message.contains("child_not_found", ignoreCase = true) ||
-                message.contains("الطفل غير موجود", ignoreCase = true) ->
-                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً"
+            message.contains("Child not found", ignoreCase = true) ||
+                message.contains("child_not_found", ignoreCase = true) ||
+                message.contains("الطفل غير موجود", ignoreCase = true) ||
+                message.contains("لم يُعثر على جهاز الطفل", ignoreCase = true) ->
+                "الكود غير مسجّل على السيرفر — من جوال الطفل: «تسجيل الجهاز» ثم «ربط تلقائي»"
             else -> message
         }
     }
@@ -409,8 +453,10 @@ object GuardianApi {
                 val mapType = object : TypeToken<Map<String, Any?>>() {}.type
                 val json: Map<String, Any?> = gson.fromJson(raw.substring(jsonStart), mapType)
                 val server = json["message"]?.toString()
+                val cleaned = json["child_code_clean"]?.toString()?.trim().orEmpty()
                 if (!server.isNullOrBlank()) {
-                    return translateServerMessage(server)
+                    val msg = translateServerMessage(server)
+                    return if (cleaned.isNotEmpty()) "$msg\n(كود منظّف: $cleaned)" else msg
                 }
             } catch (_: Exception) {
             }
@@ -420,6 +466,14 @@ object GuardianApi {
 
     sealed class ApiResult {
         data class Ok(val message: String) : ApiResult()
+        /** نجاح ربط الطفل — يتضمن parent_id و child_id من Flask. */
+        data class LinkSuccess(
+            val message: String,
+            val parentId: Int? = null,
+            val childId: Int? = null,
+            val childCode: String? = null,
+        ) : ApiResult()
+        data class ChildrenList(val children: List<Map<String, Any?>>) : ApiResult()
         data class EmailCodeSent(
             val message: String,
             val verificationCode: String?,

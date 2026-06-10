@@ -20,6 +20,7 @@ import com.example.myrana.data.remote.dto.RegisterChildRequest
 import com.example.myrana.device.DeviceIdentity
 import com.example.myrana.permissions.ChildPermissionsGate
 import com.example.myrana.session.ChildSession
+import com.example.myrana.util.ChildCodeNormalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -74,14 +75,39 @@ class ChildRegistrationActivity : AppCompatActivity() {
         val pendingCode = ChildSession.childCode(this)
         if (!pendingCode.isNullOrBlank() && !ChildSession.isSetupComplete(this)) {
             showWaitingForLink(pendingCode)
-            startLinkPolling(pendingCode)
+            ensureRegisteredOnServer(pendingCode) { startLinkPolling(pendingCode) }
         }
 
         findViewById<Button>(R.id.btnSendCode).setOnClickListener { registerDevice() }
     }
 
     private fun registerDevice() {
-        val childCode = "CHILD-${UUID.randomUUID().toString().take(8).uppercase()}"
+        val existing = ChildSession.childCode(this)?.trim().orEmpty()
+        val childCode = existing.ifBlank { "CHILD-${UUID.randomUUID().toString().take(8).uppercase()}" }
+        registerOnServer(childCode, showWaitUi = false)
+    }
+
+    /** إذا حُذفت قاعدة السيرفر (إعادة نشر Render) — أعيدي تسجيل نفس الكود تلقائياً. */
+    private fun ensureRegisteredOnServer(childCode: String, onReady: () -> Unit) {
+        lifecycleScope.launch {
+            val state = withContext(Dispatchers.IO) {
+                NetworkModule.queryChildRegistrationState(childCode)
+            }
+            when (state) {
+                NetworkModule.ChildRegistrationState.NOT_ON_SERVER ->
+                    registerOnServer(childCode, showWaitUi = true, onSuccess = onReady)
+                NetworkModule.ChildRegistrationState.ERROR ->
+                    showMessage(getString(R.string.error_network, ""), true)
+                else -> onReady()
+            }
+        }
+    }
+
+    private fun registerOnServer(
+        childCode: String,
+        showWaitUi: Boolean,
+        onSuccess: (() -> Unit)? = null,
+    ) {
         val deviceName = Build.MODEL.ifBlank { "Android" }
         val androidVersion = "Android ${Build.VERSION.RELEASE}"
         val androidDeviceId = Settings.Secure.getString(
@@ -89,15 +115,19 @@ class ChildRegistrationActivity : AppCompatActivity() {
             Settings.Secure.ANDROID_ID,
         ).orEmpty()
 
-        showMessage(getString(R.string.register_sending), false)
-        findViewById<Button>(R.id.btnSendCode).isEnabled = false
+        if (!showWaitUi) {
+            showMessage(getString(R.string.register_sending), false)
+            findViewById<Button>(R.id.btnSendCode).isEnabled = false
+        } else {
+            showMessage(getString(R.string.register_reregistering), false)
+        }
 
         lifecycleScope.launch {
             try {
                 val response = withContext(Dispatchers.IO) {
                     NetworkModule.registerChildDevice(
                         RegisterChildRequest(
-                            childCode = childCode,
+                            childCode = ChildCodeNormalizer.forApi(childCode),
                             childEmail = "",
                             deviceName = deviceName,
                             androidVersion = androidVersion,
@@ -105,7 +135,9 @@ class ChildRegistrationActivity : AppCompatActivity() {
                         )
                     )
                 }
-                val serverChildCode = response.childCode?.trim().orEmpty().ifBlank { childCode }
+                val serverChildCode = ChildCodeNormalizer.normalize(
+                    response.childCode?.trim().orEmpty().ifBlank { childCode },
+                )
                 if (response.status != "success") {
                     showMessage(getString(R.string.error_register_failed), true)
                     findViewById<Button>(R.id.btnSendCode).isEnabled = true
@@ -120,7 +152,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                 )
                 DeviceIdentity.setChildDeviceId(this@ChildRegistrationActivity, serverChildCode)
                 showWaitingForLink(serverChildCode)
-                startLinkPolling(serverChildCode)
+                onSuccess?.invoke()
             } catch (e: Exception) {
                 showMessage(getString(R.string.error_network, e.message ?: ""), true)
                 findViewById<Button>(R.id.btnSendCode).isEnabled = true
@@ -153,15 +185,22 @@ class ChildRegistrationActivity : AppCompatActivity() {
     private fun startLinkPolling(childCode: String) {
         lifecycleScope.launch {
             while (isActive) {
-                val linked = withContext(Dispatchers.IO) {
-                    NetworkModule.fetchChildLinkStatus(childCode)
+                val state = withContext(Dispatchers.IO) {
+                    NetworkModule.queryChildRegistrationState(childCode)
                 }
-                if (linked) {
-                    ChildSession.completeSetup(this@ChildRegistrationActivity)
-                    finishSetupAndOpenGame()
-                    return@launch
+                when (state) {
+                    NetworkModule.ChildRegistrationState.LINKED -> {
+                        ChildSession.completeSetup(this@ChildRegistrationActivity)
+                        finishSetupAndOpenGame()
+                        return@launch
+                    }
+                    NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
+                        showMessage(getString(R.string.register_reregistering), false)
+                        registerOnServer(childCode, showWaitUi = true)
+                        delay(5_000L)
+                    }
+                    else -> delay(3_000L)
                 }
-                delay(3_000L)
             }
         }
     }
