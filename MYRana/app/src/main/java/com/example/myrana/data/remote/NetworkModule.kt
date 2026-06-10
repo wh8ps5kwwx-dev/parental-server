@@ -447,7 +447,15 @@ object NetworkModule {
         val response = client().newCall(request).execute()
         val text = response.body?.string().orEmpty()
         if (!response.isSuccessful) {
-            throw IllegalStateException("HTTP ${response.code}: $text")
+            val serverMsg = try {
+                val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
+                val json: Map<String, Any?> = gson.fromJson(text, mapType)
+                json["message"]?.toString()?.trim().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val detail = serverMsg.ifBlank { text.ifBlank { response.message } }
+            throw IllegalStateException("HTTP ${response.code}: $detail")
         }
         return text
     }

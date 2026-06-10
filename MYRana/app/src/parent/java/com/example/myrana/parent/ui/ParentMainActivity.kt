@@ -116,7 +116,7 @@ class ParentMainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (ParentSession.isChildLinked(this)) {
-            refreshAlertsQuietly()
+            lifecycleScope.launch { refreshAlertsQuietly() }
             startAlertPolling()
         }
     }
@@ -436,7 +436,7 @@ class ParentMainActivity : AppCompatActivity() {
         val verify = findViewById<EditText>(R.id.inputDeviceVerify).text.toString().trim()
         val guardianEmail = ParentSession.guardianEmail(this).orEmpty()
 
-        if (name.isEmpty() || childCode.isEmpty() || verify.isEmpty()) {
+        if (childCode.isEmpty() || verify.isEmpty()) {
             toast(getString(R.string.parent_link_incomplete), true)
             return
         }
@@ -460,7 +460,7 @@ class ParentMainActivity : AppCompatActivity() {
                     )
                 }
             ) {
-                is GuardianApi.ApiResult.Ok -> onLinkSuccess(childCode, name)
+                is GuardianApi.ApiResult.Ok -> onLinkSuccess(childCode, name.ifBlank { "طفل" })
                 is GuardianApi.ApiResult.Error -> toast(result.message, true)
                 else -> {}
             }

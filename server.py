@@ -15,13 +15,22 @@
 from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 import json
+import logging
 import sqlite3
 import os
 import random
 import smtplib
+import traceback
 import urllib.error
 import urllib.request
 from email.message import EmailMessage
+
+# سجلات ربط الطفل — تظهر في log السيرفر (Render → Logs)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("myrana.link")
+
+# صلاحية رموز البريد (دقائق)
+OTP_EMAIL_EXPIRY_MINUTES = int(os.environ.get("OTP_EMAIL_EXPIRY_MINUTES", "60"))
 
 # إنشاء تطبيق Flask
 app = Flask(__name__)
@@ -88,6 +97,221 @@ def find_child_device(cur, child_code):
 
 def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _parse_db_time(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(str(value).strip(), fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _otp_expired(created_at: str | None, minutes: int) -> bool:
+    created = _parse_db_time(created_at)
+    if not created:
+        return False
+    return datetime.now() - created > timedelta(minutes=minutes)
+
+
+def _json_error(message: str, code: int = 400, **extra):
+    """استجابة JSON موحّدة — لا HTML."""
+    payload = {"status": "error", "message": message}
+    payload.update(extra)
+    return jsonify(payload), code
+
+
+def _extract_parent_email(data: dict) -> str:
+    return (
+        data.get("guardian_email")
+        or data.get("parent_email")
+        or data.get("email")
+        or ""
+    ).strip()
+
+
+def _extract_verification_code(data: dict) -> str:
+    """رمز الربط — أسماء موحّدة بين Android و Flask."""
+    raw = (
+        data.get("device_verify_code")
+        or data.get("verification_code")
+        or data.get("otp")
+        or data.get("code")
+        or ""
+    )
+    return str(raw).strip()
+
+
+def _extract_child_code(data: dict) -> str:
+    return normalize_child_code(
+        data.get("child_code") or data.get("childCode") or ""
+    )
+
+
+def _safe_age(data: dict, default: int = 10) -> int:
+    try:
+        raw = data.get("age")
+        if raw is None or raw == "":
+            return default
+        age = int(raw)
+        return max(3, min(18, age))
+    except (TypeError, ValueError):
+        return default
+
+
+def _child_display_name(data: dict) -> str:
+    name = (data.get("name") or data.get("child_name") or "").strip()
+    return name or "طفل"
+
+
+def _guardian_verified(cur, email: str) -> bool:
+    cur.execute(
+        """
+        SELECT id FROM email_codes
+        WHERE email = ? AND verified = 1
+        ORDER BY id DESC LIMIT 1
+        """,
+        (email,),
+    )
+    return cur.fetchone() is not None
+
+
+def _log_link_context(step: str, parent_email: str, child_code: str, verify_code: str, stored_code: str | None, reason: str = ""):
+    masked = f"{verify_code[:2]}****" if verify_code else "(empty)"
+    stored_masked = f"{stored_code[:2]}****" if stored_code else "(none)"
+    logger.info(
+        "[%s] parent_email=%s child_code=%s verify=%s stored=%s %s",
+        step,
+        parent_email or "(empty)",
+        child_code or "(empty)",
+        masked,
+        stored_masked,
+        reason,
+    )
+
+
+def _link_child_transaction(cur, conn, data: dict):
+    """
+    ربط الطفل — يعتمد على:
+      parent_email / guardian_email / email
+      child_code
+      verification_code / device_verify_code / otp / code
+    الاسم اختياري (افتراضي: طفل).
+    """
+    parent_email = _extract_parent_email(data)
+    child_code = _extract_child_code(data)
+    verify_code = _extract_verification_code(data)
+    name = _child_display_name(data)
+    age = _safe_age(data)
+    guardian_role = (data.get("guardian_role") or "ولي أمر").strip() or "ولي أمر"
+    device = (data.get("device") or "").strip()
+    android_version = (data.get("android_version") or "").strip()
+    child_email = (data.get("child_email") or parent_email).strip()
+
+    def _fail(message, code=400, **extra):
+        conn.rollback()
+        return _json_error(message, code, **extra)
+
+    if not parent_email:
+        _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing parent_email")
+        return _fail("parent_email مطلوب", error_code="missing_parent_email")
+
+    if not child_code:
+        _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing child_code")
+        return _fail("child_code مطلوب", error_code="missing_child_code")
+
+    if not verify_code:
+        _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing verification_code")
+        return _fail("verification_code مطلوب", error_code="missing_verification_code")
+
+    if not _guardian_verified(cur, parent_email):
+        _log_link_context("add-child", parent_email, child_code, verify_code, None, "parent not verified")
+        return _fail(
+            "يجب التحقق من بريد ولي الأمر أولاً — أرسلي رمز التحقق من Gmail",
+            error_code="parent_email_not_verified",
+        )
+
+    device_row = find_child_device(cur, child_code)
+    stored_code = str(device_row["device_verify_code"] or "").strip() if device_row else None
+    _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "checking device")
+
+    if not device_row:
+        return _fail(
+            "الطفل غير موجود — سجّلي الجهاز من تطبيق الطفل أولاً (CHILD-...)",
+            404,
+            error_code="child_not_found",
+        )
+
+    child_code = device_row["child_code"]
+
+    if device_row["linked"]:
+        cur.execute(
+            "SELECT guardian_email FROM children WHERE child_code = ? LIMIT 1",
+            (child_code,),
+        )
+        existing = cur.fetchone()
+        if existing and str(existing["guardian_email"] or "").strip() == parent_email:
+            _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "already linked same parent")
+            conn.commit()
+            return jsonify({
+                "status": "success",
+                "message": "الطفل مربوط مسبقاً بنفس الحساب",
+                "already_linked": True,
+                "child_code": child_code,
+            })
+        return _fail(
+            "الجهاز مربوط بحساب أم آخر",
+            error_code="already_linked_other_parent",
+        )
+
+    if not stored_code or stored_code != verify_code:
+        _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "wrong verification_code")
+        return _fail(
+            "كود التحقق غير صحيح — أرسلي رمز الربط من جديد واستخدمي آخر رمز من Gmail (ليس رمز تحقق البريد)",
+            error_code="invalid_verification_code",
+        )
+
+    child_email = (device_row["child_email"] or child_email or parent_email).strip()
+    device = (device_row["device_name"] or device or "Android").strip()
+    android_version = (device_row["android_version"] or android_version or "Android").strip()
+
+    cur.execute(
+        """
+        INSERT OR REPLACE INTO children
+        (name, age, child_email, device, android_version, child_code, guardian_email, guardian_role, linked_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (name, age, child_email, device, android_version, child_code, parent_email, guardian_role, now()),
+    )
+    cur.execute(
+        "UPDATE child_devices SET linked = 1, device_verified = 1 WHERE child_code = ?",
+        (child_code,),
+    )
+
+    try:
+        apply_default_blocklist(conn, child_code, merge=True)
+    except Exception as block_err:
+        logger.warning("apply_default_blocklist after link failed: %s", block_err)
+
+    cur.execute(
+        """
+        INSERT INTO reports (event, value, child_code, time)
+        VALUES (?, ?, ?, ?)
+        """,
+        ("child_linked", f"{name} - {device}", child_code, now()),
+    )
+
+    conn.commit()
+    _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "success")
+    return jsonify({
+        "status": "success",
+        "message": "تم ربط الطفل بنجاح",
+        "child_code": child_code,
+        "child_name": name,
+    })
 
 
 # دالة الاتصال بقاعدة البيانات
@@ -692,125 +916,168 @@ def send_email_code():
 # التحقق من رمز البريد
 @app.route("/verify-email-code", methods=["POST"])
 def verify_email_code():
-    data = request.get_json() or {}
-    email = data.get("email", "").strip()
-    code = data.get("code", "").strip()
+    try:
+        data = request.get_json(silent=True) or {}
+        email = _extract_parent_email(data)
+        code = _extract_verification_code(data)
 
-    conn = db()
-    cur = conn.cursor()
+        if not email or not code:
+            return _json_error("email و verification_code مطلوبان", 400)
 
-    cur.execute("""
-    SELECT * FROM email_codes
-    WHERE email = ? AND code = ?
-    ORDER BY id DESC
-    LIMIT 1
-    """, (email, code))
+        conn = db()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT * FROM email_codes
+            WHERE email = ? AND code = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (email, code),
+        )
+        row = cur.fetchone()
 
-    row = cur.fetchone()
+        if not row:
+            conn.close()
+            logger.info("[verify-email] failed email=%s code=%s reason=not_found", email, code[:2] + "****")
+            return _json_error("كود التحقق غير صحيح", 400, error_code="invalid_code")
 
-    if not row:
+        if _otp_expired(row["created_at"], OTP_EMAIL_EXPIRY_MINUTES):
+            conn.close()
+            logger.info("[verify-email] expired email=%s", email)
+            return _json_error("كود التحقق منتهي الصلاحية — أرسلي رمزاً جديداً", 400, error_code="expired_code")
+
+        cur.execute("UPDATE email_codes SET verified = 1 WHERE id = ?", (row["id"],))
+        conn.commit()
         conn.close()
-        return jsonify({"status": "error", "message": "Invalid code"}), 400
-
-    cur.execute("UPDATE email_codes SET verified = 1 WHERE id = ?", (row["id"],))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"status": "success", "message": "Email verified"})
+        return jsonify({"status": "success", "message": "تم التحقق من البريد"})
+    except Exception as exc:
+        logger.exception("verify-email-code failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء التحقق من البريد", 500, error_code="server_error")
 
 
 # تسجيل جهاز الطفل — بدون بريد (التحقق مرة واحدة عند الربط من تطبيق الأم)
 @app.route("/register-child-device", methods=["POST"])
 def register_child_device():
-    data = request.get_json() or {}
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = _extract_child_code(data)
+        child_email = (data.get("child_email") or "").strip()
+        device_name = (data.get("device_name") or data.get("device") or "").strip()
+        android_version = (data.get("android_version") or "").strip()
 
-    child_code = data.get("child_code", "").strip()
-    child_email = data.get("child_email", "").strip()
-    device_name = data.get("device_name", "").strip()
-    android_version = data.get("android_version", "").strip()
+        if not child_code or not device_name:
+            return _json_error("child_code و device_name مطلوبان", 400)
 
-    if not child_code or not device_name:
-        return jsonify({"status": "error", "message": "missing data"}), 400
+        conn = db()
+        cur = conn.cursor()
+        existing = find_child_device(cur, child_code)
 
-    device_code = str(random.randint(100000, 999999))
+        if existing and existing["linked"]:
+            conn.close()
+            return _json_error("الجهاز مربوط مسبقاً", 400, error_code="already_linked")
 
-    conn = db()
-    cur = conn.cursor()
+        if existing:
+            # لا نغيّر device_verify_code عند إعادة التسجيل — حتى يبقى رمز الربط صالحاً
+            cur.execute(
+                """
+                UPDATE child_devices
+                SET child_email = ?, device_name = ?, android_version = ?
+                WHERE child_code = ?
+                """,
+                (child_email, device_name, android_version, existing["child_code"]),
+            )
+            child_code = existing["child_code"]
+        else:
+            device_code = str(random.randint(100000, 999999))
+            cur.execute(
+                """
+                INSERT INTO child_devices
+                (child_code, child_email, device_name, android_version, device_verify_code, linked, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (child_code, child_email, device_name, android_version, device_code, 0, now()),
+            )
 
-    cur.execute("""
-    INSERT OR REPLACE INTO child_devices
-    (child_code, child_email, device_name, android_version, device_verify_code, linked, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        child_code,
-        child_email,
-        device_name,
-        android_version,
-        device_code,
-        0,
-        now()
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "تم تسجيل الجهاز — انتظر ربط ولي الأمر",
-        "child_code": child_code,
-    })
+        conn.commit()
+        conn.close()
+        return jsonify({
+            "status": "success",
+            "message": "تم تسجيل الجهاز — انتظر ربط ولي الأمر",
+            "child_code": child_code,
+        })
+    except Exception as exc:
+        logger.exception("register-child-device failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء تسجيل الطفل", 500, error_code="server_error")
 
 
 # إرسال رمز الربط لبريد ولي الأمر — مرة واحدة أثناء الربط
 @app.route("/send-link-code", methods=["POST"])
 def send_link_code():
-    data = request.get_json() or {}
-    guardian_email = data.get("guardian_email", "").strip()
-    child_code = normalize_child_code(data.get("child_code", ""))
+    try:
+        data = request.get_json(silent=True) or {}
+        parent_email = _extract_parent_email(data)
+        child_code = _extract_child_code(data)
 
-    if not guardian_email or not child_code:
-        return jsonify({"status": "error", "message": "guardian_email and child_code required"}), 400
+        if not parent_email or not child_code:
+            return _json_error("parent_email و child_code مطلوبان", 400)
 
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("""
-    SELECT verified FROM email_codes
-    WHERE email = ? AND verified = 1
-    ORDER BY id DESC LIMIT 1
-    """, (guardian_email,))
-    if not cur.fetchone():
+        conn = db()
+        cur = conn.cursor()
+        if not _guardian_verified(cur, parent_email):
+            conn.close()
+            return _json_error(
+                "يجب التحقق من بريد ولي الأمر أولاً (رمز التحقق)",
+                400,
+                error_code="parent_email_not_verified",
+            )
+
+        row = find_child_device(cur, child_code)
+        if not row:
+            conn.close()
+            return _json_error(
+                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (CHILD-...)",
+                404,
+                error_code="child_not_found",
+            )
+
+        child_code = row["child_code"]
+        if row["linked"]:
+            conn.close()
+            return _json_error("الجهاز مربوط مسبقاً", 400, error_code="already_linked")
+
+        # رمز جديد في كل إرسال — يطابق ما في Gmail وما في قاعدة البيانات
+        device_code = str(random.randint(100000, 999999))
+        cur.execute(
+            """
+            UPDATE child_devices
+            SET device_verify_code = ?, device_verified = 0
+            WHERE child_code = ?
+            """,
+            (device_code, child_code),
+        )
+        conn.commit()
         conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "يجب التحقق من بريد ولي الأمر أولاً (رمز التحقق)",
-        }), 400
 
-    row = find_child_device(cur, child_code)
-    conn.close()
+        _log_link_context("send-link-code", parent_email, child_code, device_code, device_code, "sent")
 
-    if not row:
-        return jsonify({
-            "status": "error",
-            "message": "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (CHILD-...)",
-        }), 404
-    child_code = row["child_code"]
-    if row["linked"]:
-        return jsonify({"status": "error", "message": "Device already linked"}), 400
+        email_sent = send_email(
+            parent_email,
+            "MYRana — رمز ربط الطفل",
+            f"رمز ربط الطفل ({child_code}):\n\n{device_code}\n\n"
+            f"أدخليه في تطبيق الأم لإتمام الربط.\n"
+            f"(هذا ليس رمز تحقق البريد الأول)",
+        )
 
-    device_code = row["device_verify_code"]
-    email_sent = send_email(
-        guardian_email,
-        "MYRana — رمز ربط الطفل",
-        f"رمز ربط الطفل ({child_code}):\n\n{device_code}\n\n"
-        f"أدخليه في تطبيق الأم لإتمام الربط.",
-    )
-
-    return jsonify(verification_payload(
-        device_code,
-        email_sent,
-        "تم إرسال رمز الربط إلى بريدك",
-        "SMTP غير مضبوط — الرمز للتطوير فقط",
-    ))
+        return jsonify(verification_payload(
+            device_code,
+            email_sent,
+            "تم إرسال رمز الربط إلى بريدك",
+            "SMTP غير مضبوط — الرمز للتطوير فقط",
+        ))
+    except Exception as exc:
+        logger.exception("send-link-code failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إرسال رمز الربط", 500, error_code="server_error")
 
 
 # هل اكتمل ربط جهاز الطفل؟ (يستعلم عنه تطبيق الطفل)
@@ -838,132 +1105,85 @@ def child_link_status():
     })
 
 
-# التحقق من رمز جهاز الطفل — نفس آلية verify-email-code
+# التحقق من رمز جهاز الطفل — اختياري قبل الربط النهائي
 @app.route("/verify-child-device-code", methods=["POST"])
 def verify_child_device_code():
-    data = request.get_json() or {}
-    child_code = normalize_child_code(data.get("child_code", ""))
-    code = (data.get("code") or data.get("device_verify_code") or "").strip()
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = _extract_child_code(data)
+        code = _extract_verification_code(data)
+        parent_email = _extract_parent_email(data)
 
-    if not child_code or not code:
-        return jsonify({"status": "error", "message": "child_code and code required"}), 400
+        if not child_code or not code:
+            return _json_error("child_code و verification_code مطلوبان", 400)
 
-    conn = db()
-    cur = conn.cursor()
-    device_row = find_child_device(cur, child_code)
-    if not device_row or str(device_row["device_verify_code"]) != code:
+        conn = db()
+        cur = conn.cursor()
+        device_row = find_child_device(cur, child_code)
+        stored = str(device_row["device_verify_code"] or "").strip() if device_row else None
+        _log_link_context("verify-device", parent_email, child_code, code, stored, "check")
+
+        if not device_row:
+            conn.close()
+            return _json_error("الطفل غير موجود", 404, error_code="child_not_found")
+
+        if not stored or stored != code:
+            conn.close()
+            return _json_error(
+                "كود التحقق غير صحيح — استخدمي رمز الربط من Gmail (الرسالة الثانية)",
+                400,
+                error_code="invalid_verification_code",
+            )
+
+        cur.execute(
+            "UPDATE child_devices SET device_verified = 1 WHERE child_code = ?",
+            (device_row["child_code"],),
+        )
+        conn.commit()
         conn.close()
-        return jsonify({"status": "error", "message": "رمز الربط غير صحيح"}), 400
 
-    cur.execute(
-        "UPDATE child_devices SET device_verified = 1 WHERE child_code = ?",
-        (device_row["child_code"],),
-    )
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "status": "success",
-        "message": "Device verified",
-        "child_code": device_row["child_code"],
-        "child_email": device_row["child_email"],
-        "device_name": device_row["device_name"],
-        "android_version": device_row["android_version"],
-    })
+        return jsonify({
+            "status": "success",
+            "message": "تم التحقق من رمز الربط",
+            "child_code": device_row["child_code"],
+            "child_email": device_row["child_email"],
+            "device_name": device_row["device_name"],
+            "android_version": device_row["android_version"],
+        })
+    except Exception as exc:
+        logger.exception("verify-child-device-code failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء التحقق من رمز الربط", 500, error_code="server_error")
 
 
-# إضافة وربط الطفل بحساب ولي الأمر
+# إضافة وربط الطفل — الاسم اختياري؛ الربط بـ parent_email + child_code + verification_code
 @app.route("/add-child", methods=["POST"])
+@app.route("/link-child", methods=["POST"])
 def add_child():
-    data = request.get_json() or {}
-
-    name = data.get("name", "").strip()
-    age = int(data.get("age", 0))
-    child_email = data.get("child_email", "").strip()
-    device = data.get("device", "").strip()
-    android_version = data.get("android_version", "").strip()
-    child_code = normalize_child_code(data.get("child_code", ""))
-    device_verify_code = data.get("device_verify_code", "").strip()
-    guardian_email = data.get("guardian_email", "").strip()
-    guardian_role = data.get("guardian_role", "").strip()
-
-    if not name or not child_code or not device_verify_code or not guardian_email:
-        return jsonify({"status": "error", "message": "missing data"}), 400
-
-    conn = db()
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT verified FROM email_codes
-    WHERE email = ? AND verified = 1
-    ORDER BY id DESC LIMIT 1
-    """, (guardian_email,))
-    if not cur.fetchone():
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "يجب التحقق من بريد ولي الأمر أولاً",
-        }), 400
-
-    device_row = find_child_device(cur, child_code)
-    if not device_row or str(device_row["device_verify_code"]) != device_verify_code:
-        conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "رمز الربط غير صحيح — أرسلي رمز الربط من جديد واستخدمي آخر رمز من Gmail",
-        }), 400
-    child_code = device_row["child_code"]
-
-    if device_row["linked"]:
-        conn.close()
-        return jsonify({"status": "error", "message": "Device already linked"}), 400
-
-    child_email = device_row["child_email"]
-    device = device_row["device_name"] or device
-    android_version = device_row["android_version"] or android_version
-
-    # حفظ بيانات الطفل وربطه بولي الأمر
-    cur.execute("""
-    INSERT OR REPLACE INTO children
-    (name, age, child_email, device, android_version, child_code, guardian_email, guardian_role, linked_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        name,
-        age,
-        child_email,
-        device,
-        android_version,
-        child_code,
-        guardian_email,
-        guardian_role,
-        now()
-    ))
-
-    # تحديث حالة جهاز الطفل إلى مرتبط
-    cur.execute("UPDATE child_devices SET linked = 1 WHERE child_code = ?", (child_code,))
-
-    cur.execute("""
-    INSERT INTO email_codes (email, code, verified, created_at)
-    VALUES (?, ?, ?, ?)
-    """, (guardian_email, device_verify_code, 1, now()))
-
-    apply_default_blocklist(conn, child_code, merge=True)
-
-    # إضافة تقرير عملية الربط
-    cur.execute("""
-    INSERT INTO reports (event, value, child_code, time)
-    VALUES (?, ?, ?, ?)
-    """, (
-        "child_linked",
-        f"{name} - {device}",
-        child_code,
-        now()
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({"status": "success", "message": "Child linked successfully"})
+    conn = None
+    try:
+        data = request.get_json(silent=True) or {}
+        conn = db()
+        cur = conn.cursor()
+        result = _link_child_transaction(cur, conn, data)
+        return result
+    except Exception as exc:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.exception("add-child failed: %s\n%s", exc, traceback.format_exc())
+        return _json_error(
+            "خطأ داخلي أثناء ربط الطفل — راجعي سجلات السيرفر",
+            500,
+            error_code="server_error",
+        )
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 # إرسال أمر من تطبيق الأم إلى جهاز الطفل
@@ -1486,6 +1706,23 @@ def daily_report():
     apps = [dict(r) for r in cur.fetchall()]
     conn.close()
     return jsonify({"child_code": child_code, "day": today, "apps": apps})
+
+
+@app.errorhandler(404)
+def not_found_json(error):
+    return _json_error("المسار غير موجود", 404, error_code="not_found")
+
+
+@app.errorhandler(500)
+def server_error_json(error):
+    logger.exception("unhandled 500: %s", error)
+    return _json_error("خطأ داخلي في السيرفر", 500, error_code="server_error")
+
+
+@app.errorhandler(Exception)
+def unhandled_exception(error):
+    logger.exception("unhandled exception: %s", error)
+    return _json_error("خطأ غير متوقع", 500, error_code="server_error")
 
 
 # إنشاء الجداول عند تشغيل السيرفر

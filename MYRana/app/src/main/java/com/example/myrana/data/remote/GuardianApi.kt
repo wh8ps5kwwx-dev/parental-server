@@ -143,17 +143,26 @@ object GuardianApi {
         guardianEmail: String,
         guardianRole: String
     ): ApiResult {
+        val email = guardianEmail.trim()
+        val code = ChildCodeNormalizer.normalize(childCode)
+        val verify = deviceVerifyCode.trim()
+        val displayName = name.trim().ifBlank { "طفل" }
         return post(
             "add-child",
             mapOf(
-                "name" to name.trim(),
+                "name" to displayName,
+                "child_name" to displayName,
                 "age" to age,
                 "child_email" to childEmail.trim(),
                 "device" to device.trim(),
                 "android_version" to androidVersion.trim(),
-                "child_code" to ChildCodeNormalizer.normalize(childCode),
-                "device_verify_code" to deviceVerifyCode.trim(),
-                "guardian_email" to guardianEmail.trim(),
+                "child_code" to code,
+                "device_verify_code" to verify,
+                "verification_code" to verify,
+                "otp" to verify,
+                "guardian_email" to email,
+                "parent_email" to email,
+                "email" to email,
                 "guardian_role" to guardianRole.trim()
             )
         )
@@ -378,8 +387,16 @@ object GuardianApi {
                 "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً واستخدمي CHILD-..."
             message.contains("Device already linked", ignoreCase = true) ->
                 "الجهاز مربوط مسبقاً — امسحي بيانات التطبيقين وأعيدي المحاولة"
-            message.contains("Invalid verification code", ignoreCase = true) ->
-                "رمز الربط غير صحيح — أرسلي رمز الربط من جديد واستخدمي آخر رمز من Gmail"
+            message.contains("Invalid verification code", ignoreCase = true) ||
+                message.contains("invalid_verification_code", ignoreCase = true) ||
+                message.contains("كود التحقق غير صحيح", ignoreCase = true) ->
+                "رمز الربط غير صحيح — أرسلي رمز الربط من جديد واستخدمي آخر رمز من Gmail (ليس رمز البريد الأول)"
+            message.contains("expired_code", ignoreCase = true) ||
+                message.contains("منتهي الصلاحية", ignoreCase = true) ->
+                "كود التحقق منتهي الصلاحية — أرسلي رمزاً جديداً"
+            message.contains("child_not_found", ignoreCase = true) ||
+                message.contains("الطفل غير موجود", ignoreCase = true) ->
+                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً"
             else -> message
         }
     }
