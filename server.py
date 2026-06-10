@@ -147,6 +147,43 @@ def _child_not_found_response(raw, message):
     )
 
 
+def _migrate_child_codes_in_db(cur):
+    """FIX: normalize child_code to support codes with or without CHILD- prefix — ترحيل DB."""
+    for table, col in (
+        ("child_devices", "child_code"),
+        ("children", "child_code"),
+        ("usage_daily", "child_code"),
+        ("screen_time_policies", "child_code"),
+        ("child_status", "child_code"),
+        ("commands", "child_code"),
+        ("reports", "child_code"),
+        ("alerts", "child_code"),
+        ("schedules", "child_code"),
+    ):
+        try:
+            cur.execute(f"SELECT rowid AS _rid, {col} FROM {table} WHERE {col} IS NOT NULL")
+            for row in cur.fetchall():
+                suffix = clean_child_code(row[col])
+                if suffix and suffix != row[col]:
+                    cur.execute(
+                        f"UPDATE {table} SET {col} = ? WHERE rowid = ?",
+                        (suffix, row["_rid"]),
+                    )
+        except sqlite3.OperationalError:
+            pass
+    try:
+        cur.execute("SELECT device_id FROM device_policies WHERE device_id IS NOT NULL")
+        for row in cur.fetchall():
+            suffix = clean_child_code(row["device_id"])
+            if suffix and suffix != row["device_id"]:
+                cur.execute(
+                    "UPDATE device_policies SET device_id = ? WHERE device_id = ?",
+                    (suffix, row["device_id"]),
+                )
+    except sqlite3.OperationalError:
+        pass
+
+
 def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -171,9 +208,36 @@ def _otp_expired(created_at: str | None, minutes: int) -> bool:
 
 def _json_error(message: str, code: int = 400, **extra):
     """استجابة JSON موحّدة — لا HTML."""
-    payload = {"status": "error", "message": message}
+    payload = {"success": False, "status": "error", "message": message}
     payload.update(extra)
     return jsonify(payload), code
+
+
+def _json_success(message: str, code: int = 200, **extra):
+    """نجاح — JSON فقط مع success: true."""
+    payload = {"success": True, "status": "success", "message": message}
+    payload.update(extra)
+    return jsonify(payload), code
+
+
+def _ensure_guardian(cur, email: str) -> int:
+    """إنشاء/جلب parent_id من بريد ولي الأمر."""
+    email = (email or "").strip()
+    cur.execute("SELECT id FROM guardians WHERE email = ? LIMIT 1", (email,))
+    row = cur.fetchone()
+    if row:
+        return int(row["id"])
+    cur.execute(
+        "INSERT INTO guardians (email, created_at) VALUES (?, ?)",
+        (email, now()),
+    )
+    return int(cur.lastrowid)
+
+
+def db_child_code(raw) -> str:
+    # FIX: normalize child_code to support codes with or without CHILD- prefix
+    """مفتاح قاعدة البيانات — CHILD-1DF71288 → 1DF71288"""
+    return clean_child_code(raw)
 
 
 def _extract_parent_email(data: dict) -> str:
@@ -198,9 +262,9 @@ def _extract_verification_code(data: dict) -> str:
 
 
 def _extract_child_code(data: dict) -> str:
-    """يُرجع CHILD-XXXXXXXX — يقبل child_code أو childCode."""
+    """FIX: normalize child_code to support codes with or without CHILD- prefix"""
     raw = data.get("child_code") or data.get("childCode") or ""
-    return normalize_child_code(raw)
+    return db_child_code(raw)
 
 
 def _safe_age(data: dict, default: int = 10) -> int:
@@ -249,13 +313,21 @@ def _link_child_transaction(cur, conn, data: dict):
     """
     ربط الطفل — يعتمد على:
       parent_email / guardian_email / email
-      child_code
+      child_code (CHILD-1DF71288 أو 1DF71288)
       verification_code / device_verify_code / otp / code
-    الاسم اختياري (افتراضي: طفل).
+    الاسم اختياري (افتراضي: طفل) — لا يُستخدم في التحقق.
     """
     parent_email = _extract_parent_email(data)
+    raw_input = str(data.get("child_code") or data.get("childCode") or "").strip()
     child_code = _extract_child_code(data)
     verify_code = _extract_verification_code(data)
+    logger.info(
+        "[link-child] step=receive parent_email=%s child_code_raw=%r child_code_db=%r verify=%s",
+        parent_email or "(empty)",
+        raw_input,
+        child_code or "(empty)",
+        f"{verify_code[:2]}****" if verify_code else "(empty)",
+    )
     name = _child_display_name(data)
     age = _safe_age(data)
     guardian_role = (data.get("guardian_role") or "ولي أمر").strip() or "ولي أمر"
@@ -286,46 +358,65 @@ def _link_child_transaction(cur, conn, data: dict):
             error_code="parent_email_not_verified",
         )
 
-    raw_child = str(data.get("child_code") or data.get("childCode") or child_code).strip()
+    raw_child = raw_input or child_code
     device_row = find_child_device(cur, raw_child)
     stored_code = str(device_row["device_verify_code"] or "").strip() if device_row else None
     _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "checking device")
 
     if not device_row:
         conn.rollback()
+        logger.warning(
+            "[link-child] step=child_lookup FAIL original=%r cleaned=%r",
+            raw_child,
+            db_child_code(raw_child),
+        )
         return _child_not_found_response(
             raw_child,
-            "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً ثم أعيدي الربط",
+            "Child not found",
         )
 
-    child_code = device_row["child_code"]
+    child_code = db_child_code(device_row["child_code"])
+    logger.info("[link-child] step=child_lookup OK child_code_db=%r", child_code)
 
     if device_row["linked"]:
         cur.execute(
-            "SELECT guardian_email FROM children WHERE child_code = ? LIMIT 1",
+            "SELECT id, guardian_email FROM children WHERE child_code = ? LIMIT 1",
             (child_code,),
         )
         existing = cur.fetchone()
         if existing and str(existing["guardian_email"] or "").strip() == parent_email:
+            parent_id = _ensure_guardian(cur, parent_email)
             _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "already linked same parent")
             conn.commit()
-            return jsonify({
-                "status": "success",
-                "message": "الطفل مربوط مسبقاً بنفس الحساب",
-                "already_linked": True,
-                "child_code": child_code,
-            })
+            return _json_success(
+                "Child linked successfully",
+                409,
+                already_linked=True,
+                parent_id=parent_id,
+                child_id=int(existing["id"]),
+                child_code=normalize_child_code(child_code),
+                child_code_clean=child_code,
+            )
         return _fail(
             "الجهاز مربوط بحساب أم آخر",
+            409,
             error_code="already_linked_other_parent",
         )
 
     if not stored_code or stored_code != verify_code:
         _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "wrong verification_code")
+        logger.warning(
+            "[link-child] step=otp_verify FAIL expected=%s got=%s",
+            f"{stored_code[:2]}****" if stored_code else "(none)",
+            f"{verify_code[:2]}****" if verify_code else "(empty)",
+        )
         return _fail(
-            "كود التحقق غير صحيح — أرسلي رمز الربط من جديد واستخدمي آخر رمز من Gmail (ليس رمز تحقق البريد)",
+            "Invalid or expired verification code",
+            400,
             error_code="invalid_verification_code",
         )
+
+    logger.info("[link-child] step=otp_verify OK")
 
     child_email = (device_row["child_email"] or child_email or parent_email).strip()
     device = (device_row["device_name"] or device or "Android").strip()
@@ -357,14 +448,26 @@ def _link_child_transaction(cur, conn, data: dict):
         ("child_linked", f"{name} - {device}", child_code, now()),
     )
 
+    parent_id = _ensure_guardian(cur, parent_email)
+    cur.execute("SELECT id FROM children WHERE child_code = ? ORDER BY id DESC LIMIT 1", (child_code,))
+    child_row = cur.fetchone()
+    child_id = int(child_row["id"]) if child_row else None
     conn.commit()
     _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "success")
-    return jsonify({
-        "status": "success",
-        "message": "تم ربط الطفل بنجاح",
-        "child_code": child_code,
-        "child_name": name,
-    })
+    logger.info(
+        "[link-child] step=done parent_id=%s child_id=%s child_code=%r",
+        parent_id,
+        child_id,
+        child_code,
+    )
+    return _json_success(
+        "Child linked successfully",
+        parent_id=parent_id,
+        child_id=child_id,
+        child_code=normalize_child_code(child_code),
+        child_code_clean=child_code,
+        child_name=name,
+    )
 
 
 # دالة الاتصال بقاعدة البيانات
@@ -509,24 +612,17 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
+    # جدول أولياء الأمور (parent_id)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS guardians (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        created_at TEXT
+    )
+    """)
+
     # FIX: normalize child_code to support codes with or without CHILD- prefix
-    # التخزين في DB بالصيغة النظيفة فقط: 1DF71288
-    cur.execute("SELECT id, child_code FROM child_devices WHERE child_code IS NOT NULL")
-    for row in cur.fetchall():
-        suffix = clean_child_code(row["child_code"])
-        if suffix and suffix != row["child_code"]:
-            cur.execute(
-                "UPDATE child_devices SET child_code = ? WHERE id = ?",
-                (suffix, row["id"]),
-            )
-    cur.execute("SELECT id, child_code FROM children WHERE child_code IS NOT NULL")
-    for row in cur.fetchall():
-        suffix = clean_child_code(row["child_code"])
-        if suffix and suffix != row["child_code"]:
-            cur.execute(
-                "UPDATE children SET child_code = ? WHERE id = ?",
-                (suffix, row["id"]),
-            )
+    _migrate_child_codes_in_db(cur)
 
     # جدول الأطفال المرتبطين بولي الأمر
     cur.execute("""
@@ -756,7 +852,8 @@ def blocklist_catalog_counts(cat: dict | None = None) -> dict:
 
 def apply_default_blocklist(conn, device_id: str, merge: bool = True) -> dict:
     """دمج catalog.json في سياسة جهاز الطفل (child_code = device_id)."""
-    device_id = (device_id or "").strip()
+    # FIX: normalize child_code to support codes with or without CHILD- prefix
+    device_id = db_child_code(device_id) or (device_id or "").strip()
     if not device_id:
         return {"status": "error", "message": "child_code required"}
 
@@ -884,7 +981,7 @@ def home():
 # ==============================
 @app.route("/api/v1/devices/<device_id>/policy", methods=["GET"])
 def api_get_policy(device_id):
-    device_id = device_id.strip()
+    device_id = db_child_code(device_id) or device_id.strip()
     conn = db()
     revision, hosts, packages, keywords = _policy_get(conn, device_id)
     conn.close()
@@ -898,7 +995,7 @@ def api_get_policy(device_id):
 
 @app.route("/api/v1/devices/<device_id>/policy/push", methods=["POST"])
 def api_push_policy(device_id):
-    device_id = device_id.strip()
+    device_id = db_child_code(device_id) or device_id.strip()
     data = request.get_json() or {}
     new_hosts = [_norm_host(h) for h in (data.get("blockedHosts") or []) if _norm_host(h)]
     new_packages = [_norm_pkg(p) for p in (data.get("blockedPackages") or []) if _norm_pkg(p)]
@@ -937,12 +1034,15 @@ def blocklist_catalog():
 @app.route("/apply-default-blocklist", methods=["POST"])
 def api_apply_default_blocklist():
     data = request.get_json() or {}
-    raw = data.get("child_code") or data.get("childCode") or ""
-    child_code = normalize_child_code(raw)
+    raw = str(data.get("child_code") or data.get("childCode") or "").strip()
+    suffix = clean_child_code(raw)
     merge = data.get("merge", True)
-    if not child_code:
+    if not suffix:
         return _json_error("child_code required", 400, error_code="missing_child_code")
     conn = db()
+    cur = conn.cursor()
+    row = find_child_device(cur, raw, log_on_miss=False)
+    child_code = row["child_code"] if row else suffix
     result = apply_default_blocklist(conn, child_code, merge=bool(merge))
     conn.commit()
     conn.close()
@@ -1422,7 +1522,7 @@ def active_schedules():
 @app.route("/upload-usage", methods=["POST"])
 def upload_usage():
     data = request.get_json() or {}
-    child_code = (data.get("child_code") or "").strip()
+    child_code = db_child_code(data.get("child_code") or data.get("childCode") or "")
     entries = data.get("entries") or []
     conn = db()
     for entry in entries:
@@ -1440,7 +1540,9 @@ def upload_usage():
 # تقرير استخدام أسبوعي لولي الأمر
 @app.route("/weekly-report", methods=["GET"])
 def weekly_report():
-    child_code = (request.args.get("child_code") or "").strip()
+    child_code = db_child_code(request.args.get("child_code", ""))
+    if not child_code:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
     since = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
     conn = db()
     cur = conn.cursor()
@@ -1555,11 +1657,65 @@ def send_guardian_message():
 
 
 # عرض التنبيهات للأم
+@app.route("/list-children", methods=["GET"])
+def list_children():
+    """قائمة الأطفال المرتبطين بولي أمر — دعم تعدد الأطفال."""
+    parent_email = _extract_parent_email(dict(request.args))
+    if not parent_email:
+        return _json_error("parent_email is required", 400, error_code="missing_parent_email")
+    conn = db()
+    cur = conn.cursor()
+    parent_id = None
+    cur.execute("SELECT id FROM guardians WHERE email = ? LIMIT 1", (parent_email,))
+    g = cur.fetchone()
+    if g:
+        parent_id = int(g["id"])
+    cur.execute(
+        """
+        SELECT c.id AS child_id, c.name, c.age, c.child_code, c.device, c.android_version,
+               c.linked_at, cs.last_seen_ms, cs.device_name AS status_device
+        FROM children c
+        LEFT JOIN child_status cs ON cs.child_code = c.child_code
+        WHERE c.guardian_email = ?
+        ORDER BY c.id DESC
+        """,
+        (parent_email,),
+    )
+    rows = []
+    now_ms = int(datetime.now().timestamp() * 1000)
+    for r in cur.fetchall():
+        last_ms = int(r["last_seen_ms"] or 0)
+        online = last_ms > 0 and (now_ms - last_ms) < 180_000
+        code_db = r["child_code"]
+        rows.append({
+            "child_id": int(r["child_id"]),
+            "name": r["name"] or "طفل",
+            "age": r["age"],
+            "child_code": normalize_child_code(code_db),
+            "child_code_clean": clean_child_code(code_db),
+            "device": r["device"],
+            "android_version": r["android_version"],
+            "linked_at": r["linked_at"],
+            "online": online,
+            "last_seen_ms": last_ms,
+            "device_name": r["status_device"] or r["device"],
+        })
+    conn.close()
+    return _json_success(
+        "Children list",
+        parent_id=parent_id,
+        parent_email=parent_email,
+        children=rows,
+        count=len(rows),
+    )
+
+
 @app.route("/alerts", methods=["GET"])
 def alerts():
-    child_code = normalize_child_code(request.args.get("child_code", ""))
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
+    suffix = db_child_code(request.args.get("child_code", ""))
+    if not suffix:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
+    child_code = suffix
 
     conn = db()
     cur = conn.cursor()
@@ -1627,18 +1783,24 @@ def _screen_time_policy_save(conn, child_code: str, policy: dict) -> None:
 @app.route("/screen-time-policy", methods=["GET", "POST"])
 def screen_time_policy():
     if request.method == "GET":
-        child_code = normalize_child_code(request.args.get("child_code", ""))
-        if not child_code:
-            return jsonify({"status": "error", "message": "child_code required"}), 400
+        suffix = db_child_code(request.args.get("child_code", ""))
+        if not suffix:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
         conn = db()
-        policy = _screen_time_policy_get(conn, child_code)
+        policy = _screen_time_policy_get(conn, suffix)
         conn.close()
-        return jsonify({"child_code": child_code, "policy": policy})
+        return jsonify({
+            "success": True,
+            "child_code": normalize_child_code(suffix),
+            "child_code_clean": suffix,
+            "policy": policy,
+        })
 
     data = request.get_json() or {}
-    child_code = normalize_child_code(data.get("child_code", ""))
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
+    suffix = db_child_code(data.get("child_code") or data.get("childCode") or "")
+    if not suffix:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
+    child_code = suffix
     policy = data.get("policy") or {}
     conn = db()
     _screen_time_policy_save(conn, child_code, policy)
@@ -1717,9 +1879,11 @@ def screen_time_events():
 
 @app.route("/child-dashboard", methods=["GET"])
 def child_dashboard():
-    child_code = normalize_child_code(request.args.get("child_code", ""))
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
+    raw = request.args.get("child_code", "")
+    suffix = db_child_code(raw)
+    if not suffix:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
+    child_code = suffix
     today = datetime.now().strftime("%Y-%m-%d")
     conn = db()
     cur = conn.cursor()
@@ -1761,7 +1925,9 @@ def child_dashboard():
     conn.close()
 
     return jsonify({
-        "child_code": child_code,
+        "success": True,
+        "child_code": normalize_child_code(child_code),
+        "child_code_clean": child_code,
         "child_name": child_name,
         "device_name": device_name,
         "online": online,
@@ -1774,9 +1940,10 @@ def child_dashboard():
 
 @app.route("/daily-report", methods=["GET"])
 def daily_report():
-    child_code = normalize_child_code(request.args.get("child_code", ""))
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
+    suffix = db_child_code(request.args.get("child_code", ""))
+    if not suffix:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
+    child_code = suffix
     today = datetime.now().strftime("%Y-%m-%d")
     conn = db()
     cur = conn.cursor()
