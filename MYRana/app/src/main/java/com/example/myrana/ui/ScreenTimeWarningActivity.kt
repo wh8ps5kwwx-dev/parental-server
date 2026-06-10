@@ -44,8 +44,10 @@ class ScreenTimeWarningActivity : AppCompatActivity() {
                     blockMinutes,
                 )
             }
-            else -> finish()
-            return
+            else -> {
+                finish()
+                return
+            }
         }
 
         findViewById<Button>(R.id.btnWarningOk).setOnClickListener { finish() }

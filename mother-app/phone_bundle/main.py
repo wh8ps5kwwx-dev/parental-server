@@ -341,22 +341,25 @@ class LinkScreen(Screen):
         child_code = self._child_code()
         verify = self.verify_input.text.strip()
 
-        if not app.child_name:
-            self.message.text = ar("ارجعي وأضيفي بيانات الطفل أولاً")
-            return
         if not child_code or not verify:
             self.message.text = ar("أدخلي كود الطفل ورمز الربط")
             return
 
+        child_name = (app.child_name or "").strip() or "طفل"
         payload = {
-            "name": app.child_name,
-            "age": app.child_age,
+            "name": child_name,
+            "child_name": child_name,
+            "age": app.child_age or 10,
             "child_email": app.email,
             "device": app.device_name or "Android",
             "android_version": app.android_version or "Android",
             "child_code": child_code,
             "device_verify_code": verify,
+            "verification_code": verify,
+            "otp": verify,
             "guardian_email": app.email,
+            "parent_email": app.email,
+            "email": app.email,
             "guardian_role": app.role,
         }
 

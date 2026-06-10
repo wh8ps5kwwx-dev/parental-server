@@ -31,10 +31,10 @@ object AccessibilityHelper {
         val candidates = buildList {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 add(
-                    Intent(Settings.ACTION_ACCESSIBILITY_DETAILS_SETTINGS).apply {
+                    Intent(ACTION_ACCESSIBILITY_DETAILS_SETTINGS).apply {
                         putExtra(Intent.EXTRA_COMPONENT_NAME, component)
                         putExtra(
-                            Settings.EXTRA_ACCESSIBILITY_SERVICE_COMPONENT_NAME,
+                            EXTRA_ACCESSIBILITY_SERVICE_COMPONENT_NAME,
                             component.flattenToString(),
                         )
                     },
@@ -76,6 +76,11 @@ object AccessibilityHelper {
     }
 
     const val YOUTUBE_PACKAGE = "com.google.android.youtube"
+
+    private const val ACTION_ACCESSIBILITY_DETAILS_SETTINGS =
+        "android.settings.ACCESSIBILITY_DETAILS_SETTINGS"
+    private const val EXTRA_ACCESSIBILITY_SERVICE_COMPONENT_NAME =
+        "android.settings.extra.ACCESSIBILITY_SERVICE_COMPONENT_NAME"
 
     private val BROWSER_PACKAGES = setOf(
         "com.android.chrome",

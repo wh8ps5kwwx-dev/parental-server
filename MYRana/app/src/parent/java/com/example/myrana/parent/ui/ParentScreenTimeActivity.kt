@@ -150,7 +150,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             when (val result = GuardianApi.fetchChildDashboard(code)) {
                 is GuardianApi.ApiResult.ChildDashboard -> withContext(Dispatchers.Main) {
-                    renderDashboard(result)
+                    renderDashboard(result.data)
                 }
                 is GuardianApi.ApiResult.Error -> withContext(Dispatchers.Main) {
                     textMessage.text = result.message
