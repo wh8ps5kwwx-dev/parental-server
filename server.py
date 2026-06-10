@@ -1040,12 +1040,12 @@ def register_child_device():
     try:
         data = request.get_json(silent=True) or {}
         raw_child = str(data.get("child_code") or data.get("childCode") or "").strip()
-        child_code = normalize_child_code(raw_child)
+        suffix = clean_child_code(raw_child)
         child_email = (data.get("child_email") or "").strip()
         device_name = (data.get("device_name") or data.get("device") or "").strip()
         android_version = (data.get("android_version") or "").strip()
 
-        if not child_code or not device_name:
+        if not suffix or not device_name:
             return _json_error("child_code و device_name مطلوبان", 400)
 
         conn = db()
@@ -1066,24 +1066,27 @@ def register_child_device():
                 """,
                 (child_email, device_name, android_version, existing["child_code"]),
             )
-            child_code = existing["child_code"]
+            stored = existing["child_code"]
         else:
             device_code = str(random.randint(100000, 999999))
+            # FIX: normalize child_code — يُخزَّن بدون بادئة: 1DF71288
             cur.execute(
                 """
                 INSERT INTO child_devices
                 (child_code, child_email, device_name, android_version, device_verify_code, linked, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (child_code, child_email, device_name, android_version, device_code, 0, now()),
+                (suffix, child_email, device_name, android_version, device_code, 0, now()),
             )
+            stored = suffix
 
         conn.commit()
         conn.close()
         return jsonify({
             "status": "success",
             "message": "تم تسجيل الجهاز — انتظر ربط ولي الأمر",
-            "child_code": child_code,
+            "child_code": normalize_child_code(stored),
+            "child_code_clean": clean_child_code(stored),
         })
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)
