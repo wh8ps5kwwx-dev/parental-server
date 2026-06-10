@@ -922,12 +922,14 @@ def send_email_code():
         f"أدخليه في تطبيق الأم لتأكيد أن البريد ملكك.",
     )
 
-    return jsonify(verification_payload(
+    payload = verification_payload(
         code,
         email_sent,
         f"تم إرسال رمز التحقق إلى {email}",
         "لم يُرسل البريد — الرمز للتطوير فقط",
-    ))
+    )
+    payload["email_verify_code"] = code
+    return jsonify(payload)
 
 
 # التحقق من رمز البريد
@@ -1086,12 +1088,15 @@ def send_link_code():
             f"(هذا ليس رمز تحقق البريد الأول)",
         )
 
-        return jsonify(verification_payload(
+        payload = verification_payload(
             device_code,
             email_sent,
             "تم إرسال رمز الربط إلى بريدك",
             "SMTP غير مضبوط — الرمز للتطوير فقط",
-        ))
+        )
+        # تطبيق الأم يستخدمه للربط التلقائي (بعد تحقق البريد + API_KEY)
+        payload["link_code"] = device_code
+        return jsonify(payload)
     except Exception as exc:
         logger.exception("send-link-code failed: %s", exc)
         return _json_error("خطأ داخلي أثناء إرسال رمز الربط", 500, error_code="server_error")
