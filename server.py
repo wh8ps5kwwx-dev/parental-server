@@ -500,6 +500,7 @@ def verification_payload(code, email_sent, success_message, dev_message):
     if not email_sent and email_configured() and SMTP_LAST_ERROR:
         dev_message = f"فشل إرسال البريد — تحققي من App Password على Render ({SMTP_LAST_ERROR})"
     payload = {
+        "success": True,
         "status": "success",
         "message": success_message if email_sent else dev_message,
         "email_sent": email_sent,
@@ -1133,7 +1134,7 @@ def verify_email_code():
         cur.execute("UPDATE email_codes SET verified = 1 WHERE id = ?", (row["id"],))
         conn.commit()
         conn.close()
-        return jsonify({"status": "success", "message": "تم التحقق من البريد"})
+        return _json_success("Email verified successfully")
     except Exception as exc:
         logger.exception("verify-email-code failed: %s", exc)
         return _json_error("خطأ داخلي أثناء التحقق من البريد", 500, error_code="server_error")
@@ -1187,12 +1188,11 @@ def register_child_device():
 
         conn.commit()
         conn.close()
-        return jsonify({
-            "status": "success",
-            "message": "تم تسجيل الجهاز — انتظر ربط ولي الأمر",
-            "child_code": normalize_child_code(stored),
-            "child_code_clean": clean_child_code(stored),
-        })
+        return _json_success(
+            "Child device registered — waiting for parent link",
+            child_code=normalize_child_code(stored),
+            child_code_clean=clean_child_code(stored),
+        )
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)
         return _json_error("خطأ داخلي أثناء تسجيل الطفل", 500, error_code="server_error")
@@ -1223,10 +1223,10 @@ def send_link_code():
         row = find_child_device(cur, raw_child, log_on_miss=False)
         if not row:
             conn.close()
-            return _child_not_found_response(
-                raw_child,
-                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً",
-            )
+    return _child_not_found_response(
+            raw_child,
+            "Child not found",
+        )
 
         child_code = row["child_code"]
         if row["linked"]:
@@ -1288,12 +1288,12 @@ def child_link_status():
             "لم يُعثر على جهاز الطفل — افتحي تطبيق الطفل واضغطي تسجيل الجهاز",
         )
 
-    return jsonify({
-        "status": "success",
-        "child_code": normalize_child_code(row["child_code"]),
-        "child_code_clean": clean_child_code(row["child_code"]),
-        "linked": bool(row["linked"]),
-    })
+    return _json_success(
+        "Child link status",
+        child_code=normalize_child_code(row["child_code"]),
+        child_code_clean=clean_child_code(row["child_code"]),
+        linked=bool(row["linked"]),
+    )
 
 
 # التحقق من رمز جهاز الطفل — اختياري قبل الربط النهائي
