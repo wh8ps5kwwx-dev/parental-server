@@ -117,7 +117,10 @@ class ParentMainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (ParentSession.isChildLinked(this)) {
-            lifecycleScope.launch { refreshAlertsQuietly() }
+            lifecycleScope.launch {
+                refreshAlertsQuietly()
+                refreshLinkedChildrenSummary()
+            }
             startAlertPolling()
         }
     }
@@ -293,6 +296,35 @@ class ParentMainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) { GuardianApi.applyDefaultBlocklist(childCode) }
             refreshAlertsQuietly()
+            refreshLinkedChildrenSummary()
+        }
+    }
+
+    /** جلب قائمة الأطفال من السيرفر — دعم تعدد الأطفال لولي الأمر الواحد. */
+    private suspend fun refreshLinkedChildrenSummary() {
+        val email = ParentSession.guardianEmail(this@ParentMainActivity).orEmpty()
+        if (email.isBlank()) return
+        when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchLinkedChildren(email) }) {
+            is GuardianApi.ApiResult.ChildrenList -> {
+                if (result.children.isEmpty()) return
+                val lines = result.children.map { child ->
+                    val name = child["name"]?.toString()?.ifBlank { "طفل" } ?: "طفل"
+                    val code = child["child_code"]?.toString().orEmpty()
+                    val status = if (child["online"] == true) "متصل" else "غير متصل"
+                    "• $name — $code ($status)"
+                }
+                textLinkedChild.text = lines.joinToString("\n")
+                val active = ParentSession.childCode(this@ParentMainActivity)
+                if (active.isNullOrBlank()) {
+                    val first = result.children.firstOrNull()
+                    val code = first?.get("child_code")?.toString().orEmpty()
+                    val name = first?.get("name")?.toString().orEmpty()
+                    if (code.isNotBlank()) {
+                        ParentSession.saveLinkedChild(this@ParentMainActivity, code, name.ifBlank { "طفل" })
+                    }
+                }
+            }
+            else -> {}
         }
     }
 
@@ -704,6 +736,7 @@ class ParentMainActivity : AppCompatActivity() {
         )
         textAlertsPreview.text = getString(R.string.parent_alerts_waiting)
         startAlertPolling()
+        lifecycleScope.launch { refreshLinkedChildrenSummary() }
     }
 
     private fun pasteChildCodeFromClipboard(silent: Boolean = false) {

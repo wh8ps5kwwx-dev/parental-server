@@ -1062,7 +1062,7 @@ def send_email_code():
     email = data.get("email", "").strip()
 
     if not email:
-        return jsonify({"status": "error", "message": "email required"}), 400
+        return _json_error("parent_email is required", 400, error_code="missing_parent_email")
 
     code = str(random.randint(100000, 999999))
 
