@@ -35,8 +35,25 @@ OTP_EMAIL_EXPIRY_MINUTES = int(os.environ.get("OTP_EMAIL_EXPIRY_MINUTES", "60"))
 # إنشاء تطبيق Flask
 app = Flask(__name__)
 
-# اسم قاعدة البيانات
-DB = "parent_control.db"
+# قاعدة البيانات — على Render أضيفي قرصاً دائماً عند /var/data (Environment: DATA_DIR=/var/data)
+def _resolve_db_path() -> str:
+    data_dir = os.environ.get("DATA_DIR", "").strip()
+    if not data_dir and os.path.isdir("/var/data") and os.access("/var/data", os.W_OK):
+        data_dir = "/var/data"
+    if data_dir:
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+            if os.access(data_dir, os.W_OK):
+                return os.path.join(data_dir, "parent_control.db")
+        except OSError:
+            pass
+    explicit = os.environ.get("DATABASE_PATH", "").strip()
+    if explicit:
+        return explicit
+    return "parent_control.db"
+
+
+DB = _resolve_db_path()
 
 # مفتاح حماية الطلبات بين التطبيق والسيرفر
 API_KEY = os.environ.get("API_KEY", "graduation-secret-key")
@@ -1125,7 +1142,11 @@ def verify_child_device_code():
 
         if not device_row:
             conn.close()
-            return _json_error("الطفل غير موجود", 404, error_code="child_not_found")
+            return _json_error(
+                "لم يُعثر على جهاز الطفل — من جوال الطفل اضغطي «تسجيل الجهاز» مرة أخرى ثم أعيدي الربط",
+                404,
+                error_code="child_not_found",
+            )
 
         if not stored or stored != code:
             conn.close()
