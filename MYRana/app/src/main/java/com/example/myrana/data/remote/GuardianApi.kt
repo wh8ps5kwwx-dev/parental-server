@@ -453,10 +453,14 @@ object GuardianApi {
                 val mapType = object : TypeToken<Map<String, Any?>>() {}.type
                 val json: Map<String, Any?> = gson.fromJson(raw.substring(jsonStart), mapType)
                 val server = json["message"]?.toString()
+                val detailAr = json["detail_ar"]?.toString()?.trim().orEmpty()
                 val cleaned = json["child_code_clean"]?.toString()?.trim().orEmpty()
                 if (!server.isNullOrBlank()) {
                     val msg = translateServerMessage(server)
-                    return if (cleaned.isNotEmpty()) "$msg\n(كود منظّف: $cleaned)" else msg
+                    val hint = detailAr.ifBlank {
+                        if (cleaned.isNotEmpty()) "كود منظّف: $cleaned" else ""
+                    }
+                    return if (hint.isNotEmpty()) "$msg\n$hint" else msg
                 }
             } catch (_: Exception) {
             }

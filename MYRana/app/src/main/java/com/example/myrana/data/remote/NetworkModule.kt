@@ -466,15 +466,9 @@ object NetworkModule {
         val response = client().newCall(request).execute()
         val text = response.body?.string().orEmpty()
         if (!response.isSuccessful) {
-            val serverMsg = try {
-                val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
-                val json: Map<String, Any?> = gson.fromJson(text, mapType)
-                json["message"]?.toString()?.trim().orEmpty()
-            } catch (_: Exception) {
-                ""
-            }
-            val detail = serverMsg.ifBlank { text.ifBlank { response.message } }
-            throw IllegalStateException("HTTP ${response.code}: $detail")
+            // يمرّر JSON كاملاً لـ GuardianApi.friendlyError (child_code_clean، detail_ar، …)
+            val bodyForParse = text.ifBlank { """{"message":"HTTP ${response.code}"}""" }
+            throw IllegalStateException("HTTP ${response.code}: $bodyForParse")
         }
         return text
     }
