@@ -74,42 +74,77 @@ RESEND_FROM = os.environ.get(
 
 
 # دالة ترجع الوقت الحالي
-def normalize_child_code(raw):
-    """CHILD-XXXXXXXX — يقبل أيضاً الجزء بدون البادئة (مثل 2776E398)."""
+
+
+# FIX: normalize child_code to support codes with or without CHILD- prefix
+def clean_child_code(raw):
+    """
+    تنظيف كود الطفل للبحث في قاعدة البيانات:
+    trim → uppercase → إزالة CHILD- → أحرف وأرقام فقط.
+    مثال: CHILD-1DF71288 → 1DF71288
+    """
     code = (raw or "").strip().upper()
-    if not code:
-        return ""
     if code.startswith("CHILD-"):
-        suffix = code[6:]
-    else:
-        suffix = code
-    suffix = "".join(ch for ch in suffix if ch.isalnum())
+        code = code[6:]
+    suffix = "".join(ch for ch in code if ch.isalnum())
+    return suffix
+
+
+def normalize_child_code(raw):
+    """الصيغة القياسية للتخزين والاستجابة: CHILD-XXXXXXXX"""
+    suffix = clean_child_code(raw)
     if not suffix:
         return ""
     return f"CHILD-{suffix}"
 
 
-def find_child_device(cur, child_code):
-    normalized = normalize_child_code(child_code)
-    if not normalized:
+def find_child_device(cur, child_code_raw, log_on_miss=True):
+    """يبحث بـ CHILD-1DF71288 أو 1DF71288 أو أي صيغة مخزّنة."""
+    original = child_code_raw
+    suffix = clean_child_code(child_code_raw)
+    if not suffix:
         return None
-    cur.execute(
-        "SELECT * FROM child_devices WHERE child_code = ? LIMIT 1",
-        (normalized,),
-    )
-    row = cur.fetchone()
-    if row:
-        return row
-    suffix = normalized.replace("CHILD-", "", 1)
+    canonical = f"CHILD-{suffix}"
+
+    for candidate in (suffix, canonical):
+        cur.execute(
+            "SELECT * FROM child_devices WHERE child_code = ? COLLATE NOCASE LIMIT 1",
+            (candidate,),
+        )
+        row = cur.fetchone()
+        if row:
+            return row
+
     cur.execute(
         """
         SELECT * FROM child_devices
-        WHERE child_code LIKE ? AND linked = 0
-        ORDER BY id DESC LIMIT 1
+        WHERE UPPER(REPLACE(REPLACE(TRIM(child_code), 'CHILD-', ''), 'child-', '')) = ?
+        ORDER BY id DESC
+        LIMIT 1
         """,
-        (f"%{suffix}",),
+        (suffix,),
     )
-    return cur.fetchone()
+    row = cur.fetchone()
+    if not row and log_on_miss:
+        logger.warning(
+            "child_not_found original=%r cleaned=%r",
+            original,
+            suffix,
+        )
+    return row
+
+
+def _child_not_found_response(raw, message):
+    """JSON واضح عند عدم وجود الطفل — مع الكود الأصلي والمنظّف في السجلات."""
+    cleaned = clean_child_code(raw)
+    logger.warning("child_not_found original=%r cleaned=%r", raw, cleaned)
+    return _json_error(
+        message,
+        404,
+        error_code="child_not_found",
+        child_code_input=(raw or "").strip(),
+        child_code_clean=cleaned,
+    )
 
 
 def now():
@@ -163,9 +198,9 @@ def _extract_verification_code(data: dict) -> str:
 
 
 def _extract_child_code(data: dict) -> str:
-    return normalize_child_code(
-        data.get("child_code") or data.get("childCode") or ""
-    )
+    """يُرجع CHILD-XXXXXXXX — يقبل child_code أو childCode."""
+    raw = data.get("child_code") or data.get("childCode") or ""
+    return normalize_child_code(raw)
 
 
 def _safe_age(data: dict, default: int = 10) -> int:
@@ -256,10 +291,14 @@ def _link_child_transaction(cur, conn, data: dict):
     _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "checking device")
 
     if not device_row:
+        cleaned = clean_child_code(child_code)
+        logger.warning("add-child child_not_found original=%r cleaned=%r", child_code, cleaned)
         return _fail(
             "الطفل غير موجود — سجّلي الجهاز من تطبيق الطفل أولاً (CHILD-...)",
             404,
             error_code="child_not_found",
+            child_code_input=child_code,
+            child_code_clean=cleaned,
         )
 
     child_code = device_row["child_code"]
@@ -882,10 +921,11 @@ def blocklist_catalog():
 @app.route("/apply-default-blocklist", methods=["POST"])
 def api_apply_default_blocklist():
     data = request.get_json() or {}
-    child_code = (data.get("child_code") or "").strip()
+    raw = data.get("child_code") or data.get("childCode") or ""
+    child_code = normalize_child_code(raw)
     merge = data.get("merge", True)
     if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
+        return _json_error("child_code required", 400, error_code="missing_child_code")
     conn = db()
     result = apply_default_blocklist(conn, child_code, merge=bool(merge))
     conn.commit()
@@ -1051,13 +1091,13 @@ def send_link_code():
                 error_code="parent_email_not_verified",
             )
 
-        row = find_child_device(cur, child_code)
+        raw_child = data.get("child_code") or data.get("childCode") or child_code
+        row = find_child_device(cur, raw_child, log_on_miss=False)
         if not row:
             conn.close()
-            return _json_error(
+            return _child_not_found_response(
+                raw_child,
                 "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (CHILD-...)",
-                404,
-                error_code="child_not_found",
             )
 
         child_code = row["child_code"]
@@ -1105,24 +1145,25 @@ def send_link_code():
 # هل اكتمل ربط جهاز الطفل؟ (يستعلم عنه تطبيق الطفل)
 @app.route("/child-link-status", methods=["GET"])
 def child_link_status():
-    child_code = normalize_child_code(request.args.get("child_code", ""))
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
+    raw = request.args.get("child_code", "")
+    if not clean_child_code(raw):
+        return _json_error("child_code required", 400, error_code="missing_child_code")
 
     conn = db()
     cur = conn.cursor()
-    row = find_child_device(cur, child_code)
+    row = find_child_device(cur, raw, log_on_miss=False)
     conn.close()
 
     if not row:
-        return jsonify({
-            "status": "error",
-            "message": "لم يُعثر على جهاز الطفل",
-        }), 404
+        return _child_not_found_response(
+            raw,
+            "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً",
+        )
 
     return jsonify({
         "status": "success",
-        "child_code": row["child_code"],
+        "child_code": normalize_child_code(row["child_code"]),
+        "child_code_clean": clean_child_code(row["child_code"]),
         "linked": bool(row["linked"]),
     })
 
@@ -1141,16 +1182,16 @@ def verify_child_device_code():
 
         conn = db()
         cur = conn.cursor()
-        device_row = find_child_device(cur, child_code)
+        raw_child = data.get("child_code") or data.get("childCode") or child_code
+        device_row = find_child_device(cur, raw_child, log_on_miss=False)
         stored = str(device_row["device_verify_code"] or "").strip() if device_row else None
         _log_link_context("verify-device", parent_email, child_code, code, stored, "check")
 
         if not device_row:
             conn.close()
-            return _json_error(
+            return _child_not_found_response(
+                raw_child,
                 "لم يُعثر على جهاز الطفل — من جوال الطفل اضغطي «تسجيل الجهاز» مرة أخرى ثم أعيدي الربط",
-                404,
-                error_code="child_not_found",
             )
 
         if not stored or stored != code:
