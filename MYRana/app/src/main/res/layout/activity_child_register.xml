@@ -33,6 +33,13 @@
             android:layout_marginTop="20dp"
             android:orientation="vertical">
 
+            <EditText
+                android:id="@+id/inputParentEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/register_hint_parent_email"
+                android:inputType="textEmailAddress" />
+
             <Button
                 android:id="@+id/btnSendCode"
                 android:layout_width="match_parent"

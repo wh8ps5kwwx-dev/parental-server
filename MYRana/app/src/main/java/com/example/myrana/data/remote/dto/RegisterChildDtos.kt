@@ -9,6 +9,8 @@ data class RegisterChildRequest(
     /** معرّف فريد يُولَّد تلقائياً (مثل CHILD-A1B2C3D4). */
     @SerializedName("child_code") val childCode: String,
     @SerializedName("child_email") val childEmail: String,
+    @SerializedName("guardian_email") val guardianEmail: String = "",
+    @SerializedName("parent_email") val parentEmail: String = "",
     @SerializedName("device_name") val deviceName: String,
     @SerializedName("android_version") val androidVersion: String,
     /** معرّف الجهاز الحقيقي من أندرويد (ليس واجهة وهمية). */

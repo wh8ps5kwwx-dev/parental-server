@@ -53,8 +53,11 @@ def api_msg(body: dict, default: str = "حدث خطأ") -> str:
 
 
 def fill_code_field(field: TextInput, body: dict) -> None:
-    if body.get("dev_fallback") and body.get("verification_code"):
-        field.text = str(body["verification_code"])
+    """لا نملأ الرمز تلقائياً — الربط الحقيقي عبر البريد فقط."""
+    if body.get("email_sent"):
+        return
+    if body.get("dev_fallback"):
+        return
 
 
 class ALabel(Label):
@@ -156,7 +159,10 @@ class LoginScreen(Screen):
             verify.email_label.text = ar(f"البريد: {email}")
             verify.code_input.text = ""
             fill_code_field(verify.code_input, body)
-            self.message.text = ar(api_msg(body, "تم إرسال الرمز — تحققي من Gmail"))
+            if body.get("email_sent"):
+                self.message.text = ar("تم إرسال الرمز — افتحي Gmail وأدخليه يدوياً")
+            else:
+                self.message.text = ar(api_msg(body, "تعذّر إرسال البريد"))
             self.manager.current = "verify"
         else:
             self.message.text = ar(api_msg(body))
@@ -265,7 +271,7 @@ class LinkScreen(Screen):
 
         layout.add_widget(ALabel("ربط جهاز الطفل", font_size=22, size_hint_y=None, height=50))
         layout.add_widget(
-            ALabel("الخطوة 2: كود الطفل + رمز الربط", font_size=16, size_hint_y=None, height=35)
+            ALabel("الخطوة 2: كود الطفل + رمز الربط من Gmail", font_size=16, size_hint_y=None, height=35)
         )
         self.child_code_input = AInput("كود الطفل CHILD-...", size_hint_y=None, height=45)
         send_link_btn = AButton("إرسال رمز الربط للبريد", size_hint_y=None, height=50)
@@ -307,7 +313,10 @@ class LinkScreen(Screen):
 
         if api_ok(body):
             fill_code_field(self.verify_input, body)
-            self.message.text = ar(api_msg(body, "تم إرسال رمز الربط — تحققي من Gmail"))
+            if body.get("email_sent"):
+                self.message.text = ar("تم إرسال رمز الربط — افتحي Gmail وأدخليه يدوياً")
+            else:
+                self.message.text = ar(api_msg(body, "تعذّر إرسال البريد"))
         else:
             self.message.text = ar(api_msg(body))
 
@@ -342,7 +351,10 @@ class LinkScreen(Screen):
         verify = self.verify_input.text.strip()
 
         if not child_code or not verify:
-            self.message.text = ar("أدخلي كود الطفل ورمز الربط")
+            self.message.text = ar("أدخلي كود الطفل ورمز الربط من Gmail (الرسالة الثانية)")
+            return
+        if not app.email_verified:
+            self.message.text = ar("تحققي من بريدك أولاً (الرمز الأول من Gmail)")
             return
 
         child_name = (app.child_name or "").strip() or "طفل"

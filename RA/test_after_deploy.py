@@ -106,7 +106,7 @@ def main() -> int:
     if fails:
         print(f"فشل {fails} اختبار/اختبارات — تأكدي أن blocklists/ مرفوعة مع server.py على Render.")
         return 1
-    print("كل الاختبارات نجحت. جرّبي الآن: طفل يفتح Granny → الأم → عرض تنبيهات الحظر.")
+    print("كل الاختبارات نجحت. جربي الآن: طفل يفتح Granny -> الأم -> عرض تنبيهات الحظر.")
     return 0
 
 

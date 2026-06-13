@@ -21,31 +21,23 @@ object GuardianApi {
             val response = NetworkModule.postRoot("send-email-code", mapOf("email" to email.trim()))
             val mapType = object : TypeToken<Map<String, Any?>>() {}.type
             val json: Map<String, Any?> = gson.fromJson(response, mapType)
-            if (json["status"]?.toString() == "success") {
-                val devFallback = json["dev_fallback"] == true
-                val emailSent = json["email_sent"] == true
-                val code = json["email_verify_code"]?.toString()?.trim()
-                    ?: if (devFallback) {
-                        json["verification_code"]?.toString()?.trim().orEmpty()
-                    } else {
-                        ""
-                    }
+            if (json["status"]?.toString() == "success" && json["email_sent"] == true) {
                 val baseMsg = json["message"]?.toString() ?: "تم"
-                val display = when {
-                    emailSent -> "$baseMsg\n\nتحققي من صندوق البريد وأدخلي الرمز."
-                    code.isNotEmpty() -> "$baseMsg\n\n${"—".repeat(8)}\nرمز التحقق (تطوير): $code\n${"—".repeat(8)}"
-                    else -> baseMsg
-                }
                 ApiResult.EmailCodeSent(
-                    message = display,
-                    verificationCode = code.ifEmpty { null },
-                    devFallback = devFallback,
+                    message = "$baseMsg\n\nتحققي من صندوق البريد وأدخلي الرمز يدوياً.",
+                    verificationCode = null,
+                    devFallback = false,
+                )
+            } else if (json["status"]?.toString() == "success" && json["dev_fallback"] == true) {
+                ApiResult.Error(
+                    json["message"]?.toString()
+                        ?: "وضع التطوير فقط — فعّلي البريد على السيرفر للربط الحقيقي",
                 )
             } else {
-                ApiResult.Error(json["message"]?.toString() ?: response)
+                ApiResult.Error(translateServerMessage(json["message"]?.toString() ?: response))
             }
         } catch (e: Exception) {
-            ApiResult.Error(e.message ?: "خطأ شبكة")
+            ApiResult.Error(friendlyError(e))
         }
     }
 
@@ -61,22 +53,17 @@ object GuardianApi {
             )
             val mapType = object : TypeToken<Map<String, Any?>>() {}.type
             val json: Map<String, Any?> = gson.fromJson(response, mapType)
-            if (json["status"]?.toString() == "success") {
-                val devFallback = json["dev_fallback"] == true
-                val emailSent = json["email_sent"] == true
-                val code = json["link_code"]?.toString()?.trim()
-                    ?: json["verification_code"]?.toString()?.trim().orEmpty()
+            if (json["status"]?.toString() == "success" && json["email_sent"] == true) {
                 val baseMsg = json["message"]?.toString() ?: "تم"
-                val display = when {
-                    code.isNotEmpty() ->
-                        "$baseMsg\n\nجاري الربط تلقائياً…"
-                    emailSent -> "$baseMsg\n\nتحققي من بريدك وأدخلي رمز الربط."
-                    else -> baseMsg
-                }
                 ApiResult.EmailCodeSent(
-                    message = display,
-                    verificationCode = code.ifEmpty { null },
-                    devFallback = devFallback,
+                    message = "$baseMsg\n\nافتحي Gmail وأدخلي رمز الربط في الحقل أدناه.",
+                    verificationCode = null,
+                    devFallback = false,
+                )
+            } else if (json["status"]?.toString() == "success" && json["dev_fallback"] == true) {
+                ApiResult.Error(
+                    json["message"]?.toString()
+                        ?: "وضع التطوير فقط — فعّلي البريد على السيرفر للربط الحقيقي",
                 )
             } else {
                 val extra = json["child_code_clean"]?.toString()?.trim().orEmpty()
@@ -144,7 +131,7 @@ object GuardianApi {
         childCode: String,
         deviceVerifyCode: String,
         guardianEmail: String,
-        guardianRole: String
+        guardianRole: String,
     ): ApiResult {
         val email = guardianEmail.trim()
         val code = ChildCodeNormalizer.forApi(childCode)
@@ -158,7 +145,7 @@ object GuardianApi {
                 "name" to name.trim().ifBlank { "طفل" },
                 "child_name" to name.trim().ifBlank { "طفل" },
                 "age" to age,
-                "child_email" to childEmail.trim(),
+                "child_email" to childEmail.trim().ifBlank { email },
                 "device" to device.trim(),
                 "android_version" to androidVersion.trim(),
                 "device_verify_code" to verify,
@@ -225,6 +212,8 @@ object GuardianApi {
             } else {
                 ScreenTimePolicy()
             }
+            @Suppress("UNCHECKED_CAST")
+            val topApps = (json["top_apps_today"] as? List<Map<String, Any?>>).orEmpty()
             ApiResult.ChildDashboard(
                 ChildDashboardData(
                     childCode = json["child_code"]?.toString().orEmpty(),
@@ -234,7 +223,14 @@ object GuardianApi {
                     lastSeenMs = (json["last_seen_ms"] as? Number)?.toLong() ?: 0L,
                     todaySeconds = (json["today_seconds"] as? Number)?.toLong() ?: 0L,
                     appsOpened = (json["apps_opened"] as? Number)?.toInt() ?: 0,
+                    educationalSeconds = (json["educational_seconds"] as? Number)?.toLong() ?: 0L,
+                    monitoredSeconds = (json["monitored_seconds"] as? Number)?.toLong() ?: 0L,
+                    alertsToday = (json["alerts_today"] as? Number)?.toInt() ?: 0,
+                    alertsWeek = (json["alerts_week"] as? Number)?.toInt() ?: 0,
+                    topAppsToday = topApps,
                     policy = policy,
+                    permissionsOk = json["permissions_ok"] == true,
+                    permissions = (json["permissions"] as? Map<String, Any?>) ?: emptyMap(),
                 )
             )
         } catch (e: Exception) {
@@ -271,6 +267,49 @@ object GuardianApi {
                 "${i + 1}. $pkg — ${sec / 60} د"
             }
             ApiResult.ReportText("تقرير اليوم ($day):\n" + lines.joinToString("\n"))
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
+    /** بيانات الرسوم البيانية — استخدام يومي + أفضل التطبيقات. */
+    fun fetchWeeklyChart(childCode: String): ApiResult {
+        return try {
+            val code = ChildCodeNormalizer.forApi(childCode)
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            val url = java.net.URL(
+                "$base/weekly-chart?child_code=${URLEncoder.encode(code, "UTF-8")}"
+            )
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 20_000
+            val body = conn.inputStream.bufferedReader().readText()
+            if (conn.responseCode != 200) {
+                return ApiResult.Error(conn.responseMessage ?: "خطأ")
+            }
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(body, mapType)
+            if (json["success"] != true) {
+                return ApiResult.Error(json["message"]?.toString() ?: "فشل جلب البيانات")
+            }
+            @Suppress("UNCHECKED_CAST")
+            val usageByDay = (json["usage_by_day"] as? List<Map<String, Any?>>).orEmpty()
+            @Suppress("UNCHECKED_CAST")
+            val topApps = (json["top_apps"] as? List<Map<String, Any?>>).orEmpty()
+            @Suppress("UNCHECKED_CAST")
+            val educational = (json["educational_apps"] as? List<Map<String, Any?>>).orEmpty()
+            ApiResult.WeeklyChart(
+                WeeklyChartData(
+                    usageByDay = usageByDay,
+                    topApps = topApps,
+                    educationalApps = educational,
+                    alertsToday = (json["alerts_today"] as? Number)?.toInt() ?: 0,
+                    alertsWeek = (json["alerts_week"] as? Number)?.toInt() ?: 0,
+                    sleepViolationsWeek = (json["sleep_violations_week"] as? Number)?.toInt() ?: 0,
+                )
+            )
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "خطأ شبكة")
         }
@@ -367,6 +406,86 @@ object GuardianApi {
         )
     }
 
+    fun fetchGuardianSettings(parentEmail: String): ApiResult {
+        return try {
+            val email = parentEmail.trim()
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            val url = "$base/guardian-settings?parent_email=${URLEncoder.encode(email, "UTF-8")}"
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 20_000
+            val body = conn.inputStream.bufferedReader().readText()
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(body, mapType)
+            if (json["success"] == true) {
+                @Suppress("UNCHECKED_CAST")
+                val settings = (json["settings"] as? Map<String, Any?>) ?: emptyMap()
+                ApiResult.GuardianSettingsLoaded(settings)
+            } else {
+                ApiResult.Error(json["message"]?.toString() ?: body)
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
+    fun saveGuardianSettings(parentEmail: String, settings: Map<String, Any?>): ApiResult {
+        return post(
+            "guardian-settings",
+            mapOf(
+                "parent_email" to parentEmail.trim(),
+                "email" to parentEmail.trim(),
+                "settings" to settings,
+            )
+        )
+    }
+
+    fun fetchAuditLog(parentEmail: String, childCode: String?): ApiResult {
+        return try {
+            val email = parentEmail.trim()
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            var url = "$base/audit-log?parent_email=${URLEncoder.encode(email, "UTF-8")}"
+            if (!childCode.isNullOrBlank()) {
+                url += "&child_code=${URLEncoder.encode(ChildCodeNormalizer.forApi(childCode), "UTF-8")}"
+            }
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            val body = conn.inputStream.bufferedReader().readText()
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(body, mapType)
+            if (json["success"] == true) {
+                @Suppress("UNCHECKED_CAST")
+                val entries = (json["entries"] as? List<Map<String, Any?>>).orEmpty()
+                val lines = entries.map { row ->
+                    val time = row["created_at"]?.toString().orEmpty()
+                    val action = row["action"]?.toString().orEmpty()
+                    val detail = row["detail"]?.toString().orEmpty()
+                    val code = row["child_code"]?.toString().orEmpty()
+                    "$time — $action${if (code.isNotBlank()) " ($code)" else ""}\n$detail"
+                }
+                ApiResult.AuditLog(lines)
+            } else {
+                ApiResult.Error(json["message"]?.toString() ?: body)
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
+    fun sendEmailSummary(parentEmail: String, childCode: String, period: String): ApiResult {
+        return post(
+            "send-email-summary",
+            mapOf(
+                "parent_email" to parentEmail.trim(),
+                "child_code" to ChildCodeNormalizer.forApi(childCode),
+                "period" to period,
+            )
+        )
+    }
+
     /** قائمة الأطفال المرتبطين بولي الأمر — دعم تعدد الأطفال. */
     fun fetchLinkedChildren(parentEmail: String): ApiResult {
         return try {
@@ -440,7 +559,10 @@ object GuardianApi {
                 message.contains("child_not_found", ignoreCase = true) ||
                 message.contains("الطفل غير موجود", ignoreCase = true) ||
                 message.contains("لم يُعثر على جهاز الطفل", ignoreCase = true) ->
-                "الكود غير مسجّل على السيرفر — من جوال الطفل: «تسجيل الجهاز» ثم «ربط تلقائي»"
+                "الطفل غير مسجّل على السيرفر.\n\n" +
+                    "① جوال الطفل: «تسجيل الجهاز»\n" +
+                    "② انسخي الكود CHILD-... للأم\n" +
+                    "③ جوال الأم: الصقي الكود → «ربط تلقائي»"
             else -> message
         }
     }
@@ -495,7 +617,10 @@ object GuardianApi {
         data class Alerts(val lines: List<String>, val error: String? = null) : ApiResult()
         data class ScreenTimePolicyLoaded(val policy: ScreenTimePolicy) : ApiResult()
         data class ChildDashboard(val data: ChildDashboardData) : ApiResult()
+        data class WeeklyChart(val data: WeeklyChartData) : ApiResult()
         data class ReportText(val text: String) : ApiResult()
+        data class GuardianSettingsLoaded(val settings: Map<String, Any?>) : ApiResult()
+        data class AuditLog(val lines: List<String>) : ApiResult()
     }
 
     data class ChildDashboardData(
@@ -506,6 +631,22 @@ object GuardianApi {
         val lastSeenMs: Long,
         val todaySeconds: Long,
         val appsOpened: Int,
+        val educationalSeconds: Long = 0L,
+        val monitoredSeconds: Long = 0L,
+        val alertsToday: Int = 0,
+        val alertsWeek: Int = 0,
+        val topAppsToday: List<Map<String, Any?>> = emptyList(),
         val policy: ScreenTimePolicy,
+        val permissionsOk: Boolean = false,
+        val permissions: Map<String, Any?> = emptyMap(),
+    )
+
+    data class WeeklyChartData(
+        val usageByDay: List<Map<String, Any?>>,
+        val topApps: List<Map<String, Any?>>,
+        val educationalApps: List<Map<String, Any?>>,
+        val alertsToday: Int,
+        val alertsWeek: Int,
+        val sleepViolationsWeek: Int,
     )
 }

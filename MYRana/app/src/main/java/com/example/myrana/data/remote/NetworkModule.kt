@@ -316,13 +316,19 @@ object NetworkModule {
         }
     }
 
-    /** نبضة اتصال من جهاز الطفل. */
-    fun postChildHeartbeat(childCode: String): Boolean {
+    /** نبضة اتصال من جهاز الطفل — تتضمن حالة الصلاحيات لولي الأمر. */
+    fun postChildHeartbeat(childCode: String, permissions: Map<String, Any?>? = null): Boolean {
         val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return false
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val url = base.newBuilder().addPathSegments("child-heartbeat").build()
-        val payload = mapOf("child_code" to code, "ts_ms" to System.currentTimeMillis())
+        val payload = mutableMapOf<String, Any?>(
+            "child_code" to code,
+            "ts_ms" to System.currentTimeMillis(),
+        )
+        if (!permissions.isNullOrEmpty()) {
+            payload["permissions"] = permissions
+        }
         val body = gson.toJson(payload).toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url(url)

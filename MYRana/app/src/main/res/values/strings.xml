@@ -83,10 +83,17 @@
     <string name="label_local_lists">المحتوى المحلي بعد آخر تحديث:</string>
 
     <string name="register_title">ربط جهاز الطفل</string>
-    <string name="register_subtitle">اضغطي تسجيل الجهاز. انسخي كود الطفل لولي الأمر — سيُرسل رمز الربط لبريدها الذي تحققت منه.</string>
-    <string name="btn_register_device">تسجيل الجهاز</string>
+    <string name="register_subtitle">أدخلي بريد ولي الأمر (نفس Gmail). كود CHILD يُرسل بالبريد — لا حاجة للنسخ من الشاشة.</string>
+    <string name="register_hint_parent_email">بريد ولي الأمر — نفس Gmail</string>
+    <string name="btn_register_device">تسجيل الجهاز وإرسال كود CHILD بالبريد</string>
     <string name="register_wait_parent_link">انتظري ربط ولي الأمر…</string>
-    <string name="register_wait_message">سيُرسل رمز الربط لبريد ولي الأمر — بعد الربط تبدأ اللعبة تلقائياً.</string>
+    <string name="register_wait_message">تحققي من Gmail — وصل كود CHILD. بعد ربط الأم تبدأ اللعبة تلقائياً.</string>
+    <string name="register_email_sent">تم إرسال كود CHILD إلى %1$s — افتحي Gmail</string>
+    <string name="register_email_required">أدخلي بريد ولي الأمر (Gmail)</string>
+    <string name="register_email_invalid">بريد غير صحيح</string>
+    <string name="register_email_failed">تعذّر إرسال كود CHILD بالبريد — تحققي من السيرفر</string>
+    <string name="guardian_message_title">رسالة من ولي الأمر</string>
+    <string name="guardian_message_channel">رسائل ولي الأمر</string>
     <string name="register_child_code_for_parent">كود الطفل (أرسليه لولي الأمر):\n%1$s</string>
     <string name="register_child_code_label">كود الطفل — أرسليه لولي الأمر:</string>
     <string name="btn_copy_child_code">نسخ الكود</string>

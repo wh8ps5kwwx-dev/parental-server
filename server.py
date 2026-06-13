@@ -20,6 +20,7 @@ import sqlite3
 import os
 import random
 import smtplib
+import threading
 import traceback
 import urllib.error
 import urllib.request
@@ -31,6 +32,8 @@ logger = logging.getLogger("myrana.link")
 
 # صلاحية رموز البريد (دقائق)
 OTP_EMAIL_EXPIRY_MINUTES = int(os.environ.get("OTP_EMAIL_EXPIRY_MINUTES", "60"))
+# صلاحية رمز ربط الجهاز (دقائق) — 0 = بدون انتهاء
+DEVICE_OTP_EXPIRY_MINUTES = int(os.environ.get("DEVICE_OTP_EXPIRY_MINUTES", "60"))
 
 # إنشاء تطبيق Flask
 app = Flask(__name__)
@@ -71,6 +74,18 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 RESEND_FROM = os.environ.get(
     "RESEND_FROM", "MYRana <onboarding@resend.dev>"
 ).strip()
+# 0 = إنتاج: لا يُعاد الرمز في JSON — يجب إرسال البريد فعلاً
+ALLOW_DEV_FALLBACK = os.environ.get("ALLOW_DEV_FALLBACK", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+# 0 = مشروع التخرج: رمزان من Gmail (تحقق بريد + رمز ربط) — الافتراضي
+SIMPLE_FAMILY_LINK = os.environ.get("SIMPLE_FAMILY_LINK", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 
 # دالة ترجع الوقت الحالي
@@ -241,6 +256,15 @@ def db_child_code(raw) -> str:
     return clean_child_code(raw)
 
 
+def child_code_db_variants(raw) -> list[str]:
+    """كل صيغ child_code المحتملة في SQLite (نظيفة + CHILD- للبيانات القديمة)."""
+    suffix = db_child_code(raw)
+    if not suffix:
+        return []
+    canonical = normalize_child_code(suffix)
+    return list(dict.fromkeys([suffix, canonical]))
+
+
 def _extract_parent_email(data: dict) -> str:
     return (
         data.get("guardian_email")
@@ -266,6 +290,11 @@ def _extract_child_code(data: dict) -> str:
     """FIX: normalize child_code to support codes with or without CHILD- prefix"""
     raw = data.get("child_code") or data.get("childCode") or ""
     return db_child_code(raw)
+
+
+def _child_code_from_request_args() -> str:
+    """مفتاح DB من query string — CHILD-1DF71288 → 1DF71288"""
+    return db_child_code(request.args.get("child_code", ""))
 
 
 def _safe_age(data: dict, default: int = 10) -> int:
@@ -294,6 +323,12 @@ def _guardian_verified(cur, email: str) -> bool:
         (email,),
     )
     return cur.fetchone() is not None
+
+
+def _wants_simple_link(data: dict) -> bool:
+    """ربط مبسّط — فقط إذا simple_link=1 صراحة (معطّل افتراضياً لمشروع التخرج)."""
+    flag = data.get("simple_link")
+    return flag in (True, 1, "1", "true", "yes")
 
 
 def _log_link_context(step: str, parent_email: str, child_code: str, verify_code: str, stored_code: str | None, reason: str = ""):
@@ -348,7 +383,9 @@ def _link_child_transaction(cur, conn, data: dict):
         _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing child_code")
         return _fail("child_code مطلوب", error_code="missing_child_code")
 
-    if not verify_code:
+    simple_link = _wants_simple_link(data)
+
+    if not verify_code and not simple_link:
         _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing verification_code")
         return _fail("verification_code مطلوب", error_code="missing_verification_code")
 
@@ -411,20 +448,32 @@ def _link_child_transaction(cur, conn, data: dict):
             error_code="already_linked_other_parent",
         )
 
-    if not stored_code or stored_code != verify_code:
-        _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "wrong verification_code")
-        logger.warning(
-            "[link-child] step=otp_verify FAIL expected=%s got=%s",
-            f"{stored_code[:2]}****" if stored_code else "(none)",
-            f"{verify_code[:2]}****" if verify_code else "(empty)",
-        )
-        return _fail(
-            "Invalid or expired verification code",
-            400,
-            error_code="invalid_verification_code",
-        )
+    device_created = device_row["created_at"] if "created_at" in device_row.keys() else None
+    if simple_link:
+        logger.info("[link-child] step=simple_link OK parent_email=%s child_code=%s", parent_email, child_code)
+    else:
+        if DEVICE_OTP_EXPIRY_MINUTES > 0 and _otp_expired(device_created, DEVICE_OTP_EXPIRY_MINUTES):
+            _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "expired verification_code")
+            return _fail(
+                "Invalid or expired verification code",
+                400,
+                error_code="expired_code",
+            )
 
-    logger.info("[link-child] step=otp_verify OK")
+        if not stored_code or stored_code != verify_code:
+            _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "wrong verification_code")
+            logger.warning(
+                "[link-child] step=otp_verify FAIL expected=%s got=%s",
+                f"{stored_code[:2]}****" if stored_code else "(none)",
+                f"{verify_code[:2]}****" if verify_code else "(empty)",
+            )
+            return _fail(
+                "Invalid or expired verification code",
+                400,
+                error_code="invalid_verification_code",
+            )
+
+        logger.info("[link-child] step=otp_verify OK")
 
     child_email = (device_row["child_email"] or child_email or parent_email).strip()
     device = (device_row["device_name"] or device or "Android").strip()
@@ -505,11 +554,23 @@ def verification_payload(code, email_sent, success_message, dev_message):
         "message": success_message if email_sent else dev_message,
         "email_sent": email_sent,
     }
-    if not email_sent:
+    if not email_sent and allow_dev_fallback():
         payload["verification_code"] = code
         payload["dev_fallback"] = True
         print("EMAIL DEV FALLBACK — code for", code[:2] + "****")
     return payload
+
+
+def allow_dev_fallback() -> bool:
+    return ALLOW_DEV_FALLBACK
+
+
+def email_delivery_failed_response(dev_message: str):
+    """فشل إرسال البريد في وضع الإنتاج — لا رمز في الاستجابة."""
+    detail = dev_message
+    if SMTP_LAST_ERROR:
+        detail = f"{dev_message} ({SMTP_LAST_ERROR})"
+    return _json_error(detail, 503, error_code="email_not_sent")
 
 
 def send_email_resend(to_email, subject, body):
@@ -754,8 +815,48 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guardian_email TEXT,
+        child_code TEXT,
+        action TEXT,
+        detail TEXT,
+        created_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS guardian_settings (
+        guardian_email TEXT PRIMARY KEY,
+        settings_json TEXT NOT NULL,
+        updated_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS email_summary_sent (
+        guardian_email TEXT NOT NULL,
+        child_code TEXT NOT NULL,
+        period TEXT NOT NULL,
+        sent_key TEXT NOT NULL,
+        sent_at TEXT,
+        PRIMARY KEY (guardian_email, child_code, period, sent_key)
+    )
+    """)
+
+    for col, typedef in (
+        ("permissions_json", "TEXT"),
+        ("permissions_ok", "INTEGER DEFAULT 0"),
+    ):
+        try:
+            cur.execute(f"ALTER TABLE child_status ADD COLUMN {col} {typedef}")
+        except sqlite3.OperationalError:
+            pass
+
     conn.commit()
     conn.close()
+    _run_startup_cleanup()
 
 
 def _norm_host(host: str) -> str:
@@ -981,7 +1082,15 @@ def home():
         "smtp_last_error": SMTP_LAST_ERROR or None,
         "smtp_host": SMTP_HOST,
         "smtp_port": SMTP_PORT,
+        "email_real_linking": email_configured() and not allow_dev_fallback(),
+        "dev_fallback_enabled": allow_dev_fallback(),
+        "simple_family_link": SIMPLE_FAMILY_LINK,
     })
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok", "message": "Parental Control Server is running"})
 
 
 # ==============================
@@ -1061,40 +1170,50 @@ def api_apply_default_blocklist():
 # إرسال رمز تحقق لبريد ولي الأمر
 @app.route("/send-email-code", methods=["POST"])
 def send_email_code():
-    data = request.get_json() or {}
-    email = data.get("email", "").strip()
+    try:
+        data = request.get_json(silent=True) or {}
+        email = _extract_parent_email(data)
 
-    if not email:
-        return _json_error("parent_email is required", 400, error_code="missing_parent_email")
+        if not email:
+            return _json_error("parent_email is required", 400, error_code="missing_parent_email")
 
-    code = str(random.randint(100000, 999999))
+        code = str(random.randint(100000, 999999))
 
-    conn = db()
-    cur = conn.cursor()
+        conn = db()
+        cur = conn.cursor()
 
-    cur.execute("""
-    INSERT INTO email_codes (email, code, verified, created_at)
-    VALUES (?, ?, ?, ?)
-    """, (email, code, 0, now()))
+        cur.execute("""
+        INSERT INTO email_codes (email, code, verified, created_at)
+        VALUES (?, ?, ?, ?)
+        """, (email, code, 0, now()))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    email_sent = send_email(
-        email,
-        "MYRana — رمز التحقق من البريد",
-        f"رمز التحقق لبريدك ({email}):\n\n{code}\n\n"
-        f"أدخليه في تطبيق الأم لتأكيد أن البريد ملكك.",
-    )
+        email_sent = send_email(
+            email,
+            "MYRana — رمز التحقق من البريد",
+            f"رمز التحقق لبريدك ({email}):\n\n{code}\n\n"
+            f"أدخليه في تطبيق الأم لتأكيد أن البريد ملكك.",
+        )
 
-    payload = verification_payload(
-        code,
-        email_sent,
-        f"تم إرسال رمز التحقق إلى {email}",
-        "لم يُرسل البريد — الرمز للتطوير فقط",
-    )
-    payload["email_verify_code"] = code
-    return jsonify(payload)
+        if not email_sent and not allow_dev_fallback():
+            return email_delivery_failed_response(
+                "تعذّر إرسال رمز التحقق — اضبطي RESEND_API_KEY أو SMTP على السيرفر"
+            )
+
+        payload = verification_payload(
+            code,
+            email_sent,
+            f"تم إرسال رمز التحقق إلى {email}",
+            "لم يُرسل البريد — الرمز للتطوير فقط",
+        )
+        if not email_sent and allow_dev_fallback():
+            payload["email_verify_code"] = code
+        return jsonify(payload)
+    except Exception as exc:
+        logger.exception("send-email-code failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إرسال رمز البريد", 500, error_code="server_error")
 
 
 # التحقق من رمز البريد
@@ -1140,7 +1259,7 @@ def verify_email_code():
         return _json_error("خطأ داخلي أثناء التحقق من البريد", 500, error_code="server_error")
 
 
-# تسجيل جهاز الطفل — بدون بريد (التحقق مرة واحدة عند الربط من تطبيق الأم)
+# تسجيل جهاز الطفل — كود CHILD يُرسل لبريد ولي الأمر
 @app.route("/register-child-device", methods=["POST"])
 def register_child_device():
     try:
@@ -1148,11 +1267,20 @@ def register_child_device():
         raw_child = str(data.get("child_code") or data.get("childCode") or "").strip()
         suffix = clean_child_code(raw_child)
         child_email = (data.get("child_email") or "").strip()
+        guardian_email = _extract_parent_email(data)
+        notify_email = child_email or guardian_email
         device_name = (data.get("device_name") or data.get("device") or "").strip()
         android_version = (data.get("android_version") or "").strip()
 
         if not suffix or not device_name:
             return _json_error("child_code و device_name مطلوبان", 400)
+
+        if not notify_email:
+            return _json_error(
+                "بريد ولي الأمر مطلوب — كود CHILD يُرسل إلى Gmail",
+                400,
+                error_code="missing_parent_email",
+            )
 
         conn = db()
         cur = conn.cursor()
@@ -1170,7 +1298,7 @@ def register_child_device():
                 SET child_email = ?, device_name = ?, android_version = ?
                 WHERE child_code = ?
                 """,
-                (child_email, device_name, android_version, existing["child_code"]),
+                (notify_email, device_name, android_version, existing["child_code"]),
             )
             stored = existing["child_code"]
         else:
@@ -1182,17 +1310,43 @@ def register_child_device():
                 (child_code, child_email, device_name, android_version, device_verify_code, linked, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (suffix, child_email, device_name, android_version, device_code, 0, now()),
+                (suffix, notify_email, device_name, android_version, device_code, 0, now()),
             )
             stored = suffix
 
         conn.commit()
         conn.close()
-        return _json_success(
-            "Child device registered — waiting for parent link",
-            child_code=normalize_child_code(stored),
-            child_code_clean=clean_child_code(stored),
+
+        display_code = normalize_child_code(stored)
+        email_sent = send_email(
+            notify_email,
+            "MYRana — كود جهاز الطفل (CHILD)",
+            f"كود جهاز الطفل:\n\n{display_code}\n\n"
+            f"الجهاز: {device_name}\n\n"
+            f"أدخلي هذا الكود في تطبيق الأم.\n"
+            f"بعدها اطلبي «رمز الربط» — ستصلك رسالة Gmail ثانية (6 أرقام).",
         )
+
+        if not email_sent and not allow_dev_fallback():
+            return email_delivery_failed_response(
+                "تعذّر إرسال كود CHILD بالبريد — اضبطي RESEND_API_KEY على السيرفر"
+            )
+
+        payload = {
+            "success": True,
+            "status": "success",
+            "message": (
+                f"تم إرسال كود CHILD إلى {notify_email}"
+                if email_sent
+                else "تم التسجيل — البريد غير مُرسَل"
+            ),
+            "child_code": display_code,
+            "child_code_clean": clean_child_code(stored),
+            "email_sent": email_sent,
+        }
+        if not email_sent and allow_dev_fallback():
+            payload["dev_fallback"] = True
+        return jsonify(payload)
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)
         return _json_error("خطأ داخلي أثناء تسجيل الطفل", 500, error_code="server_error")
@@ -1233,17 +1387,35 @@ def send_link_code():
             conn.close()
             return _json_error("الجهاز مربوط مسبقاً", 400, error_code="already_linked")
 
-        # رمز جديد في كل إرسال — يطابق ما في Gmail وما في قاعدة البيانات
-        device_code = str(random.randint(100000, 999999))
-        cur.execute(
-            """
-            UPDATE child_devices
-            SET device_verify_code = ?, device_verified = 0
-            WHERE child_code = ?
-            """,
-            (device_code, child_code),
+        force_resend = bool(data.get("force_resend"))
+        existing_code = str(row["device_verify_code"] or "").strip()
+        device_created = row["created_at"] if "created_at" in row.keys() else None
+        otp_still_valid = (
+            existing_code
+            and not force_resend
+            and (
+                DEVICE_OTP_EXPIRY_MINUTES <= 0
+                or not _otp_expired(device_created, DEVICE_OTP_EXPIRY_MINUTES)
+            )
         )
-        conn.commit()
+        if otp_still_valid:
+            device_code = existing_code
+            logger.info(
+                "[send-link-code] reusing existing OTP child_code=%s force_resend=%s",
+                child_code,
+                force_resend,
+            )
+        else:
+            device_code = str(random.randint(100000, 999999))
+            cur.execute(
+                """
+                UPDATE child_devices
+                SET device_verify_code = ?, device_verified = 0, created_at = ?
+                WHERE child_code = ?
+                """,
+                (device_code, now(), child_code),
+            )
+            conn.commit()
         conn.close()
 
         _log_link_context("send-link-code", parent_email, child_code, device_code, device_code, "sent")
@@ -1251,19 +1423,24 @@ def send_link_code():
         email_sent = send_email(
             parent_email,
             "MYRana — رمز ربط الطفل",
-            f"رمز ربط الطفل ({child_code}):\n\n{device_code}\n\n"
+            f"رمز ربط الطفل ({normalize_child_code(child_code)}):\n\n{device_code}\n\n"
             f"أدخليه في تطبيق الأم لإتمام الربط.\n"
             f"(هذا ليس رمز تحقق البريد الأول)",
         )
 
+        if not email_sent and not allow_dev_fallback():
+            return email_delivery_failed_response(
+                "تعذّر إرسال رمز الربط — اضبطي RESEND_API_KEY أو SMTP على السيرفر"
+            )
+
         payload = verification_payload(
             device_code,
             email_sent,
-            "تم إرسال رمز الربط إلى بريدك",
+            "تم إرسال رمز الربط إلى بريدك — أدخليه في تطبيق الأم",
             "SMTP غير مضبوط — الرمز للتطوير فقط",
         )
-        # تطبيق الأم يستخدمه للربط التلقائي (بعد تحقق البريد + API_KEY)
-        payload["link_code"] = device_code
+        if not email_sent and allow_dev_fallback():
+            payload["link_code"] = device_code
         return jsonify(payload)
     except Exception as exc:
         logger.exception("send-link-code failed: %s", exc)
@@ -1392,41 +1569,44 @@ def add_child():
 # إرسال أمر من تطبيق الأم إلى جهاز الطفل
 @app.route("/send-command", methods=["POST"])
 def send_command():
-    data = request.get_json() or {}
+    try:
+        data = request.get_json(silent=True) or {}
 
-    action = (data.get("action") or "").strip()
-    value = (data.get("value") or "").strip()
-    if action in ("block_app", "freeze_app") and value:
-        value = _norm_pkg(value)
-        data["value"] = value
+        action = (data.get("action") or "").strip()
+        value = (data.get("value") or "").strip()
+        if action in ("block_app", "freeze_app") and value:
+            value = _norm_pkg(value)
+            data["value"] = value
 
-    conn = db()
-    cur = conn.cursor()
+        child_code = db_child_code(data.get("child_code", ""))
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
 
-    cur.execute("""
-    INSERT INTO commands (action, value, child_code, guardian_email, executed, time)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (
-        action,
-        value,
-        data.get("child_code", ""),
-        data.get("guardian_email", ""),
-        0,
-        now()
-    ))
+        conn = db()
+        cur = conn.cursor()
 
-    cur.execute("""
-    INSERT INTO reports (event, value, child_code, time)
-    VALUES (?, ?, ?, ?)
-    """, (
-        "command_sent",
-        f"{action}: {value}",
-        data.get("child_code", ""),
-        now()
-    ))
+        cur.execute("""
+        INSERT INTO commands (action, value, child_code, guardian_email, executed, time)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            action,
+            value,
+            child_code,
+            data.get("guardian_email", ""),
+            0,
+            now()
+        ))
 
-    child_code = (data.get("child_code") or "").strip()
-    if child_code:
+        cur.execute("""
+        INSERT INTO reports (event, value, child_code, time)
+        VALUES (?, ?, ?, ?)
+        """, (
+            "command_sent",
+            f"{action}: {value}",
+            child_code,
+            now()
+        ))
+
         if action == "block_site" and value:
             policy_add_host(conn, child_code, value)
         elif action in ("block_app", "freeze_app") and value:
@@ -1436,82 +1616,123 @@ def send_command():
         elif action == "apply_default_blocklist":
             apply_default_blocklist(conn, child_code, merge=True)
 
-    conn.commit()
-    conn.close()
+        _audit_log(
+            cur,
+            data.get("guardian_email", ""),
+            child_code,
+            f"command_{action}",
+            value or action,
+        )
 
-    return jsonify({"status": "success", "message": "Command sent"})
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "success", "message": "Command sent"})
+    except Exception as exc:
+        logger.exception("send-command failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إرسال الأمر", 500, error_code="server_error")
 
 
 # جهاز الطفل يسحب آخر أمر غير منفذ
 @app.route("/get-command", methods=["GET"])
 def get_command():
-    child_code = request.args.get("child_code", "")
+    try:
+        child_code = _child_code_from_request_args()
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
 
-    conn = db()
-    cur = conn.cursor()
+        conn = db()
+        cur = conn.cursor()
 
-    cur.execute("""
-    SELECT * FROM commands
-    WHERE child_code = ? AND executed = 0
-    ORDER BY id DESC
-    LIMIT 1
-    """, (child_code,))
+        cur.execute("""
+        SELECT * FROM commands
+        WHERE child_code = ? AND executed = 0
+        ORDER BY id DESC
+        LIMIT 1
+        """, (child_code,))
 
-    cmd = cur.fetchone()
+        cmd = cur.fetchone()
 
-    if not cmd:
+        if not cmd:
+            conn.close()
+            return jsonify({
+                "action": "none",
+                "value": "",
+                "child_code": normalize_child_code(child_code),
+                "child_code_clean": child_code,
+            })
+
+        cur.execute("UPDATE commands SET executed = 1 WHERE id = ?", (cmd["id"],))
+        conn.commit()
         conn.close()
-        return jsonify({"action": "none", "value": "", "child_code": child_code})
 
-    # بعد إرسال الأمر للطفل نعتبره منفذًا حتى لا يتكرر
-    cur.execute("UPDATE commands SET executed = 1 WHERE id = ?", (cmd["id"],))
-    conn.commit()
-    conn.close()
-
-    return jsonify(dict(cmd))
+        result = dict(cmd)
+        result["child_code"] = normalize_child_code(child_code)
+        result["child_code_clean"] = child_code
+        return jsonify(result)
+    except Exception as exc:
+        logger.exception("get-command failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء جلب الأمر", 500, error_code="server_error")
 
 
 # إضافة جدول تحكم زمني
 @app.route("/add-schedule", methods=["POST"])
 def add_schedule():
-    data = request.get_json() or {}
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = db_child_code(data.get("child_code", ""))
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
 
-    conn = db()
-    cur = conn.cursor()
+        conn = db()
+        cur = conn.cursor()
 
-    cur.execute("""
-    INSERT INTO schedules (child_code, action, value, start_time, end_time, active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        data.get("child_code", ""),
-        data.get("action", ""),
-        data.get("value", ""),
-        data.get("start_time", ""),
-        data.get("end_time", ""),
-        1,
-        now()
-    ))
+        cur.execute("""
+        INSERT INTO schedules (child_code, action, value, start_time, end_time, active, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            child_code,
+            data.get("action", ""),
+            data.get("value", ""),
+            data.get("start_time", ""),
+            data.get("end_time", ""),
+            1,
+            now()
+        ))
 
-    cur.execute("""
-    INSERT INTO reports (event, value, child_code, time)
-    VALUES (?, ?, ?, ?)
-    """, (
-        "schedule_added",
-        f"{data.get('action', '')}: {data.get('value', '')}",
-        data.get("child_code", ""),
-        now()
-    ))
+        cur.execute("""
+        INSERT INTO reports (event, value, child_code, time)
+        VALUES (?, ?, ?, ?)
+        """, (
+            "schedule_added",
+            f"{data.get('action', '')}: {data.get('value', '')}",
+            child_code,
+            now()
+        ))
 
-    conn.commit()
-    conn.close()
+        _audit_log(
+            cur,
+            data.get("guardian_email", ""),
+            child_code,
+            "schedule_added",
+            f"{data.get('action', '')} {data.get('value', '')} {data.get('start_time', '')}-{data.get('end_time', '')}",
+        )
 
-    return jsonify({"status": "success", "message": "Schedule added"})
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "success", "message": "Schedule added"})
+    except Exception as exc:
+        logger.exception("add-schedule failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إضافة الجدول", 500, error_code="server_error")
 
 
 # جداول زمنية نشطة الآن (حظر/تجميد مؤقت)
 @app.route("/active-schedules", methods=["GET"])
 def active_schedules():
-    child_code = (request.args.get("child_code") or "").strip()
+    child_code = _child_code_from_request_args()
+    if not child_code:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
     now_hm = _time_hm()
     conn = db()
     cur = conn.cursor()
@@ -1605,7 +1826,9 @@ def add_report():
 # عرض التقارير للأم
 @app.route("/reports", methods=["GET"])
 def reports():
-    child_code = request.args.get("child_code", "")
+    child_code = _child_code_from_request_args()
+    if not child_code:
+        return _json_error("child_code required", 400, error_code="missing_child_code")
 
     conn = db()
     cur = conn.cursor()
@@ -1626,50 +1849,65 @@ def reports():
 # إضافة تنبيه من جهاز الطفل
 @app.route("/add-alert", methods=["POST"])
 def add_alert():
-    data = request.get_json() or {}
-    child_code = normalize_child_code(data.get("child_code", ""))
-    message = (data.get("message") or "").strip()
-    if not child_code or not message:
-        return jsonify({"status": "error", "message": "child_code and message required"}), 400
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = db_child_code(data.get("child_code", ""))
+        message = (data.get("message") or "").strip()
+        if not child_code or not message:
+            return _json_error("child_code and message required", 400, error_code="missing_child_code")
 
-    conn = db()
-    cur = conn.cursor()
+        conn = db()
+        cur = conn.cursor()
 
-    cur.execute("""
-    INSERT INTO alerts (message, child_code, time)
-    VALUES (?, ?, ?)
-    """, (
-        message,
-        child_code,
-        now()
-    ))
+        cur.execute("""
+        INSERT INTO alerts (message, child_code, time)
+        VALUES (?, ?, ?)
+        """, (
+            message,
+            child_code,
+            now()
+        ))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    return jsonify({"status": "success"})
+        return jsonify({"success": True, "status": "success"})
+    except Exception as exc:
+        logger.exception("add-alert failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إضافة التنبيه", 500, error_code="server_error")
 
 
 # رسالة من ولي الأمر — تُحفظ في التنبيهات ليراها في لوحة الأم
 @app.route("/send-guardian-message", methods=["POST"])
 def send_guardian_message():
-    data = request.get_json() or {}
-    child_code = normalize_child_code(data.get("child_code", ""))
-    message = (data.get("message") or "").strip()
-    role = (data.get("guardian_role") or "ولي الأمر").strip()
-    if not child_code or not message:
-        return jsonify({"status": "error", "message": "child_code and message required"}), 400
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = db_child_code(data.get("child_code", ""))
+        message = (data.get("message") or "").strip()
+        role = (data.get("guardian_role") or "ولي الأمر").strip()
+        if not child_code or not message:
+            return _json_error("child_code and message required", 400, error_code="missing_child_code")
 
-    full_message = f"[{role}] {message}"
-    conn = db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO alerts (message, child_code, time) VALUES (?, ?, ?)",
-        (full_message, child_code, now()),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "success", "message": "تم إرسال الرسالة"})
+        full_message = f"[{role}] {message}"
+        conn = db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO alerts (message, child_code, time) VALUES (?, ?, ?)",
+            (full_message, child_code, now()),
+        )
+        cur.execute(
+            """
+            INSERT INTO commands (action, value, child_code, guardian_email, executed, time)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            ("guardian_message", full_message, child_code, "", 0, now()),
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success", "message": "تم إرسال الرسالة"})
+    except Exception as exc:
+        logger.exception("send-guardian-message failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إرسال الرسالة", 500, error_code="server_error")
 
 
 # عرض التنبيهات للأم
@@ -1689,7 +1927,8 @@ def list_children():
     cur.execute(
         """
         SELECT c.id AS child_id, c.name, c.age, c.child_code, c.device, c.android_version,
-               c.linked_at, cs.last_seen_ms, cs.device_name AS status_device
+               c.linked_at, cs.last_seen_ms, cs.device_name AS status_device,
+               cs.permissions_json, cs.permissions_ok
         FROM children c
         LEFT JOIN child_status cs ON cs.child_code = c.child_code
         WHERE c.guardian_email = ?
@@ -1703,6 +1942,12 @@ def list_children():
         last_ms = int(r["last_seen_ms"] or 0)
         online = last_ms > 0 and (now_ms - last_ms) < 180_000
         code_db = r["child_code"]
+        perms = {}
+        if r["permissions_json"]:
+            try:
+                perms = json.loads(r["permissions_json"] or "{}")
+            except Exception:
+                perms = {}
         rows.append({
             "child_id": int(r["child_id"]),
             "name": r["name"] or "طفل",
@@ -1715,6 +1960,8 @@ def list_children():
             "online": online,
             "last_seen_ms": last_ms,
             "device_name": r["status_device"] or r["device"],
+            "permissions_ok": bool(r["permissions_ok"]),
+            "permissions": perms,
         })
     conn.close()
     return _json_success(
@@ -1728,20 +1975,23 @@ def list_children():
 
 @app.route("/alerts", methods=["GET"])
 def alerts():
-    suffix = db_child_code(request.args.get("child_code", ""))
-    if not suffix:
+    variants = child_code_db_variants(request.args.get("child_code", ""))
+    if not variants:
         return _json_error("child_code required", 400, error_code="missing_child_code")
-    child_code = suffix
 
     conn = db()
     cur = conn.cursor()
 
-    cur.execute("""
-    SELECT * FROM alerts
-    WHERE child_code = ?
-    ORDER BY id DESC
-    LIMIT 50
-    """, (child_code,))
+    placeholders = ",".join("?" * len(variants))
+    cur.execute(
+        f"""
+        SELECT * FROM alerts
+        WHERE child_code IN ({placeholders})
+        ORDER BY id DESC
+        LIMIT 50
+        """,
+        variants,
+    )
 
     rows = cur.fetchall()
     conn.close()
@@ -1763,6 +2013,306 @@ DEFAULT_SCREEN_TIME_POLICY = {
     "vacation_mode": False,
     "vacation_same_rules": True,
 }
+
+DEFAULT_GUARDIAN_SETTINGS = {
+    "retention_days": 30,
+    "email_daily_enabled": False,
+    "email_weekly_enabled": False,
+    "alert_sound_enabled": True,
+}
+
+
+def _audit_log(cur, guardian_email: str, child_code: str, action: str, detail: str = ""):
+    """سجل تغييرات ولي الأمر."""
+    try:
+        cur.execute(
+            """
+            INSERT INTO audit_log (guardian_email, child_code, action, detail, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                (guardian_email or "").strip(),
+                db_child_code(child_code),
+                (action or "").strip(),
+                (detail or "").strip()[:500],
+                now(),
+            ),
+        )
+        logger.info("[audit] %s %s %s %s", guardian_email, child_code, action, detail[:80])
+    except Exception as exc:
+        logger.warning("audit_log failed: %s", exc)
+
+
+def _guardian_settings_get(conn, guardian_email: str) -> dict:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT settings_json FROM guardian_settings WHERE guardian_email = ? LIMIT 1",
+        (guardian_email.strip(),),
+    )
+    row = cur.fetchone()
+    if not row:
+        return dict(DEFAULT_GUARDIAN_SETTINGS)
+    try:
+        data = json.loads(row["settings_json"] or "{}")
+        merged = dict(DEFAULT_GUARDIAN_SETTINGS)
+        merged.update(data)
+        return merged
+    except Exception:
+        return dict(DEFAULT_GUARDIAN_SETTINGS)
+
+
+def _guardian_settings_save(conn, guardian_email: str, settings: dict) -> None:
+    merged = dict(DEFAULT_GUARDIAN_SETTINGS)
+    merged.update(settings or {})
+    retention = int(merged.get("retention_days") or 30)
+    merged["retention_days"] = max(7, min(90, retention))
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT OR REPLACE INTO guardian_settings (guardian_email, settings_json, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        (guardian_email.strip(), json.dumps(merged, ensure_ascii=False), now()),
+    )
+
+
+def _cleanup_old_data(conn, retention_days: int) -> dict:
+    """حذف بيانات أقدم من retention_days."""
+    days = max(7, min(90, int(retention_days or 30)))
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d 00:00:00")
+    cur = conn.cursor()
+    counts = {}
+    for table, col in (
+        ("alerts", "time"),
+        ("reports", "time"),
+        ("screen_time_events", "time"),
+        ("audit_log", "created_at"),
+    ):
+        cur.execute(f"DELETE FROM {table} WHERE {col} < ?", (cutoff,))
+        counts[table] = cur.rowcount
+    cutoff_day = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    cur.execute("DELETE FROM usage_daily WHERE day < ?", (cutoff_day,))
+    counts["usage_daily"] = cur.rowcount
+    cur.execute(
+        "DELETE FROM email_codes WHERE verified = 0 AND created_at < ?",
+        (cutoff,),
+    )
+    counts["email_codes"] = cur.rowcount
+    logger.info("[cleanup] retention=%sd deleted=%s", days, counts)
+    return {"retention_days": days, "deleted": counts}
+
+
+def _run_startup_cleanup():
+    """تنظيف تلقائي عند تشغيل السيرفر — لكل ولي أمر حسب إعداداته."""
+    try:
+        conn = db()
+        cur = conn.cursor()
+        cur.execute("SELECT guardian_email, settings_json FROM guardian_settings")
+        rows = cur.fetchall()
+        if not rows:
+            conn.close()
+            return
+        for row in rows:
+            try:
+                settings = json.loads(row["settings_json"] or "{}")
+            except Exception:
+                settings = dict(DEFAULT_GUARDIAN_SETTINGS)
+            _cleanup_old_data(conn, int(settings.get("retention_days") or 30))
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        logger.warning("startup cleanup skipped: %s", exc)
+
+
+def _email_summary_sent_key(period: str) -> str:
+    """مفتاح يومي أو أسبوعي لمنع إرسال مكرر."""
+    if period == "weekly":
+        return datetime.now().strftime("%Y-W%W")
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _email_summary_already_sent(cur, guardian_email: str, child_code: str, period: str) -> bool:
+    sent_key = _email_summary_sent_key(period)
+    cur.execute(
+        """
+        SELECT 1 FROM email_summary_sent
+        WHERE guardian_email = ? AND child_code = ? AND period = ? AND sent_key = ?
+        LIMIT 1
+        """,
+        (guardian_email.strip(), db_child_code(child_code), period, sent_key),
+    )
+    return cur.fetchone() is not None
+
+
+def _mark_email_summary_sent(cur, guardian_email: str, child_code: str, period: str) -> None:
+    sent_key = _email_summary_sent_key(period)
+    cur.execute(
+        """
+        INSERT OR REPLACE INTO email_summary_sent
+        (guardian_email, child_code, period, sent_key, sent_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            guardian_email.strip(),
+            db_child_code(child_code),
+            period,
+            sent_key,
+            now(),
+        ),
+    )
+
+
+def _send_guardian_summary_email(
+    conn,
+    guardian_email: str,
+    child_code: str,
+    period: str,
+) -> bool:
+    """إرسال ملخص يومي/أسبوعي لطفل واحد — يُستخدم من الزر والـ cron."""
+    days = 7 if period == "weekly" else 1
+    code = db_child_code(child_code)
+    body = _build_usage_summary(conn, code, days=days)
+    subject = f"MYRana — ملخص {'الأسبوع' if days > 1 else 'اليوم'}"
+    sent = send_email(guardian_email.strip(), subject, body)
+    cur = conn.cursor()
+    _audit_log(
+        cur,
+        guardian_email,
+        code,
+        f"email_summary_{period}",
+        "sent" if sent else "failed",
+    )
+    if sent:
+        _mark_email_summary_sent(cur, guardian_email, code, period)
+    return sent
+
+
+def _run_scheduled_email_summaries() -> dict:
+    """
+    إرسال الملخصات المجدولة حسب إعدادات ولي الأمر.
+    يُستدعى من /cron/email-summaries على Render أو خيط خلفي محلياً.
+    """
+    stats = {"daily_sent": 0, "weekly_sent": 0, "skipped": 0, "failed": 0}
+    if not email_configured():
+        stats["skipped"] = -1
+        logger.info("[email-cron] SMTP غير مضبوط — تخطي")
+        return stats
+
+    conn = db()
+    cur = conn.cursor()
+    cur.execute("SELECT guardian_email, settings_json FROM guardian_settings")
+    guardian_rows = cur.fetchall()
+
+    for grow in guardian_rows:
+        guardian_email = (grow["guardian_email"] or "").strip()
+        if not guardian_email:
+            continue
+        try:
+            settings = json.loads(grow["settings_json"] or "{}")
+        except Exception:
+            settings = dict(DEFAULT_GUARDIAN_SETTINGS)
+
+        daily_on = settings.get("email_daily_enabled") is True
+        weekly_on = settings.get("email_weekly_enabled") is True
+        if not daily_on and not weekly_on:
+            continue
+
+        cur.execute(
+            "SELECT child_code FROM children WHERE guardian_email = ?",
+            (guardian_email,),
+        )
+        children = [r["child_code"] for r in cur.fetchall() if r["child_code"]]
+
+        for child_code in children:
+            if daily_on and not _email_summary_already_sent(cur, guardian_email, child_code, "daily"):
+                if _send_guardian_summary_email(conn, guardian_email, child_code, "daily"):
+                    stats["daily_sent"] += 1
+                else:
+                    stats["failed"] += 1
+            else:
+                stats["skipped"] += 1
+
+            if weekly_on and not _email_summary_already_sent(cur, guardian_email, child_code, "weekly"):
+                if _send_guardian_summary_email(conn, guardian_email, child_code, "weekly"):
+                    stats["weekly_sent"] += 1
+                else:
+                    stats["failed"] += 1
+            else:
+                stats["skipped"] += 1
+
+    conn.commit()
+    conn.close()
+    logger.info("[email-cron] done stats=%s", stats)
+    return stats
+
+
+_email_cron_started = False
+
+
+def _start_email_cron_thread():
+    """خيط خلفي للتطوير المحلي — على Render استخدمي Cron Job يضرب /cron/email-summaries."""
+    global _email_cron_started
+    if _email_cron_started:
+        return
+    if os.environ.get("EMAIL_CRON_ENABLED", "0") != "1":
+        return
+    _email_cron_started = True
+    interval = max(300, int(os.environ.get("EMAIL_CRON_INTERVAL_SEC", "3600")))
+
+    def _loop():
+        while True:
+            try:
+                _run_scheduled_email_summaries()
+            except Exception as exc:
+                logger.warning("email cron loop error: %s", exc)
+            threading.Event().wait(interval)
+
+    t = threading.Thread(target=_loop, name="email-cron", daemon=True)
+    t.start()
+    logger.info("[email-cron] background thread every %ss", interval)
+
+
+def _build_usage_summary(conn, child_code: str, days: int = 1) -> str:
+    since = (datetime.now() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT COALESCE(SUM(total_seconds), 0) AS total
+        FROM usage_daily WHERE child_code = ? AND day >= ?
+        """,
+        (child_code, since),
+    )
+    total_sec = int(cur.fetchone()["total"] or 0)
+    cur.execute(
+        """
+        SELECT COUNT(*) AS cnt FROM alerts
+        WHERE child_code = ? AND time >= ?
+        """,
+        (child_code, f"{since} 00:00:00"),
+    )
+    alerts = int(cur.fetchone()["cnt"] or 0)
+    cur.execute(
+        """
+        SELECT package_name, SUM(total_seconds) AS total_seconds
+        FROM usage_daily WHERE child_code = ? AND day >= ?
+        GROUP BY package_name ORDER BY total_seconds DESC LIMIT 5
+        """,
+        (child_code, since),
+    )
+    top = cur.fetchall()
+    lines = [
+        f"MYRana — ملخص {'اليوم' if days <= 1 else f'{days} أيام'}",
+        f"كود الطفل: {normalize_child_code(child_code)}",
+        f"وقت الاستخدام: {total_sec // 60} دقيقة",
+        f"التنبيهات: {alerts}",
+        "",
+        "أكثر التطبيقات:",
+    ]
+    for i, r in enumerate(top, 1):
+        lines.append(f"  {i}. {r['package_name']} — {int(r['total_seconds'] or 0) // 60} د")
+    if not top:
+        lines.append("  (لا بيانات بعد)")
+    return "\n".join(lines)
 
 
 def _screen_time_policy_get(conn, child_code: str) -> dict:
@@ -1812,85 +2362,116 @@ def screen_time_policy():
             "policy": policy,
         })
 
-    data = request.get_json() or {}
-    suffix = db_child_code(data.get("child_code") or data.get("childCode") or "")
-    if not suffix:
-        return _json_error("child_code required", 400, error_code="missing_child_code")
-    child_code = suffix
-    policy = data.get("policy") or {}
-    conn = db()
-    _screen_time_policy_save(conn, child_code, policy)
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "success", "message": "Screen time policy saved"})
+    try:
+        data = request.get_json(silent=True) or {}
+        suffix = db_child_code(data.get("child_code") or data.get("childCode") or "")
+        if not suffix:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+        child_code = suffix
+        policy = data.get("policy") or {}
+        parent_email = _extract_parent_email(data)
+        conn = db()
+        cur = conn.cursor()
+        _screen_time_policy_save(conn, child_code, policy)
+        _audit_log(
+            cur,
+            parent_email,
+            child_code,
+            "screen_time_policy_saved",
+            f"warn={policy.get('warn_minutes')} block={policy.get('block_minutes')}",
+        )
+        if parent_email:
+            settings = _guardian_settings_get(conn, parent_email)
+            _cleanup_old_data(conn, int(settings.get("retention_days") or 30))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "status": "success", "message": "Screen time policy saved"})
+    except Exception as exc:
+        logger.exception("screen-time-policy POST failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء حفظ السياسة", 500, error_code="server_error")
 
 
 @app.route("/child-heartbeat", methods=["POST"])
 def child_heartbeat():
-    data = request.get_json() or {}
-    child_code = normalize_child_code(data.get("child_code", ""))
-    ts_ms = int(data.get("ts_ms") or 0)
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
-    conn = db()
-    cur = conn.cursor()
-    device_name = ""
-    cur.execute(
-        "SELECT device_name FROM child_devices WHERE child_code = ? LIMIT 1",
-        (child_code,),
-    )
-    row = cur.fetchone()
-    if row:
-        device_name = row["device_name"] or ""
-    cur.execute(
-        """
-        INSERT OR REPLACE INTO child_status (child_code, last_seen_ms, device_name)
-        VALUES (?, ?, ?)
-        """,
-        (child_code, ts_ms or int(datetime.now().timestamp() * 1000), device_name),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "success"})
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = db_child_code(data.get("child_code", ""))
+        ts_ms = int(data.get("ts_ms") or 0)
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+        conn = db()
+        cur = conn.cursor()
+        device_name = ""
+        device_row = find_child_device(cur, child_code, log_on_miss=False)
+        if device_row:
+            device_name = device_row["device_name"] or ""
+        perms = data.get("permissions") or {}
+        if not isinstance(perms, dict):
+            perms = {}
+        perms_ok = 1 if perms.get("mandatory_ok") else 0
+        perms_json = json.dumps(perms, ensure_ascii=False)
+        ts_val = ts_ms or int(datetime.now().timestamp() * 1000)
+        cur.execute(
+            """
+            INSERT INTO child_status (child_code, last_seen_ms, device_name, permissions_json, permissions_ok)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(child_code) DO UPDATE SET
+                last_seen_ms = excluded.last_seen_ms,
+                device_name = excluded.device_name,
+                permissions_json = excluded.permissions_json,
+                permissions_ok = excluded.permissions_ok
+            """,
+            (child_code, ts_val, device_name, perms_json, perms_ok),
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "status": "success"})
+    except Exception as exc:
+        logger.exception("child-heartbeat failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء نبضة الاتصال", 500, error_code="server_error")
 
 
 @app.route("/screen-time-events", methods=["POST"])
 def screen_time_events():
-    data = request.get_json() or {}
-    child_code = normalize_child_code(data.get("child_code", ""))
-    events = data.get("events") or []
-    if not child_code:
-        return jsonify({"status": "error", "message": "child_code required"}), 400
-    conn = db()
-    cur = conn.cursor()
-    for ev in events:
-        if not isinstance(ev, dict):
-            continue
-        cur.execute(
-            """
-            INSERT INTO screen_time_events
-            (child_code, event_type, package_name, message, seconds_used, created_at_ms, time)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                child_code,
-                ev.get("event_type", ""),
-                ev.get("package_name", ""),
-                ev.get("message", ""),
-                int(ev.get("seconds_used") or 0),
-                int(ev.get("created_at_ms") or 0),
-                now(),
-            ),
-        )
-        msg = (ev.get("message") or "").strip()
-        if msg:
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = db_child_code(data.get("child_code", ""))
+        events = data.get("events") or []
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+        conn = db()
+        cur = conn.cursor()
+        for ev in events:
+            if not isinstance(ev, dict):
+                continue
             cur.execute(
-                "INSERT INTO alerts (message, child_code, time) VALUES (?, ?, ?)",
-                (msg, child_code, now()),
+                """
+                INSERT INTO screen_time_events
+                (child_code, event_type, package_name, message, seconds_used, created_at_ms, time)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    child_code,
+                    ev.get("event_type", ""),
+                    ev.get("package_name", ""),
+                    ev.get("message", ""),
+                    int(ev.get("seconds_used") or 0),
+                    int(ev.get("created_at_ms") or 0),
+                    now(),
+                ),
             )
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "success"})
+            msg = (ev.get("message") or "").strip()
+            if msg:
+                cur.execute(
+                    "INSERT INTO alerts (message, child_code, time) VALUES (?, ?, ?)",
+                    (msg, child_code, now()),
+                )
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "status": "success"})
+    except Exception as exc:
+        logger.exception("screen-time-events failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء رفع أحداث وقت الشاشة", 500, error_code="server_error")
 
 
 @app.route("/child-dashboard", methods=["GET"])
@@ -1908,12 +2489,19 @@ def child_dashboard():
     child_name = child_row["name"] if child_row else child_code
 
     cur.execute(
-        "SELECT last_seen_ms, device_name FROM child_status WHERE child_code = ?",
+        "SELECT last_seen_ms, device_name, permissions_json, permissions_ok FROM child_status WHERE child_code = ?",
         (child_code,),
     )
     status_row = cur.fetchone()
     last_seen_ms = int(status_row["last_seen_ms"]) if status_row else 0
     device_name = status_row["device_name"] if status_row else ""
+    permissions_ok = bool(status_row["permissions_ok"]) if status_row else False
+    permissions = {}
+    if status_row and status_row["permissions_json"]:
+        try:
+            permissions = json.loads(status_row["permissions_json"] or "{}")
+        except Exception:
+            permissions = {}
 
     online = False
     if last_seen_ms > 0:
@@ -1938,6 +2526,48 @@ def child_dashboard():
     apps_opened = int(cur.fetchone()["cnt"] or 0)
 
     policy = _screen_time_policy_get(conn, child_code)
+    unlimited = {p.lower() for p in (policy.get("unlimited_packages") or [])}
+
+    cur.execute(
+        """
+        SELECT package_name, total_seconds
+        FROM usage_daily WHERE child_code = ? AND day = ?
+        ORDER BY total_seconds DESC LIMIT 8
+        """,
+        (child_code, today),
+    )
+    top_apps_today = [
+        {
+            "package_name": r["package_name"],
+            "total_seconds": int(r["total_seconds"] or 0),
+            "educational": str(r["package_name"] or "").lower() in unlimited,
+        }
+        for r in cur.fetchall()
+    ]
+
+    educational_seconds = 0
+    monitored_seconds = 0
+    for row in top_apps_today:
+        sec = int(row["total_seconds"] or 0)
+        if row["educational"]:
+            educational_seconds += sec
+        else:
+            monitored_seconds += sec
+
+    today_start = f"{today} 00:00:00"
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM alerts WHERE child_code = ? AND time >= ?",
+        (child_code, today_start),
+    )
+    alerts_today = int(cur.fetchone()["cnt"] or 0)
+
+    week_start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d 00:00:00")
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM alerts WHERE child_code = ? AND time >= ?",
+        (child_code, week_start),
+    )
+    alerts_week = int(cur.fetchone()["cnt"] or 0)
+
     conn.close()
 
     return jsonify({
@@ -1950,8 +2580,249 @@ def child_dashboard():
         "last_seen_ms": last_seen_ms,
         "today_seconds": today_seconds,
         "apps_opened": apps_opened,
+        "educational_seconds": educational_seconds,
+        "monitored_seconds": monitored_seconds,
+        "alerts_today": alerts_today,
+        "alerts_week": alerts_week,
+        "top_apps_today": top_apps_today,
+        "permissions_ok": permissions_ok,
+        "permissions": permissions,
         "policy": policy,
     })
+
+
+@app.route("/guardian-settings", methods=["GET", "POST"])
+def guardian_settings():
+    try:
+        if request.method == "GET":
+            parent_email = _extract_parent_email(dict(request.args))
+            if not parent_email:
+                return _json_error("parent_email is required", 400, error_code="missing_parent_email")
+            conn = db()
+            settings = _guardian_settings_get(conn, parent_email)
+            conn.close()
+            return _json_success("Guardian settings", parent_email=parent_email, settings=settings)
+
+        data = request.get_json(silent=True) or {}
+        parent_email = _extract_parent_email(data)
+        if not parent_email:
+            return _json_error("parent_email is required", 400, error_code="missing_parent_email")
+        settings = data.get("settings") or {}
+        conn = db()
+        cur = conn.cursor()
+        _guardian_settings_save(conn, parent_email, settings)
+        _audit_log(cur, parent_email, "", "guardian_settings_saved", json.dumps(settings, ensure_ascii=False)[:200])
+        deleted = _cleanup_old_data(conn, int(settings.get("retention_days") or 30))
+        conn.commit()
+        conn.close()
+        return _json_success(
+            "Settings saved",
+            parent_email=parent_email,
+            settings=_guardian_settings_get(db(), parent_email),
+            cleanup=deleted,
+        )
+    except Exception as exc:
+        logger.exception("guardian-settings failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء حفظ الإعدادات", 500, error_code="server_error")
+
+
+@app.route("/audit-log", methods=["GET"])
+def audit_log_list():
+    try:
+        parent_email = _extract_parent_email(dict(request.args))
+        if not parent_email:
+            return _json_error("parent_email is required", 400, error_code="missing_parent_email")
+        child_filter = db_child_code(request.args.get("child_code", ""))
+        conn = db()
+        cur = conn.cursor()
+        if child_filter:
+            cur.execute(
+                """
+                SELECT id, guardian_email, child_code, action, detail, created_at
+                FROM audit_log
+                WHERE guardian_email = ? AND (child_code = ? OR child_code = '' OR child_code IS NULL)
+                ORDER BY id DESC LIMIT 100
+                """,
+                (parent_email, child_filter),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, guardian_email, child_code, action, detail, created_at
+                FROM audit_log WHERE guardian_email = ?
+                ORDER BY id DESC LIMIT 100
+                """,
+                (parent_email,),
+            )
+        rows = []
+        for r in cur.fetchall():
+            rows.append({
+                "id": int(r["id"]),
+                "guardian_email": r["guardian_email"],
+                "child_code": normalize_child_code(r["child_code"] or ""),
+                "action": r["action"],
+                "detail": r["detail"],
+                "created_at": r["created_at"],
+            })
+        conn.close()
+        return _json_success("Audit log", entries=rows, count=len(rows))
+    except Exception as exc:
+        logger.exception("audit-log failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء جلب السجل", 500, error_code="server_error")
+
+
+@app.route("/send-email-summary", methods=["POST"])
+def send_email_summary():
+    """إرسال ملخص يومي أو أسبوعي لبريد ولي الأمر."""
+    try:
+        data = request.get_json(silent=True) or {}
+        parent_email = _extract_parent_email(data)
+        child_code = db_child_code(data.get("child_code") or "")
+        period = (data.get("period") or "daily").strip().lower()
+        if not parent_email:
+            return _json_error("parent_email is required", 400, error_code="missing_parent_email")
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+
+        conn = db()
+        sent = _send_guardian_summary_email(conn, parent_email, child_code, period)
+        conn.commit()
+        conn.close()
+        if not sent:
+            return _json_error(
+                "تعذّر إرسال البريد — تحققي من SMTP/Resend على Render",
+                500,
+                error_code="email_failed",
+            )
+        return _json_success(f"Summary email sent ({period})", email_sent=True, period=period)
+    except Exception as exc:
+        logger.exception("send-email-summary failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء إرسال الملخص", 500, error_code="server_error")
+
+
+@app.route("/weekly-chart", methods=["GET"])
+def weekly_chart():
+    """بيانات الرسوم البيانية — استخدام يومي + أفضل التطبيقات + التنبيهات."""
+    try:
+        child_code = db_child_code(request.args.get("child_code", ""))
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+
+        since_day = (datetime.now() - timedelta(days=6)).strftime("%Y-%m-%d")
+        conn = db()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT day, COALESCE(SUM(total_seconds), 0) AS total_seconds
+            FROM usage_daily
+            WHERE child_code = ? AND day >= ?
+            GROUP BY day
+            ORDER BY day ASC
+            """,
+            (child_code, since_day),
+        )
+        usage_by_day = [
+            {"day": r["day"], "total_seconds": int(r["total_seconds"] or 0)}
+            for r in cur.fetchall()
+        ]
+
+        cur.execute(
+            """
+            SELECT package_name, SUM(total_seconds) AS total_seconds
+            FROM usage_daily
+            WHERE child_code = ? AND day >= ?
+            GROUP BY package_name
+            ORDER BY total_seconds DESC
+            LIMIT 8
+            """,
+            (child_code, since_day),
+        )
+        top_apps = [
+            {"package_name": r["package_name"], "total_seconds": int(r["total_seconds"] or 0)}
+            for r in cur.fetchall()
+        ]
+
+        policy = _screen_time_policy_get(conn, child_code)
+        unlimited = {p.lower() for p in (policy.get("unlimited_packages") or [])}
+        educational_apps = []
+        other_apps = []
+        for app in top_apps:
+            pkg = str(app["package_name"] or "").lower()
+            if pkg in unlimited:
+                educational_apps.append(app)
+            else:
+                other_apps.append(app)
+
+        week_start = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d 00:00:00")
+        cur.execute(
+            """
+            SELECT COUNT(*) AS cnt FROM alerts
+            WHERE child_code = ? AND time >= ?
+            """,
+            (child_code, week_start),
+        )
+        alerts_week = int(cur.fetchone()["cnt"] or 0)
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        cur.execute(
+            """
+            SELECT COUNT(*) AS cnt FROM alerts
+            WHERE child_code = ? AND time >= ?
+            """,
+            (child_code, f"{today} 00:00:00"),
+        )
+        alerts_today = int(cur.fetchone()["cnt"] or 0)
+
+        cur.execute(
+            """
+            SELECT COUNT(*) AS cnt FROM screen_time_events
+            WHERE child_code = ? AND time >= ? AND event_type LIKE '%sleep%'
+            """,
+            (child_code, week_start),
+        )
+        sleep_violations = int(cur.fetchone()["cnt"] or 0)
+
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "child_code": normalize_child_code(child_code),
+            "child_code_clean": child_code,
+            "since_day": since_day,
+            "usage_by_day": usage_by_day,
+            "top_apps": top_apps,
+            "educational_apps": educational_apps,
+            "other_apps": other_apps,
+            "alerts_today": alerts_today,
+            "alerts_week": alerts_week,
+            "sleep_violations_week": sleep_violations,
+        })
+    except Exception as exc:
+        logger.exception("weekly-chart failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء جلب بيانات الرسم البياني", 500, error_code="server_error")
+
+
+@app.route("/cron/email-summaries", methods=["GET", "POST"])
+def cron_email_summaries():
+    """
+    مهمة مجدولة — على Render: Cron Job يضرب هذا المسار يومياً.
+    Header: X-CRON-SECRET أو ?secret= نفس CRON_SECRET (أو API_KEY).
+    """
+    try:
+        secret = (
+            request.headers.get("X-CRON-SECRET")
+            or request.args.get("secret")
+            or ""
+        ).strip()
+        expected = os.environ.get("CRON_SECRET") or os.environ.get("API_KEY", "")
+        if not expected or secret != expected:
+            return _json_error("غير مصرّح", 401, error_code="unauthorized")
+        stats = _run_scheduled_email_summaries()
+        return _json_success("تم تشغيل مهمة البريد المجدولة", stats=stats)
+    except Exception as exc:
+        logger.exception("cron email-summaries failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء مهمة البريد", 500, error_code="server_error")
 
 
 @app.route("/daily-report", methods=["GET"])
@@ -1997,6 +2868,7 @@ def unhandled_exception(error):
 
 # إنشاء الجداول عند تشغيل السيرفر
 init_db()
+_start_email_cron_thread()
 
 # تشغيل محلي فقط، أما Render يستخدم gunicorn
 if __name__ == "__main__":
