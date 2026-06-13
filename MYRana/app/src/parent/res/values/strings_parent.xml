@@ -56,7 +56,7 @@
     <string name="parent_link_success_monitoring">تم الربط ✓ فعّلي «خدمة الوصول» على جوال الطفل ثم جرّبي البحث في Chrome</string>
     <string name="parent_code_copied_hint">تم وضع الرمز في الحقل — يمكنك تعديله أو نسخه</string>
     <string name="parent_btn_paste_child_code">لصق كود الطفل</string>
-    <string name="parent_paste_empty">الحافظة فارغة — انسخي الكود من جوال الطفل أولاً</string>
+    <string name="parent_paste_empty">الحافظة فارغة — انسخي كود CHILD من Gmail أولاً</string>
     <string name="parent_usage_report_title">استخدام التطبيقات (آخر 7 أيام — يُرفع تلقائياً كل 24 ساعة)</string>
     <string name="parent_usage_empty">لا توجد بيانات بعد. تأكدي أن جهاز الطفل متصل وصلاحية الاستخدام مفعّلة.</string>
     <string name="parent_usage_loading">جاري طلب التقرير من جهاز الطفل…</string>

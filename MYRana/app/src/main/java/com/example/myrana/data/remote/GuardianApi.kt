@@ -544,7 +544,7 @@ object GuardianApi {
     private fun translateServerMessage(message: String): String {
         return when {
             message.contains("Child device not found", ignoreCase = true) ->
-                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً واستخدمي CHILD-..."
+                "لم يُعثر على جهاز الطفل — سجّلي من تطبيق الطفل أولاً ثم استخدمي CHILD-... من Gmail"
             message.contains("Device already linked", ignoreCase = true) ->
                 "الجهاز مربوط مسبقاً — امسحي بيانات التطبيقين وأعيدي المحاولة"
             message.contains("Invalid verification code", ignoreCase = true) ||
@@ -561,7 +561,7 @@ object GuardianApi {
                 message.contains("لم يُعثر على جهاز الطفل", ignoreCase = true) ->
                 "الطفل غير مسجّل على السيرفر.\n\n" +
                     "① جوال الطفل: «تسجيل الجهاز»\n" +
-                    "② انسخي الكود CHILD-... للأم\n" +
+                    "② افتحي Gmail وانسخي كود CHILD-...\n" +
                     "③ جوال الأم: الصقي الكود → «ربط تلقائي»"
             else -> message
         }

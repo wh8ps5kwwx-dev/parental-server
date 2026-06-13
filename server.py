@@ -1340,12 +1340,14 @@ def register_child_device():
                 if email_sent
                 else "تم التسجيل — البريد غير مُرسَل"
             ),
-            "child_code": display_code,
-            "child_code_clean": clean_child_code(stored),
             "email_sent": email_sent,
         }
-        if not email_sent and allow_dev_fallback():
-            payload["dev_fallback"] = True
+        # لا نُرجع child_code في JSON عند نجاح البريد — الكود من Gmail فقط
+        if not email_sent:
+            payload["child_code"] = display_code
+            payload["child_code_clean"] = clean_child_code(stored)
+            if allow_dev_fallback():
+                payload["dev_fallback"] = True
         return jsonify(payload)
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)

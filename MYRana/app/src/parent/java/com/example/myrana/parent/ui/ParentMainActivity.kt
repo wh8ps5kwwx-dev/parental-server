@@ -551,7 +551,7 @@ class ParentMainActivity : AppCompatActivity() {
             childCode = normalizedChildCodeFromInput()
         }
         if (childCode.isEmpty()) {
-            toast("أدخل كود الطفل من جواله (CHILD-...)", true)
+            toast("أدخلي كود CHILD من Gmail (رسالة تسجيل الطفل)", true)
             return null
         }
         return childCode
