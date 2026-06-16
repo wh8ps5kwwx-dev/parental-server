@@ -250,6 +250,62 @@ def _ensure_guardian(cur, email: str) -> int:
     return int(cur.lastrowid)
 
 
+def _children_table_columns(cur) -> set[str]:
+    cur.execute("PRAGMA table_info(children)")
+    return {str(r[1]) for r in cur.fetchall()}
+
+
+def _ensure_children_columns(cur):
+    """ترقية جدول children على السيرفرات القديمة — يمنع 500 أثناء add-child."""
+    for col, typedef in (
+        ("child_email", "TEXT"),
+        ("device", "TEXT"),
+        ("android_version", "TEXT"),
+        ("guardian_email", "TEXT"),
+        ("guardian_role", "TEXT"),
+        ("linked_at", "TEXT"),
+        ("age", "INTEGER"),
+    ):
+        try:
+            cur.execute(f"ALTER TABLE children ADD COLUMN {col} {typedef}")
+        except sqlite3.OperationalError:
+            pass
+    cols = _children_table_columns(cur)
+    if "guardian_email" in cols and "parent_email" in cols:
+        try:
+            cur.execute(
+                """
+                UPDATE children
+                SET guardian_email = parent_email
+                WHERE (guardian_email IS NULL OR guardian_email = '')
+                  AND parent_email IS NOT NULL AND parent_email != ''
+                """
+            )
+        except sqlite3.OperationalError:
+            pass
+
+
+def _row_guardian_email(row) -> str:
+    if row is None:
+        return ""
+    keys = row.keys() if hasattr(row, "keys") else ()
+    for key in ("guardian_email", "parent_email", "guardianEmail"):
+        if key in keys:
+            return str(row[key] or "").strip()
+    return ""
+
+
+def _device_otp_accepted(device_row, verify_code: str, stored_code: str | None) -> bool:
+    if stored_code and stored_code == verify_code:
+        return True
+    try:
+        if int(device_row["device_verified"] or 0) == 1 and verify_code:
+            return True
+    except (KeyError, TypeError, ValueError):
+        pass
+    return False
+
+
 def db_child_code(raw) -> str:
     # FIX: normalize child_code to support codes with or without CHILD- prefix
     """مفتاح قاعدة البيانات — CHILD-1DF71288 → 1DF71288"""
@@ -428,7 +484,7 @@ def _link_child_transaction(cur, conn, data: dict):
             (child_code,),
         )
         existing = cur.fetchone()
-        if existing and str(existing["guardian_email"] or "").strip() == parent_email:
+        if existing and _row_guardian_email(existing) == parent_email:
             parent_id = _ensure_guardian(cur, parent_email)
             _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "already linked same parent")
             conn.commit()
@@ -453,19 +509,21 @@ def _link_child_transaction(cur, conn, data: dict):
         logger.info("[link-child] step=simple_link OK parent_email=%s child_code=%s", parent_email, child_code)
     else:
         if DEVICE_OTP_EXPIRY_MINUTES > 0 and _otp_expired(device_created, DEVICE_OTP_EXPIRY_MINUTES):
-            _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "expired verification_code")
-            return _fail(
-                "Invalid or expired verification code",
-                400,
-                error_code="expired_code",
-            )
+            if int(device_row["device_verified"] or 0) != 1:
+                _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "expired verification_code")
+                return _fail(
+                    "Invalid or expired verification code",
+                    400,
+                    error_code="expired_code",
+                )
 
-        if not stored_code or stored_code != verify_code:
+        if not _device_otp_accepted(device_row, verify_code, stored_code):
             _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "wrong verification_code")
             logger.warning(
-                "[link-child] step=otp_verify FAIL expected=%s got=%s",
+                "[link-child] step=otp_verify FAIL expected=%s got=%s verified=%s",
                 f"{stored_code[:2]}****" if stored_code else "(none)",
                 f"{verify_code[:2]}****" if verify_code else "(empty)",
+                device_row["device_verified"] if "device_verified" in device_row.keys() else "?",
             )
             return _fail(
                 "Invalid or expired verification code",
@@ -479,13 +537,28 @@ def _link_child_transaction(cur, conn, data: dict):
     device = (device_row["device_name"] or device or "Android").strip()
     android_version = (device_row["android_version"] or android_version or "Android").strip()
 
+    _ensure_children_columns(cur)
+    child_cols = _children_table_columns(cur)
+    linked_at_val = now()
+    insert_cols = ["name", "age", "child_email", "device", "android_version", "child_code"]
+    insert_vals = [name, age, child_email, device, android_version, child_code]
+    if "guardian_email" in child_cols:
+        insert_cols.append("guardian_email")
+        insert_vals.append(parent_email)
+    elif "parent_email" in child_cols:
+        insert_cols.append("parent_email")
+        insert_vals.append(parent_email)
+    if "guardian_role" in child_cols:
+        insert_cols.append("guardian_role")
+        insert_vals.append(guardian_role)
+    if "linked_at" in child_cols:
+        insert_cols.append("linked_at")
+        insert_vals.append(linked_at_val)
+    placeholders = ", ".join("?" for _ in insert_cols)
+    col_list = ", ".join(insert_cols)
     cur.execute(
-        """
-        INSERT OR REPLACE INTO children
-        (name, age, child_email, device, android_version, child_code, guardian_email, guardian_role, linked_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (name, age, child_email, device, android_version, child_code, parent_email, guardian_role, now()),
+        f"INSERT OR REPLACE INTO children ({col_list}) VALUES ({placeholders})",
+        tuple(insert_vals),
     )
     cur.execute(
         "UPDATE child_devices SET linked = 1, device_verified = 1 WHERE child_code = ?",
@@ -709,6 +782,7 @@ def init_db():
         linked_at TEXT
     )
     """)
+    _ensure_children_columns(cur)
 
     # جدول أوامر التحكم
     cur.execute("""
