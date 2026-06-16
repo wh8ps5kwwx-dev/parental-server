@@ -479,11 +479,12 @@ def _link_child_transaction(cur, conn, data: dict):
     )
 
     if device_row["linked"]:
-        cur.execute(
-            "SELECT id, guardian_email FROM children WHERE child_code = ? LIMIT 1",
-            (child_code,),
-        )
-        existing = cur.fetchone()
+        existing = None
+        for variant in child_code_db_variants(child_code):
+            cur.execute("SELECT * FROM children WHERE child_code = ? LIMIT 1", (variant,))
+            existing = cur.fetchone()
+            if existing:
+                break
         if existing and _row_guardian_email(existing) == parent_email:
             parent_id = _ensure_guardian(cur, parent_email)
             _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "already linked same parent")
@@ -540,26 +541,47 @@ def _link_child_transaction(cur, conn, data: dict):
     _ensure_children_columns(cur)
     child_cols = _children_table_columns(cur)
     linked_at_val = now()
-    insert_cols = ["name", "age", "child_email", "device", "android_version", "child_code"]
-    insert_vals = [name, age, child_email, device, android_version, child_code]
-    if "guardian_email" in child_cols:
-        insert_cols.append("guardian_email")
-        insert_vals.append(parent_email)
-    elif "parent_email" in child_cols:
-        insert_cols.append("parent_email")
-        insert_vals.append(parent_email)
-    if "guardian_role" in child_cols:
-        insert_cols.append("guardian_role")
-        insert_vals.append(guardian_role)
-    if "linked_at" in child_cols:
-        insert_cols.append("linked_at")
-        insert_vals.append(linked_at_val)
+    candidate_pairs = [
+        ("name", name),
+        ("age", age),
+        ("child_email", child_email),
+        ("device", device),
+        ("android_version", android_version),
+        ("child_code", child_code),
+        ("guardian_email", parent_email),
+        ("parent_email", parent_email),
+        ("guardian_role", guardian_role),
+        ("linked_at", linked_at_val),
+    ]
+    seen_cols: set[str] = set()
+    insert_cols: list[str] = []
+    insert_vals: list = []
+    for col, val in candidate_pairs:
+        if col not in child_cols or col in seen_cols:
+            continue
+        if col == "parent_email" and "guardian_email" in seen_cols:
+            continue
+        if col == "guardian_email" and "parent_email" in seen_cols:
+            continue
+        seen_cols.add(col)
+        insert_cols.append(col)
+        insert_vals.append(val)
+    if "child_code" not in insert_cols:
+        return _fail("جدول children على السيرفر ناقص — أعدي نشر server.py", error_code="schema_error")
     placeholders = ", ".join("?" for _ in insert_cols)
     col_list = ", ".join(insert_cols)
-    cur.execute(
-        f"INSERT OR REPLACE INTO children ({col_list}) VALUES ({placeholders})",
-        tuple(insert_vals),
-    )
+    try:
+        cur.execute(
+            f"INSERT OR REPLACE INTO children ({col_list}) VALUES ({placeholders})",
+            tuple(insert_vals),
+        )
+    except sqlite3.OperationalError as exc:
+        logger.exception("children INSERT failed cols=%s: %s", insert_cols, exc)
+        return _fail(
+            f"فشل حفظ بيانات الطفل على السيرفر: {exc}",
+            500,
+            error_code="children_insert_failed",
+        )
     cur.execute(
         "UPDATE child_devices SET linked = 1, device_verified = 1 WHERE child_code = ?",
         (device_db_key,),
@@ -1633,6 +1655,7 @@ def add_child():
             "خطأ داخلي أثناء ربط الطفل — راجعي سجلات السيرفر",
             500,
             error_code="server_error",
+            detail=str(exc)[:200],
         )
     finally:
         if conn:
