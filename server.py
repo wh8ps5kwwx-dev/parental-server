@@ -1423,27 +1423,30 @@ def register_child_device():
             f"بعدها اطلبي «رمز الربط» — ستصلك رسالة Gmail ثانية (6 أرقام).",
         )
 
-        if not email_sent and not allow_dev_fallback():
-            return email_delivery_failed_response(
-                "تعذّر إرسال كود CHILD بالبريد — اضبطي RESEND_API_KEY على السيرفر"
-            )
-
+        # التسجيل على السيرفر نجح — نُرجع 200 دائماً مع الكود (حتى لو البريد فشل)
         payload = {
             "success": True,
             "status": "success",
-            "message": (
-                f"تم إرسال كود CHILD إلى {notify_email}"
-                if email_sent
-                else "تم التسجيل — البريد غير مُرسَل"
-            ),
+            "child_code": display_code,
+            "child_code_clean": clean_child_code(stored),
             "email_sent": email_sent,
         }
-        # لا نُرجع child_code في JSON عند نجاح البريد — الكود من Gmail فقط
-        if not email_sent:
-            payload["child_code"] = display_code
-            payload["child_code_clean"] = clean_child_code(stored)
-            if allow_dev_fallback():
-                payload["dev_fallback"] = True
+        if email_sent:
+            payload["message"] = f"تم إرسال كود CHILD إلى {notify_email}"
+        elif allow_dev_fallback():
+            payload["message"] = "تم التسجيل — البريد غير مُرسَل (وضع تطوير)"
+            payload["dev_fallback"] = True
+        else:
+            payload["message"] = (
+                f"تم تسجيل الطفل على السيرفر ✓ — تعذّر إرسال البريد إلى {notify_email}. "
+                f"انسخي الكود {display_code} من جوال الطفل إلى تطبيق الأم."
+            )
+        logger.info(
+            "[register-child-device] OK stored=%r display=%r email_sent=%s",
+            stored,
+            display_code,
+            email_sent,
+        )
         return jsonify(payload)
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)
