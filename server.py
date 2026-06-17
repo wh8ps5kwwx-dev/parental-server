@@ -1156,8 +1156,8 @@ def usage_add_seconds(conn, child_code: str, day: str, package_name: str, second
 # حماية كل الروابط باستخدام API_KEY
 @app.before_request
 def protect():
-    # الصفحة الرئيسية لا تحتاج حماية
-    if request.path == "/":
+    # الصفحة الرئيسية وفحص الصحة — بدون مفتاح (للتأكد من Chrome على الجوال)
+    if request.path in ("/", "/health"):
         return
 
     # التحقق من مفتاح الحماية
