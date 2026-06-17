@@ -1196,11 +1196,21 @@ def health():
 @app.route("/api/v1/devices/<device_id>/policy", methods=["GET"])
 def api_get_policy(device_id):
     device_id = db_child_code(device_id) or device_id.strip()
+    since = request.args.get("since_revision", type=int)
     conn = db()
     revision, hosts, packages, keywords = _policy_get(conn, device_id)
     conn.close()
+    if since is not None and since >= revision:
+        return jsonify({
+            "revision": revision,
+            "unchanged": True,
+            "blockedHosts": [],
+            "blockedPackages": [],
+            "videoKeywords": keywords,
+        })
     return jsonify({
         "revision": revision,
+        "unchanged": False,
         "blockedHosts": hosts,
         "blockedPackages": packages,
         "videoKeywords": keywords,
@@ -1749,7 +1759,7 @@ def get_command():
         cur.execute("""
         SELECT * FROM commands
         WHERE child_code = ? AND executed = 0
-        ORDER BY id DESC
+        ORDER BY id ASC
         LIMIT 1
         """, (child_code,))
 
