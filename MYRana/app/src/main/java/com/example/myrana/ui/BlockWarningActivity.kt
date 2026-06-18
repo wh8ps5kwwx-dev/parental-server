@@ -18,6 +18,7 @@ class BlockWarningActivity : AppCompatActivity() {
         val message = when (reason) {
             REASON_SITE -> getString(R.string.block_warning_site, pkg.ifBlank { "—" })
             REASON_YOUTUBE -> getString(R.string.block_warning_youtube, pkg.ifBlank { "—" })
+            REASON_CONTENT -> getString(R.string.block_warning_content, pkg.ifBlank { "—" })
             else -> getString(R.string.block_warning_message, pkg.ifBlank { "—" })
         }
         findViewById<TextView>(R.id.textBlockMessage).text = message
@@ -30,5 +31,6 @@ class BlockWarningActivity : AppCompatActivity() {
         const val EXTRA_REASON = "blocked_reason"
         const val REASON_SITE = "site"
         const val REASON_YOUTUBE = "youtube"
+        const val REASON_CONTENT = "content"
     }
 }

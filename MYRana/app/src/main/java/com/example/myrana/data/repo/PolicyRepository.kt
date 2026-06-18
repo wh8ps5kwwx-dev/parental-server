@@ -1,6 +1,7 @@
 package com.example.myrana.data.repo
 
 import android.content.Context
+import android.util.Log
 import androidx.room.withTransaction
 import com.example.myrana.data.local.AppDatabase
 import com.example.myrana.data.local.BlockedAppEntity
@@ -10,21 +11,23 @@ import com.example.myrana.enforcement.BlocklistCatalogLoader
 import com.example.myrana.enforcement.PolicyFilterCache
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.data.remote.dto.PolicyPushDto
-import com.example.myrana.session.ChildSession
+import com.example.myrana.identity.ChildIdentity
+import com.example.myrana.sync.GuardianMessageNotifier
 import com.example.myrana.sync.UsageUploadHelper
+import com.example.myrana.util.ChildCodeNormalizer
 import com.example.myrana.worker.MonitoringScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * مستودع السياسة: يجمع Room (محلي) و REST (سيرفر parent_monitor_project).
+ * مستودع السياسة: يجمع Room (محلي) و REST (سيرفر).
  *
  * ترتيب [syncWithServer]:
- * 1. تطبيق أمر الأم الأخير من `/get-command`.
+ * 1. تطبيق أوامر الأم من `/get-command` (FIFO — حتى 8 أوامر).
  * 2. رفع الصفوف ذات `pending_upload`.
- * 3. سحب السياسة الكاملة واستبدال الجداول المحلية.
+ * 3. سحب السياسة إذا تغيّر revision (وإلا تخطي).
  *
- * المصدر الموثوق بعد المزامنة: **الخادم** (قرارات الأم عبر السيرفر).
+ * المصدر الموثوق بعد المزامنة: **الخادم**.
  */
 class PolicyRepository private constructor(context: Context) {
 
@@ -32,33 +35,33 @@ class PolicyRepository private constructor(context: Context) {
     private val db = AppDatabase.getInstance(appContext)
     private val api = NetworkModule.api()
 
-    /**
-     * دورة مزامنة كاملة — تُستدعى من [ParentSyncService] أو أثناء اللعب.
-     * @param deviceId عادةً `child_code` من [com.example.myrana.device.DeviceIdentity].
-     */
     suspend fun syncWithServer(deviceId: String) = withContext(Dispatchers.IO) {
-        applyParentCommand(deviceId)
-        pushPending(deviceId)
-        pullAndApply(deviceId)
+        val apiId = ChildCodeNormalizer.forApi(deviceId).ifBlank { deviceId }
+        applyParentCommands(apiId)
+        pushPending(apiId)
+        pullAndApply(apiId)
     }
 
-    /**
-     * يقرأ أمراً واحداً من الأم ويضيفه محلياً (حظر موقع/تطبيق).
-     * أمر `allow` يُفرّغ السياسة على السيرفر؛ [pullAndApply] يحدّث Room لاحقاً.
-     */
-    private suspend fun applyParentCommand(deviceId: String) {
-        val cmd = try {
-            NetworkModule.pollParentCommand(deviceId)
-        } catch (_: Exception) {
-            null
-        } ?: return
+    /** يستهلك أوامر الأم بالترتيب (الأقدم أولاً على السيرفر). */
+    private suspend fun applyParentCommands(deviceId: String) {
+        repeat(MAX_COMMANDS_PER_SYNC) {
+            val cmd = try {
+                NetworkModule.pollParentCommand(deviceId)
+            } catch (_: Exception) {
+                null
+            } ?: return
 
-        when (cmd.action) {
-            "block_app", "freeze_app" -> cmd.value?.let { addBlockedPackage(it) }
-            "block_site" -> cmd.value?.let { addBlockedSite(it) }
-            "request_usage" -> {
-                val childCode = ChildSession.childCode(appContext) ?: deviceId
-                uploadUsageNow(childCode)
+            when (cmd.action) {
+                "block_app", "freeze_app" -> cmd.value?.let { addBlockedPackage(it) }
+                "block_site" -> cmd.value?.let { addBlockedSite(it) }
+                "allow" -> {
+                    // السيرفر أفرغ السياسة — pullAndApply يحدّث Room لاحقاً
+                }
+                "apply_default_blocklist" -> {
+                    // السيرفر طبّق catalog — pullAndApply يحدّث Room لاحقاً
+                }
+                "request_usage" -> uploadUsageNow(deviceId)
+                "guardian_message" -> cmd.value?.let { GuardianMessageNotifier.show(appContext, it) }
             }
         }
     }
@@ -68,9 +71,6 @@ class PolicyRepository private constructor(context: Context) {
         MonitoringScheduler.runOnceNow(appContext)
     }
 
-    /**
-     * إضافة نطاق محظور محلياً مع وسمه للرفع في المزامنة التالية.
-     */
     suspend fun addBlockedSite(hostPattern: String) = withContext(Dispatchers.IO) {
         val trimmed = hostPattern.trim().lowercase()
         if (trimmed.isEmpty()) return@withContext
@@ -84,9 +84,6 @@ class PolicyRepository private constructor(context: Context) {
         )
     }
 
-    /**
-     * إضافة حزمة تطبيق محظورة محلياً.
-     */
     suspend fun addBlockedPackage(packageName: String) = withContext(Dispatchers.IO) {
         val trimmed = packageName.trim().lowercase()
         if (trimmed.isEmpty()) return@withContext
@@ -100,14 +97,12 @@ class PolicyRepository private constructor(context: Context) {
         )
     }
 
-    /** قراءة القوائم المحلية فقط — بدون شبكة (لشاشة التطوير). */
     suspend fun localSnapshot(): Pair<List<String>, List<String>> = withContext(Dispatchers.IO) {
         val sites = db.blockedSiteDao().listAll().map { it.hostPattern }
         val apps = db.blockedAppDao().listAll().map { it.packageName }
         sites to apps
     }
 
-    /** يرفع كل الصفوف المعلّقة ثم يصفّر `pending_upload` داخل معاملة واحدة. */
     private suspend fun pushPending(deviceId: String) {
         val pendingSites = db.blockedSiteDao().listPendingUpload()
         val pendingApps = db.blockedAppDao().listPendingUpload()
@@ -140,12 +135,16 @@ class PolicyRepository private constructor(context: Context) {
         }
     }
 
-    /**
-     * يجلب السياسة من السيرفر ويستبدل الجداول المحلية بالكامل.
-     * أي إضافة محلية قديمة تُستبدل بنسخة الخادم (متوقع بعد ربط الأم).
-     */
     private suspend fun pullAndApply(deviceId: String) {
-        val envelope = api.fetchPolicy(deviceId)
+        val prev = db.syncStateDao().get()
+        val sinceRev = prev?.lastKnownRevision ?: 0L
+        val envelope = api.fetchPolicy(deviceId, sinceRev)
+
+        if (envelope.unchanged == true) {
+            Log.d(TAG, "سياسة بدون تغيير revision=$sinceRev")
+            return
+        }
+
         val now = System.currentTimeMillis()
         val sites = envelope.blockedHosts.orEmpty().map { host ->
             BlockedSiteEntity(
@@ -161,7 +160,6 @@ class PolicyRepository private constructor(context: Context) {
                 pendingUpload = false
             )
         }
-        val prev = db.syncStateDao().get()
 
         db.withTransaction {
             db.blockedSiteDao().deleteAll()
@@ -183,11 +181,13 @@ class PolicyRepository private constructor(context: Context) {
         val kw = envelope.videoKeywords.orEmpty()
         PolicyFilterCache.update(sites.map { it.hostPattern }, kw)
         PolicyFilterCache.persistKeywords(appContext, kw)
-        // إعادة دمج catalog.json بعد سياسة السيرفر (لا تُستبدل كلمات الملف)
         BlocklistCatalogLoader.loadCachedIntoFilter(appContext)
     }
 
     companion object {
+        private const val TAG = "PolicyRepository"
+        private const val MAX_COMMANDS_PER_SYNC = 8
+
         @Volatile
         private var instance: PolicyRepository? = null
 

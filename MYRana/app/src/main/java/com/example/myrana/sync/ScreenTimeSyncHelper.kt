@@ -1,11 +1,11 @@
 package com.example.myrana.sync
 
 import android.content.Context
+import com.example.myrana.identity.ChildIdentity
 import com.example.myrana.data.remote.NetworkModule
-import com.example.myrana.device.DeviceIdentity
 import com.example.myrana.screentime.ScreenTimePolicyStore
 import com.example.myrana.screentime.ScreenTimeRepository
-import com.example.myrana.session.ChildSession
+import com.example.myrana.permissions.PermissionStatusReporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -13,13 +13,13 @@ import kotlinx.coroutines.withContext
 object ScreenTimeSyncHelper {
 
     suspend fun syncIfDue(context: Context) = withContext(Dispatchers.IO) {
-        val childCode = ChildSession.childCode(context)
-            ?: DeviceIdentity.childDeviceId(context)
+        val childCode = ChildIdentity.apiCode(context)
+        if (childCode.isBlank()) return@withContext
         try {
             NetworkModule.fetchScreenTimePolicy(childCode)?.let {
                 ScreenTimePolicyStore.save(context, it)
             }
-            NetworkModule.postChildHeartbeat(childCode)
+            NetworkModule.postChildHeartbeat(childCode, PermissionStatusReporter.toPayload(context))
             uploadPendingEvents(context, childCode)
         } catch (_: Exception) {
         }

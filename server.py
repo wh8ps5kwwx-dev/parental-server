@@ -2031,23 +2031,54 @@ def list_children():
         return _json_error("parent_email is required", 400, error_code="missing_parent_email")
     conn = db()
     cur = conn.cursor()
+    _ensure_children_columns(cur)
+    child_cols = _children_table_columns(cur)
     parent_id = None
     cur.execute("SELECT id FROM guardians WHERE email = ? LIMIT 1", (parent_email,))
     g = cur.fetchone()
     if g:
         parent_id = int(g["id"])
-    cur.execute(
-        """
-        SELECT c.id AS child_id, c.name, c.age, c.child_code, c.device, c.android_version,
-               c.linked_at, cs.last_seen_ms, cs.device_name AS status_device,
-               cs.permissions_json, cs.permissions_ok
-        FROM children c
-        LEFT JOIN child_status cs ON cs.child_code = c.child_code
-        WHERE c.guardian_email = ?
-        ORDER BY c.id DESC
-        """,
-        (parent_email,),
-    )
+    email_key = parent_email.strip().lower()
+    if "guardian_email" in child_cols and "parent_email" in child_cols:
+        cur.execute(
+            """
+            SELECT c.id AS child_id, c.name, c.age, c.child_code, c.device, c.android_version,
+                   c.linked_at, cs.last_seen_ms, cs.device_name AS status_device,
+                   cs.permissions_json, cs.permissions_ok
+            FROM children c
+            LEFT JOIN child_status cs ON cs.child_code = c.child_code
+            WHERE LOWER(TRIM(COALESCE(c.guardian_email, ''))) = ?
+               OR LOWER(TRIM(COALESCE(c.parent_email, ''))) = ?
+            ORDER BY c.id DESC
+            """,
+            (email_key, email_key),
+        )
+    elif "guardian_email" in child_cols:
+        cur.execute(
+            """
+            SELECT c.id AS child_id, c.name, c.age, c.child_code, c.device, c.android_version,
+                   c.linked_at, cs.last_seen_ms, cs.device_name AS status_device,
+                   cs.permissions_json, cs.permissions_ok
+            FROM children c
+            LEFT JOIN child_status cs ON cs.child_code = c.child_code
+            WHERE LOWER(TRIM(COALESCE(c.guardian_email, ''))) = ?
+            ORDER BY c.id DESC
+            """,
+            (email_key,),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT c.id AS child_id, c.name, c.age, c.child_code, c.device, c.android_version,
+                   c.linked_at, cs.last_seen_ms, cs.device_name AS status_device,
+                   cs.permissions_json, cs.permissions_ok
+            FROM children c
+            LEFT JOIN child_status cs ON cs.child_code = c.child_code
+            WHERE LOWER(TRIM(COALESCE(c.parent_email, ''))) = ?
+            ORDER BY c.id DESC
+            """,
+            (email_key,),
+        )
     rows = []
     now_ms = int(datetime.now().timestamp() * 1000)
     for r in cur.fetchall():

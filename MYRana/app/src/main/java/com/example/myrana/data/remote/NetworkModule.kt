@@ -8,6 +8,8 @@ import com.example.myrana.data.remote.dto.RegisterChildResponse
 import com.example.myrana.data.remote.dto.UsageAppItem
 import com.example.myrana.screentime.ScreenTimePolicy
 import com.google.gson.Gson
+import com.example.myrana.util.ServerConfig
+import com.example.myrana.util.ServerConnectionHelper
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -16,6 +18,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -51,24 +54,29 @@ object NetworkModule {
      * @throws IllegalStateException عند فشل HTTP أو عنوان غير صالح.
      */
     fun registerChildDevice(request: RegisterChildRequest): RegisterChildResponse {
-        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull()
+        val base = ServerConfig.rootHttpUrl()
             ?: throw IllegalStateException("عنوان السيرفر غير صالح")
         val url = base.newBuilder().addPathSegments("register-child-device").build()
         val body = gson.toJson(request).toRequestBody("application/json".toMediaType())
         val httpRequest = Request.Builder()
             .url(url)
-            .header("X-API-KEY", BuildConfig.API_KEY)
+            .header("X-API-KEY", ServerConfig.apiKey)
             .post(body)
             .build()
-        val response = client().newCall(httpRequest).execute()
-        val text = response.body?.string().orEmpty()
-        if (!response.isSuccessful) {
-            val hint = if (response.code == 404) {
-                " — السيرفر قديم على Render (حدّثي server.py + blocklists)"
-            } else ""
-            throw IllegalStateException("فشل التسجيل (${response.code})$hint: $text")
+        return try {
+            executeWithRetry(httpRequest).use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    val hint = if (response.code == 404) {
+                        " — السيرفر قديم على Render (حدّثي server.py)"
+                    } else ""
+                    throw IllegalStateException("فشل التسجيل (${response.code})$hint: $text")
+                }
+                gson.fromJson(text, RegisterChildResponse::class.java)
+            }
+        } catch (e: Exception) {
+            throw IllegalStateException(ServerConnectionHelper.friendlyMessage(e), e)
         }
-        return gson.fromJson(text, RegisterChildResponse::class.java)
     }
 
     enum class ChildRegistrationState {
@@ -78,33 +86,69 @@ object NetworkModule {
         ERROR,
     }
 
-    /** حالة تسجيل/ربط الطفل على السيرفر. */
-    fun queryChildRegistrationState(childCode: String): ChildRegistrationState {
-        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return ChildRegistrationState.ERROR
-        val code = com.example.myrana.util.ChildCodeNormalizer.forApi(childCode)
+    data class ChildLinkStatus(
+        val state: ChildRegistrationState,
+        val detail: String = "",
+        val errorKind: ServerConnectionHelper.ErrorKind = ServerConnectionHelper.ErrorKind.OTHER,
+    )
+
+    /** حالة تسجيل/ربط الطفل على السيرفر مع رسالة تفصيلية عند الفشل. */
+    fun queryChildLinkStatus(childCode: String): ChildLinkStatus {
+        val base = ServerConfig.rootHttpUrl()
+            ?: return ChildLinkStatus(
+                ChildRegistrationState.ERROR,
+                "عنوان السيرفر غير صالح",
+                ServerConnectionHelper.ErrorKind.SERVER_ERROR,
+            )
+        val code = ChildCodeNormalizer.forApi(childCode)
         val url = base.newBuilder()
             .addPathSegments("child-link-status")
             .addQueryParameter("child_code", code)
             .build()
         val request = Request.Builder()
             .url(url)
-            .header("X-API-KEY", BuildConfig.API_KEY)
+            .header("X-API-KEY", ServerConfig.apiKey)
             .get()
             .build()
         return try {
-            client().newCall(request).execute().use { response ->
-                if (response.code == 404) return ChildRegistrationState.NOT_ON_SERVER
-                val text = response.body?.string().orEmpty()
-                if (!response.isSuccessful) return ChildRegistrationState.ERROR
+            val response = executeWithRetry(request)
+            response.use { r ->
+                if (r.code == 404) {
+                    return ChildLinkStatus(
+                        ChildRegistrationState.NOT_ON_SERVER,
+                        "كود الطفل غير مسجّل على السيرفر — سجّلي من جوال الطفل أولاً",
+                        ServerConnectionHelper.ErrorKind.INVALID_CHILD_CODE,
+                    )
+                }
+                val text = r.body?.string().orEmpty()
+                if (!r.isSuccessful) {
+                    return ChildLinkStatus(
+                        ChildRegistrationState.ERROR,
+                        "تعذّر فحص السيرفر (HTTP ${r.code})",
+                        ServerConnectionHelper.ErrorKind.SERVER_ERROR,
+                    )
+                }
                 val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
                 val json: Map<String, Any?> = gson.fromJson(text, mapType)
-                if (json["linked"] == true) ChildRegistrationState.LINKED
-                else ChildRegistrationState.WAITING
+                if (json["linked"] == true) {
+                    ChildLinkStatus(ChildRegistrationState.LINKED)
+                } else {
+                    ChildLinkStatus(ChildRegistrationState.WAITING, "الطفل مسجّل — أكملي رمز الربط")
+                }
             }
-        } catch (_: Exception) {
-            ChildRegistrationState.ERROR
+        } catch (e: Exception) {
+            val kind = ServerConnectionHelper.classify(e)
+            ChildLinkStatus(
+                ChildRegistrationState.ERROR,
+                ServerConnectionHelper.messageFor(kind, e),
+                kind,
+            )
         }
     }
+
+    /** حالة تسجيل/ربط الطفل على السيرفر. */
+    fun queryChildRegistrationState(childCode: String): ChildRegistrationState =
+        queryChildLinkStatus(childCode).state
 
     /** هل اكتمل ربط ولي الأمر بجهاز الطفل؟ */
     fun fetchChildLinkStatus(childCode: String): Boolean =
@@ -393,10 +437,12 @@ object NetworkModule {
     }
 
     fun pollParentCommand(childCode: String): ParentCommandDto? {
+        val code = ChildCodeNormalizer.forApi(childCode)
+        if (code.isBlank()) return null
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return null
         val url = base.newBuilder()
             .addPathSegments("get-command")
-            .addQueryParameter("child_code", childCode)
+            .addQueryParameter("child_code", code)
             .build()
         val request = Request.Builder()
             .url(url)
@@ -426,7 +472,7 @@ object NetworkModule {
             .addInterceptor { chain ->
                 chain.proceed(
                     chain.request().newBuilder()
-                        .header("X-API-KEY", BuildConfig.API_KEY)
+                        .header("X-API-KEY", ServerConfig.apiKey)
                         .build()
                 )
             }
@@ -439,16 +485,17 @@ object NetworkModule {
                     }
                 }
             )
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            // Render free tier may cold-start 60–90s; 30s caused "timeout" on first request.
+            .connectTimeout(90, TimeUnit.SECONDS)
+            .readTimeout(90, TimeUnit.SECONDS)
+            .writeTimeout(90, TimeUnit.SECONDS)
             .build()
     }
 
     private fun buildApi(): ParentPolicyApi {
         val client = client()
         return Retrofit.Builder()
-            .baseUrl(BuildConfig.SERVER_BASE_URL)
+            .baseUrl(ServerConfig.baseApiUrl)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -460,22 +507,46 @@ object NetworkModule {
      * @return نص JSON للاستجابة.
      */
     fun postRoot(path: String, payload: Map<String, Any?>): String {
-        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull()
+        val base = ServerConfig.rootHttpUrl()
             ?: throw IllegalStateException("عنوان السيرفر غير صالح")
         val url = base.newBuilder().addPathSegments(path.trim('/')).build()
         val body = gson.toJson(payload).toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url(url)
-            .header("X-API-KEY", BuildConfig.API_KEY)
+            .header("X-API-KEY", ServerConfig.apiKey)
             .post(body)
             .build()
-        val response = client().newCall(request).execute()
-        val text = response.body?.string().orEmpty()
-        if (!response.isSuccessful) {
-            // يمرّر JSON كاملاً لـ GuardianApi.friendlyError (child_code_clean، detail_ar، …)
-            val bodyForParse = text.ifBlank { """{"message":"HTTP ${response.code}"}""" }
-            throw IllegalStateException("HTTP ${response.code}: $bodyForParse")
+        return try {
+            executeWithRetry(request).use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    val bodyForParse = text.ifBlank { """{"message":"HTTP ${response.code}"}""" }
+                    throw IllegalStateException("HTTP ${response.code}: $bodyForParse")
+                }
+                text
+            }
+        } catch (e: Exception) {
+            throw IllegalStateException(ServerConnectionHelper.friendlyMessage(e), e)
         }
-        return text
+    }
+
+    private fun executeWithRetry(request: Request): okhttp3.Response {
+        var lastError: Exception? = null
+        repeat(3) { attempt ->
+            try {
+                return client().newCall(request).execute()
+            } catch (e: Exception) {
+                lastError = e as? Exception ?: Exception(e)
+                val kind = ServerConnectionHelper.classify(e)
+                val retryable = kind == ServerConnectionHelper.ErrorKind.DNS_OR_SERVER ||
+                    kind == ServerConnectionHelper.ErrorKind.SERVER_TIMEOUT
+                if (retryable && attempt < 2) {
+                    Thread.sleep(2_500L)
+                } else {
+                    throw lastError!!
+                }
+            }
+        }
+        throw lastError ?: IOException("network")
     }
 }

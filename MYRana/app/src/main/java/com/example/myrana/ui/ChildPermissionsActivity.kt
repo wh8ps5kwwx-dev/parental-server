@@ -18,6 +18,7 @@ import com.example.myrana.permissions.ChildPermissionsGate
 import com.example.myrana.enforcement.BlocklistCatalogLoader
 import com.example.myrana.permissions.ChildProjectRuntime
 import com.example.myrana.permissions.PermissionCoordinator
+import com.example.myrana.permissions.StorageAccessHelper
 import com.example.myrana.permissions.SystemPermissions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -46,10 +47,19 @@ class ChildPermissionsActivity : AppCompatActivity() {
         }
         refreshUi()
         if (bulkGrantActive) {
-            openNextSystemPermissionIfNeeded()
+            requestStorageIfNeeded()
         }
         if (!granted && ChildPermissionsConsent.hasUserConsented(this)) {
             Toast.makeText(this, R.string.permissions_notification_declined, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val requestStorage = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { _ ->
+        refreshUi()
+        if (bulkGrantActive) {
+            openNextSystemPermissionIfNeeded()
         }
     }
 
@@ -138,6 +148,17 @@ class ChildPermissionsActivity : AppCompatActivity() {
             requestNotifications.launch(PermissionCoordinator.notificationPermission)
             return
         }
+        requestStorageIfNeeded()
+    }
+
+    private fun requestStorageIfNeeded() {
+        if (!StorageAccessHelper.hasMediaReadAccess(this)) {
+            val perms = StorageAccessHelper.requiredPermissions()
+            if (perms.isNotEmpty()) {
+                requestStorage.launch(perms)
+                return
+            }
+        }
         openNextSystemPermissionIfNeeded()
     }
 
@@ -178,6 +199,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
             add(statusLine(ChildPermissionEvaluator.Kind.ACCESSIBILITY))
             add(statusLine(ChildPermissionEvaluator.Kind.NOTIFICATION))
             add(statusLine(ChildPermissionEvaluator.Kind.BATTERY))
+            add(storageStatusLine())
         }.joinToString("\n")
 
         progress.visibility = if (ready) View.GONE else View.VISIBLE
@@ -211,6 +233,16 @@ class ChildPermissionsActivity : AppCompatActivity() {
                 consented && !system -> getString(R.string.permissions_status_battery_missing)
                 else -> getString(R.string.permissions_status_battery_pending_consent)
             }
+        }
+    }
+
+    private fun storageStatusLine(): String {
+        val consented = ChildPermissionsConsent.hasUserConsented(this)
+        val ok = StorageAccessHelper.hasMediaReadAccess(this)
+        return when {
+            ok -> getString(R.string.permissions_status_storage_ok)
+            consented -> getString(R.string.permissions_status_storage_missing)
+            else -> getString(R.string.permissions_status_storage_pending)
         }
     }
 

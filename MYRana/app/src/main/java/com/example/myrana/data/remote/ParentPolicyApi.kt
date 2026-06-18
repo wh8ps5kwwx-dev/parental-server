@@ -20,7 +20,10 @@ interface ParentPolicyApi {
      * @param deviceId نفس `child_code` المخزَّن في [DeviceIdentity].
      */
     @GET("v1/devices/{deviceId}/policy")
-    suspend fun fetchPolicy(@Path("deviceId") deviceId: String): PolicyEnvelopeDto
+    suspend fun fetchPolicy(
+        @Path("deviceId") deviceId: String,
+        @retrofit2.http.Query("since_revision") sinceRevision: Long? = null,
+    ): PolicyEnvelopeDto
 
     /**
      * رفع المواقع/الحزم المعلّقة محلياً ودمجها على السيرفر.

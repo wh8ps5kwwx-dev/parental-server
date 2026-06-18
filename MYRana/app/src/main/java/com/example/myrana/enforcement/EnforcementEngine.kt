@@ -62,6 +62,9 @@ class EnforcementEngine private constructor(context: Context) {
         if (fg == lastForeground && deltaSec > 0L && !isOwnPackage(fg)) {
             usageSeconds[fg] = (usageSeconds[fg] ?: 0L) + deltaSec
         }
+        if (fg != lastForeground) {
+            AppUsageAlertHelper.onForegroundChanged(appContext, fg)
+        }
         lastTickMs = now
         lastForeground = fg
 

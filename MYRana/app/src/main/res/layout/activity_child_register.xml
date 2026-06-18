@@ -99,6 +99,15 @@
                 android:visibility="gone"
                 tools:visibility="visible" />
 
+            <Button
+                android:id="@+id/btnCheckParentLink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_check_parent_link"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
         </LinearLayout>
 
         <TextView

@@ -20,7 +20,9 @@ import com.example.myrana.device.DeviceIdentity
 import com.example.myrana.permissions.ChildPermissionsGate
 import com.example.myrana.session.ChildSession
 import com.example.myrana.util.ChildCodeNormalizer
+import com.example.myrana.util.ServerConnectionHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -31,7 +33,7 @@ import java.util.UUID
  * إعداد الطفل — مرة واحدة.
  *
  * 1. بريد ولي الأمر → تسجيل الجهاز → كود CHILD يُرسل إلى Gmail.
- * 2. انتظار ربط ولي الأمر (رمز الربط — رسالة Gmail ثانية).
+ * 2. انتظار ربط ولي الأمر (رمز الربط — رسالة Gmail الثانية).
  * 3. بعد الربط → صلاحيات → الأكاديمية.
  */
 class ChildRegistrationActivity : AppCompatActivity() {
@@ -43,7 +45,9 @@ class ChildRegistrationActivity : AppCompatActivity() {
     private lateinit var textCodesDisplay: TextView
     private lateinit var textChildCodeValue: TextView
     private lateinit var btnCopyChildCode: Button
+    private lateinit var btnCheckParentLink: Button
     private var currentChildCode: String = ""
+    private var linkPollJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +63,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                 override fun handleOnBackPressed() {
                     finishAffinity()
                 }
-            }
+            },
         )
 
         setContentView(R.layout.activity_child_register)
@@ -70,8 +74,10 @@ class ChildRegistrationActivity : AppCompatActivity() {
         textCodesDisplay = findViewById(R.id.textCodesDisplay)
         textChildCodeValue = findViewById(R.id.textChildCodeValue)
         btnCopyChildCode = findViewById(R.id.btnCopyChildCode)
+        btnCheckParentLink = findViewById(R.id.btnCheckParentLink)
         btnCopyChildCode.setOnClickListener { copyChildCodeToClipboard() }
         textChildCodeValue.setOnClickListener { copyChildCodeToClipboard() }
+        btnCheckParentLink.setOnClickListener { checkLinkNow() }
 
         ChildSession.childEmail(this)?.orEmpty()?.takeIf { it.isNotBlank() }?.let {
             inputParentEmail.setText(it)
@@ -86,6 +92,19 @@ class ChildRegistrationActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSendCode).setOnClickListener { registerDevice() }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (stepWait.visibility == View.VISIBLE && currentChildCode.isNotBlank()) {
+            checkLinkNow(silent = true)
+            startLinkPolling(currentChildCode)
+        }
+    }
+
+    override fun onDestroy() {
+        linkPollJob?.cancel()
+        super.onDestroy()
+    }
+
     private fun registerDevice() {
         val email = inputParentEmail.text.toString().trim()
         if (email.isEmpty()) {
@@ -96,6 +115,10 @@ class ChildRegistrationActivity : AppCompatActivity() {
             showMessage(getString(R.string.register_email_invalid), true)
             return
         }
+        if (!com.example.myrana.network.NetworkMonitor.isOnline(this)) {
+            showMessage(ServerConnectionHelper.messageFor(ServerConnectionHelper.ErrorKind.NO_INTERNET), true)
+            return
+        }
         val existing = ChildSession.childCode(this)?.trim().orEmpty()
         val childCode = existing.ifBlank { "CHILD-${UUID.randomUUID().toString().take(8).uppercase()}" }
         registerOnServer(childCode, email, showWaitUi = false)
@@ -103,17 +126,21 @@ class ChildRegistrationActivity : AppCompatActivity() {
 
     private fun ensureRegisteredOnServer(childCode: String, onReady: () -> Unit) {
         lifecycleScope.launch {
-            val state = withContext(Dispatchers.IO) {
-                NetworkModule.queryChildRegistrationState(childCode)
+            val status = withContext(Dispatchers.IO) {
+                NetworkModule.queryChildLinkStatus(childCode)
             }
-            when (state) {
+            when (status.state) {
                 NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
                     val email = ChildSession.childEmail(this@ChildRegistrationActivity).orEmpty()
                         .ifBlank { inputParentEmail.text.toString().trim() }
                     registerOnServer(childCode, email, showWaitUi = true, onSuccess = onReady)
                 }
-                NetworkModule.ChildRegistrationState.ERROR ->
-                    showMessage(getString(R.string.error_network, ""), true)
+                NetworkModule.ChildRegistrationState.ERROR -> {
+                    showMessage(
+                        status.detail.ifBlank { getString(R.string.error_network, "") },
+                        true,
+                    )
+                }
                 else -> onReady()
             }
         }
@@ -146,6 +173,14 @@ class ChildRegistrationActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
+            val serverCheck = withContext(Dispatchers.IO) {
+                ServerConnectionHelper.checkConnectivity(this@ChildRegistrationActivity)
+            }
+            if (!serverCheck.ok) {
+                showMessage(serverCheck.message, true)
+                findViewById<Button>(R.id.btnSendCode).isEnabled = true
+                return@launch
+            }
             try {
                 val response = withContext(Dispatchers.IO) {
                     NetworkModule.registerChildDevice(
@@ -157,7 +192,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                             deviceName = deviceName,
                             androidVersion = androidVersion,
                             androidDeviceId = androidDeviceId,
-                        )
+                        ),
                     )
                 }
                 val serverChildCode = ChildCodeNormalizer.normalize(
@@ -169,24 +204,25 @@ class ChildRegistrationActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val emailSent = response.emailSent == true
-                if (!emailSent && response.devFallback != true) {
-                    showMessage(getString(R.string.register_email_failed), true)
-                    findViewById<Button>(R.id.btnSendCode).isEnabled = true
-                    return@launch
-                }
-
                 ChildSession.savePendingRegistration(
                     this@ChildRegistrationActivity,
                     email,
                     serverChildCode,
                     "",
                 )
-                DeviceIdentity.setChildDeviceId(this@ChildRegistrationActivity, serverChildCode)
+                com.example.myrana.identity.ChildIdentity.bind(this@ChildRegistrationActivity, serverChildCode)
+                val emailSent = response.emailSent == true
                 showWaitingForLink(serverChildCode, emailSent)
+                if (!emailSent) {
+                    showMessage(
+                        "✓ تم التسجيل على السيرفر\nانسخي الكود: $serverChildCode",
+                        false,
+                    )
+                }
+                startLinkPolling(serverChildCode)
                 onSuccess?.invoke()
             } catch (e: Exception) {
-                showMessage(getString(R.string.error_network, e.message ?: ""), true)
+                showMessage(ServerConnectionHelper.friendlyMessage(e), true)
                 findViewById<Button>(R.id.btnSendCode).isEnabled = true
             }
         }
@@ -199,17 +235,20 @@ class ChildRegistrationActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.textVerifyHint).text =
             getString(R.string.register_wait_parent_link)
 
+        textCodesDisplay.visibility = View.VISIBLE
+        textChildCodeValue.visibility = View.VISIBLE
+        btnCopyChildCode.visibility = View.VISIBLE
+        btnCheckParentLink.visibility = View.VISIBLE
+        textChildCodeValue.text = currentChildCode
+
         if (emailSent) {
-            textCodesDisplay.visibility = View.GONE
-            textChildCodeValue.visibility = View.GONE
-            btnCopyChildCode.visibility = View.GONE
             val email = ChildSession.childEmail(this).orEmpty()
-            showMessage(getString(R.string.register_email_sent, email), false)
+            showMessage(
+                getString(R.string.register_email_sent, email) +
+                    "\n\n" + getString(R.string.register_copy_code_for_parent),
+                false,
+            )
         } else {
-            textCodesDisplay.visibility = View.VISIBLE
-            textChildCodeValue.visibility = View.VISIBLE
-            btnCopyChildCode.visibility = View.VISIBLE
-            textChildCodeValue.text = currentChildCode
             showMessage(getString(R.string.register_wait_message), false)
         }
     }
@@ -221,27 +260,57 @@ class ChildRegistrationActivity : AppCompatActivity() {
             android.content.ClipData.newPlainText(
                 getString(R.string.register_child_code_label),
                 currentChildCode,
-            )
+            ),
         )
         showMessage(getString(R.string.child_code_copied), false)
     }
 
-    private fun startLinkPolling(childCode: String) {
+    private fun checkLinkNow(silent: Boolean = false) {
+        val code = currentChildCode.ifBlank { ChildSession.childCode(this).orEmpty() }
+        if (code.isBlank()) return
         lifecycleScope.launch {
+            val status = withContext(Dispatchers.IO) {
+                NetworkModule.queryChildLinkStatus(code)
+            }
+            when (status.state) {
+                NetworkModule.ChildRegistrationState.LINKED -> onParentLinked()
+                NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
+                    if (!silent) {
+                        showMessage(getString(R.string.register_reregistering), true)
+                    }
+                }
+                NetworkModule.ChildRegistrationState.ERROR -> {
+                    if (!silent) {
+                        showMessage(status.detail.ifBlank { getString(R.string.error_network, "") }, true)
+                    }
+                }
+                else -> {
+                    if (!silent) {
+                        showMessage(getString(R.string.register_wait_parent_link), false)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startLinkPolling(childCode: String) {
+        val code = childCode.trim()
+        if (code.isBlank()) return
+        if (linkPollJob?.isActive == true) return
+        linkPollJob = lifecycleScope.launch {
             while (isActive) {
                 val state = withContext(Dispatchers.IO) {
-                    NetworkModule.queryChildRegistrationState(childCode)
+                    NetworkModule.queryChildRegistrationState(code)
                 }
                 when (state) {
                     NetworkModule.ChildRegistrationState.LINKED -> {
-                        ChildSession.completeSetup(this@ChildRegistrationActivity)
-                        finishSetupAndOpenGame()
+                        onParentLinked()
                         return@launch
                     }
                     NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
                         showMessage(getString(R.string.register_reregistering), false)
                         val email = ChildSession.childEmail(this@ChildRegistrationActivity).orEmpty()
-                        registerOnServer(childCode, email, showWaitUi = true)
+                        registerOnServer(code, email, showWaitUi = true)
                         delay(5_000L)
                     }
                     else -> delay(3_000L)
@@ -250,11 +319,19 @@ class ChildRegistrationActivity : AppCompatActivity() {
         }
     }
 
-    private fun finishSetupAndOpenGame() {
+    private fun onParentLinked() {
+        linkPollJob?.cancel()
+        ChildSession.completeSetup(this)
+        showMessage(getString(R.string.register_link_detected), false)
+        finishSetupAndOpenPermissions()
+    }
+
+    private fun finishSetupAndOpenPermissions() {
+        ChildPermissionsGate.ensurePermissionsRequiredAfterLink(this)
         startActivity(
             ChildPermissionsActivity.intent(this).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
+            },
         )
         finish()
     }
@@ -271,7 +348,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
     private fun showMessage(msg: String, isError: Boolean) {
         textMessage.text = msg
         textMessage.setTextColor(
-            getColor(if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark)
+            getColor(if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark),
         )
     }
 }

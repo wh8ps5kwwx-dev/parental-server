@@ -24,18 +24,29 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** لوحة وقت الاستخدام والمؤشرات لولي الأمر. */
+/** لوحة وقت الاستخدام والمؤشرات والرسوم البيانية لولي الأمر. */
 class ParentScreenTimeActivity : AppCompatActivity() {
+
+    companion object {
+        const val EXTRA_CHILD_CODE = "extra_child_code"
+        const val EXTRA_FOCUS_SLEEP = "extra_focus_sleep"
+    }
 
     private var pollJob: Job? = null
     private lateinit var textChildName: TextView
     private lateinit var textChildDevice: TextView
+    private lateinit var textChildCode: TextView
     private lateinit var textLastUpdate: TextView
+    private lateinit var textChildPermissions: TextView
     private lateinit var dotOnline: View
     private lateinit var barTodayTime: ProgressBar
     private lateinit var barAppsOpened: ProgressBar
     private lateinit var textTodayTime: TextView
     private lateinit var textAppsOpened: TextView
+    private lateinit var textAlertsStats: TextView
+    private lateinit var textEducationalStats: TextView
+    private lateinit var chartDailyUsage: SimpleBarChartView
+    private lateinit var chartTopApps: SimpleBarChartView
     private lateinit var textReport: TextView
     private lateinit var textMessage: TextView
 
@@ -45,12 +56,18 @@ class ParentScreenTimeActivity : AppCompatActivity() {
 
         textChildName = findViewById(R.id.textChildName)
         textChildDevice = findViewById(R.id.textChildDevice)
+        textChildCode = findViewById(R.id.textChildCode)
         textLastUpdate = findViewById(R.id.textLastUpdate)
+        textChildPermissions = findViewById(R.id.textChildPermissions)
         dotOnline = findViewById(R.id.dotOnline)
         barTodayTime = findViewById(R.id.barTodayTime)
         barAppsOpened = findViewById(R.id.barAppsOpened)
         textTodayTime = findViewById(R.id.textTodayTime)
         textAppsOpened = findViewById(R.id.textAppsOpened)
+        textAlertsStats = findViewById(R.id.textAlertsStats)
+        textEducationalStats = findViewById(R.id.textEducationalStats)
+        chartDailyUsage = findViewById(R.id.chartDailyUsage)
+        chartTopApps = findViewById(R.id.chartTopApps)
         textReport = findViewById(R.id.textReport)
         textMessage = findViewById(R.id.textScreenTimeMessage)
 
@@ -60,13 +77,29 @@ class ParentScreenTimeActivity : AppCompatActivity() {
 
         loadPolicyIntoForm()
         refreshDashboard()
+        loadCharts()
+        if (intent.getBooleanExtra(EXTRA_FOCUS_SLEEP, false)) {
+            findViewById<EditText>(R.id.inputSleepStart).requestFocus()
+            parentScrollToSleep()
+        }
     }
+
+    private fun parentScrollToSleep() {
+        findViewById<EditText>(R.id.inputSleepStart).parent?.let { v ->
+            if (v is View) v.requestFocus()
+        }
+    }
+
+    private fun effectiveChildCode(): String? =
+        intent.getStringExtra(EXTRA_CHILD_CODE)?.trim()?.takeIf { it.isNotBlank() }
+            ?: ParentSession.childCode(this)
 
     override fun onStart() {
         super.onStart()
         pollJob = lifecycleScope.launch {
             while (isActive) {
                 refreshDashboard()
+                loadCharts()
                 delay(15_000L)
             }
         }
@@ -77,7 +110,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    private fun childCode(): String? = ParentSession.childCode(this)
+    private fun childCode(): String? = effectiveChildCode()
 
     private fun loadPolicyIntoForm() {
         val code = childCode() ?: return
@@ -160,9 +193,25 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadCharts() {
+        val code = childCode() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            when (val result = GuardianApi.fetchWeeklyChart(code)) {
+                is GuardianApi.ApiResult.WeeklyChart -> withContext(Dispatchers.Main) {
+                    renderCharts(result.data)
+                }
+                is GuardianApi.ApiResult.Error -> withContext(Dispatchers.Main) {
+                    textMessage.text = result.message
+                }
+                else -> Unit
+            }
+        }
+    }
+
     private fun renderDashboard(d: GuardianApi.ChildDashboardData) {
         textChildName.text = d.childName
-        textChildDevice.text = d.deviceName.ifBlank { d.childCode }
+        textChildDevice.text = d.deviceName.ifBlank { "—" }
+        textChildCode.text = getString(R.string.parent_child_code_label, d.childCode)
         dotOnline.setBackgroundColor(if (d.online) Color.parseColor("#4CAF50") else Color.parseColor("#9E9E9E"))
         textLastUpdate.text = if (d.lastSeenMs > 0L) {
             val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -191,11 +240,87 @@ class ParentScreenTimeActivity : AppCompatActivity() {
             }
         )
         textAppsOpened.text = getString(R.string.parent_apps_opened_value, d.appsOpened, maxApps)
+
+        textAlertsStats.text = getString(
+            R.string.parent_alerts_stats,
+            d.alertsToday,
+            d.alertsWeek,
+            0,
+        )
+        textEducationalStats.text = getString(
+            R.string.parent_educational_stats,
+            d.educationalSeconds / 60,
+            d.monitoredSeconds / 60,
+        )
+        textChildPermissions.text = ParentPermissionsFormatter.summary(this, d.permissionsOk, d.permissions)
+
+        if (d.topAppsToday.isNotEmpty()) {
+            val topBars = d.topAppsToday.take(6).map { row ->
+                val pkg = row["package_name"]?.toString().orEmpty()
+                val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
+                val edu = row["educational"] == true
+                SimpleBarChartView.BarEntry(
+                    label = shortPkg(pkg),
+                    value = (sec / 60f).coerceAtLeast(0f),
+                    color = if (edu) Color.parseColor("#2196F3") else Color.parseColor("#FF9800"),
+                )
+            }
+            chartTopApps.setData(topBars, "د")
+        }
+    }
+
+    private fun renderCharts(d: GuardianApi.WeeklyChartData) {
+        textAlertsStats.text = getString(
+            R.string.parent_alerts_stats,
+            d.alertsToday,
+            d.alertsWeek,
+            d.sleepViolationsWeek,
+        )
+
+        val dayBars = d.usageByDay.map { row ->
+            val day = row["day"]?.toString().orEmpty()
+            val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
+            val label = if (day.length >= 5) day.substring(5) else day
+            val minutes = sec / 60f
+            SimpleBarChartView.BarEntry(
+                label = label,
+                value = minutes.coerceAtLeast(0f),
+                color = barColorForMinutes(minutes.toLong()),
+            )
+        }
+        chartDailyUsage.setData(dayBars, "د")
+
+        if (d.topApps.isNotEmpty()) {
+            val appBars = d.topApps.take(6).map { row ->
+                val pkg = row["package_name"]?.toString().orEmpty()
+                val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
+                val edu = d.educationalApps.any {
+                    it["package_name"]?.toString().equals(pkg, ignoreCase = true)
+                }
+                SimpleBarChartView.BarEntry(
+                    label = shortPkg(pkg),
+                    value = (sec / 60f).coerceAtLeast(0f),
+                    color = if (edu) Color.parseColor("#2196F3") else Color.parseColor("#FF9800"),
+                )
+            }
+            chartTopApps.setData(appBars, "د")
+        }
+    }
+
+    private fun shortPkg(pkg: String): String {
+        val parts = pkg.split(".")
+        return parts.lastOrNull()?.take(8)?.ifBlank { pkg.take(8) } ?: pkg.take(8)
     }
 
     private fun barColor(seconds: Long, warnSec: Long, blockSec: Long): Int = when {
         seconds >= blockSec -> Color.parseColor("#F44336")
         seconds >= warnSec -> Color.parseColor("#FFC107")
+        else -> Color.parseColor("#4CAF50")
+    }
+
+    private fun barColorForMinutes(minutes: Long): Int = when {
+        minutes >= 120 -> Color.parseColor("#F44336")
+        minutes >= 60 -> Color.parseColor("#FFC107")
         else -> Color.parseColor("#4CAF50")
     }
 

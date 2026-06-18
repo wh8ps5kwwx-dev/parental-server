@@ -69,11 +69,8 @@ object AccessibilityHelper {
             .apply()
     }
 
-    fun isMonitoredPackage(packageName: String): Boolean {
-        val pkg = packageName.lowercase()
-        if (pkg in BROWSER_PACKAGES) return true
-        return pkg == YOUTUBE_PACKAGE
-    }
+    fun isMonitoredPackage(packageName: String): Boolean =
+        MonitoredAppRegistry.shouldMonitorAccessibilityText(packageName)
 
     const val YOUTUBE_PACKAGE = "com.google.android.youtube"
 
@@ -81,20 +78,4 @@ object AccessibilityHelper {
         "android.settings.ACCESSIBILITY_DETAILS_SETTINGS"
     private const val EXTRA_ACCESSIBILITY_SERVICE_COMPONENT_NAME =
         "android.settings.extra.ACCESSIBILITY_SERVICE_COMPONENT_NAME"
-
-    private val BROWSER_PACKAGES = setOf(
-        "com.android.chrome",
-        "com.chrome.beta",
-        "com.chrome.dev",
-        "com.brave.browser",
-        "com.aloha.browser",
-        "com.duckduckgo.mobile.android",
-        "org.mozilla.firefox",
-        "com.microsoft.emmx",
-        "com.sec.android.app.sbrowser",
-        "com.opera.browser",
-        "com.opera.mini.native",
-        "com.kiwibrowser.browser",
-        "org.torproject.torbrowser",
-    )
 }

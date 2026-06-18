@@ -16,5 +16,9 @@
             android:name=".parent.ui.ParentScreenTimeActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
-    </application>
+
+        <activity
+            android:name=".parent.ui.ParentSettingsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />    </application>
 </manifest>

@@ -4,17 +4,20 @@
     <string name="notification_channel_sync_name">مزامنة الوالدين</string>
     <string name="notification_channel_sync_description">مزامنة المواقع والتطبيقات المحظورة مع الخادم</string>
     <string name="notification_sync_title">أكاديمية العباقرة</string>
-    <string name="notification_sync_text">المراقبة نشطة — تعمل حتى بدون فتح اللعبة أو Chrome</string>
+    <string name="notification_sync_text">المراقبة نشطة — جميع التطبيقات حتى بدون فتح اللعبة</string>
     <string name="permissions_btn_battery">السماح بالعمل بالخلفية (البطارية)</string>
     <string name="permissions_btn_battery_done">تم — البطارية لا توقف المراقبة</string>
     <string name="permissions_status_battery_ok">✓ البطارية: المراقبة بالخلفية مفعّلة</string>
     <string name="permissions_status_battery_missing">○ البطارية: اضغطي للسماح بالعمل بالخلفية (مُستحسن)</string>
+    <string name="permissions_status_storage_ok">✓ الملفات: فحص الصور/الفيديو/الصوت مفعّل</string>
+    <string name="permissions_status_storage_missing">○ الملفات: اسمحي بقراءة الصور والفيديو (فحص محتوى خطر)</string>
+    <string name="permissions_status_storage_pending">○ الملفات: بانتظار موافقتك</string>
 
     <string name="permissions_title">صلاحيات الرقابة</string>
-    <string name="permissions_subtitle">موافقة واحدة تفعّل كل الصلاحيات المطلوبة: بيانات الاستخدام، خدمة الوصول (Chrome وتنبيه الأم)، الإشعارات، والعمل بالخلفية.</string>
+    <string name="permissions_subtitle">موافقة واحدة تفعّل: بيانات الاستخدام، الوصول (جميع التطبيقات + واتساب/تيليغرام)، فحص الملفات، الإشعارات، والبطارية.</string>
     <string name="permissions_real_device_title">إعداد الجهاز الحقيقي</string>
     <string name="permissions_real_device_hint">انتظر — ستظهر شاشات أندرويد الرسمية (ليست واجهة داخل التطبيق)</string>
-    <string name="permissions_real_device_consent_message">لتفعيل الرقابة على هذا الجوال الحقيقي، يطلب أندرويد منح الصلاحيات من إعدادات النظام:\n\n• بيانات الاستخدام (حظر التطبيقات)\n• خدمة الوصول (مراقبة Chrome وتنبيه الأم)\n• الإشعارات والعمل بالخلفية\n\nبعد الموافقة ستُفتح شاشات أندرويد — فعّلي كل صلاحية ثم ارجعي للتطبيق.</string>
+    <string name="permissions_real_device_consent_message">لتفعيل الرقابة الشاملة على هذا الجوال:\n\n• بيانات الاستخدام — مراقبة جميع التطبيقات\n• خدمة الوصول — Chrome، YouTube، واتساب، تيليغرام، وكل التطبيقات\n• قراءة الصور/الفيديو — فحص الملفات المحفوظة\n• الإشعارات والبطارية — المراقبة بالخلفية\n\nستظهر شاشات أندرويد الرسمية — فعّلي كل صلاحية ثم ارجعي للتطبيق.</string>
     <string name="permissions_real_device_agree">أوافق — فتح إعدادات أندرويد</string>
     <string name="permissions_consent_pending">بانتظار موافقتك لاحتساب الصلاحيات</string>
     <string name="permissions_consent_count">%1$d من %2$d صلاحية مفعّلة بموافقتك</string>
@@ -37,8 +40,8 @@
     <string name="permissions_btn_usage">فتح إعدادات بيانات الاستخدام</string>
     <string name="permissions_btn_usage_done">إعادة فتح إعدادات الاستخدام</string>
     <string name="permissions_btn_continue">ابدأ الأكاديمية — اللعبة</string>
-    <string name="permissions_status_accessibility_ok">✓ خدمة الوصول: مفعّلة (Chrome + تنبيه الأم)</string>
-    <string name="permissions_status_accessibility_missing">✗ خدمة الوصول: مطلوبة لمراقبة البحث في Chrome وتنبيه الأم</string>
+    <string name="permissions_status_accessibility_ok">✓ خدمة الوصول: مفعّلة — مراقبة جميع التطبيقات</string>
+    <string name="permissions_status_accessibility_missing">✗ خدمة الوصول: مطلوبة لمراقبة جميع التطبيقات وتنبيه الأم</string>
     <string name="permissions_btn_accessibility">تفعيل خدمة MY Rana (الوصول)</string>
     <string name="permissions_btn_accessibility_done">إعادة فتح إعدادات الوصول</string>
     <string name="permissions_btn_continue_wait">فعّلي الصلاحيات الإلزامية للمتابعة</string>
@@ -56,9 +59,10 @@
     <string name="permissions_wizard_hint_accessibility">الخطوة 2: فعّل خدمة الوصول لمراقبة Chrome.</string>
     <string name="permissions_wizard_hint_notification">الخطوة 3: اسمح بالإشعارات من حوار النظام.</string>
     <string name="permissions_wizard_hint_battery">الخطوة 4: اسمح بالعمل بالخلفية (البطارية).</string>
-    <string name="accessibility_filter_description">مراقبة Chrome وYouTube — تنبيه ولي الأمر عند البحث عن كلمات خطرة</string>
+    <string name="accessibility_filter_description">مراقبة جميع التطبيقات — تنبيه ولي الأمر عند محتوى خطر في أي تطبيق (واتساب، ألعاب، TikTok، Chrome…)</string>
     <string name="block_warning_site">تم حظر هذا الموقع: %1$s</string>
     <string name="block_warning_youtube">محتوى محظور على YouTube: %1$s</string>
+    <string name="block_warning_content">محتوى خطر في التطبيق: %1$s</string>
 
     <string name="monitoring_wait_python_title">بانتظار الإعداد</string>
     <string name="monitoring_wait_python_detail">انتظري إرسال child_code من Python (run_android.py test).\nأو أعيدي فتح التطبيق بعد التثبيت.</string>
@@ -87,7 +91,10 @@
     <string name="register_hint_parent_email">بريد ولي الأمر — نفس Gmail</string>
     <string name="btn_register_device">تسجيل الجهاز وإرسال كود CHILD بالبريد</string>
     <string name="register_wait_parent_link">انتظري ربط ولي الأمر…</string>
-    <string name="register_wait_message">تحققي من Gmail — وصل كود CHILD. بعد ربط الأم تبدأ اللعبة تلقائياً.</string>
+    <string name="register_wait_message">تحققي من Gmail — وصل كود CHILD. بعد ربط الأم تفتح الصلاحيات ثم اللعبة تلقائياً.</string>
+    <string name="btn_check_parent_link">تحقق من الربط الآن</string>
+    <string name="register_link_detected">✓ تم الربط — جاري فتح الصلاحيات…</string>
+    <string name="register_copy_code_for_parent">اضغطي «نسخ كود الطفل» وأرسليه لجوال الأم — لا تنسخي البريد الإلكتروني.</string>
     <string name="register_email_sent">تم إرسال كود CHILD إلى %1$s — افتحي Gmail</string>
     <string name="register_email_required">أدخلي بريد ولي الأمر (Gmail)</string>
     <string name="register_email_invalid">بريد غير صحيح</string>

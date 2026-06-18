@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="parent_title">لوحة ولي الأمر</string>
+    <string name="parent_welcome_title">مرحباً بك في MY Rana</string>
+    <string name="parent_welcome_purpose">تطبيق رقابة أبوية يساعدك على حماية أطفالك رقمياً باحترام خصوصيتهم — من جوالك تتابعين الاستخدام، التنبيهات، والحظر دون الحاجة لمس جوال الطفل باستمرار.</string>
+    <string name="parent_welcome_features">ماذا يفعل التطبيق؟\n• تنبيهات عند بحث الطفل عن محتوى خطر في المتصفح\n• حظر مواقع وتطبيقات وتجميد فوري\n• وقت استخدام الشاشة وحدود يومية\n• تقارير استخدام وتنبيهات يومية بالبريد\n• دعم أكثر من طفل من حساب ولي أمر واحد</string>
+    <string name="parent_welcome_tips_title">نصائح قبل البدء</string>
+    <string name="parent_welcome_tips">• تحتاجين جوالين: واحد لك (ولي الأمر) وواحد للطفل\n• ثبّتي تطبيق الطفل على جواله أولاً واضغطي «تسجيل الجهاز»\n• افتحي Gmail على جوالك — ستصلك رسائل التحقق والربط\n• الربط آمن: لا يكتمل إلا بموافقتك عبر رمز من بريدك\n• فعّلي «خدمة الوصول» على جوال الطفل بعد الربط لمراقبة البحث</string>
+    <string name="parent_welcome_steps_title">متى يبدأ الربط؟</string>
+    <string name="parent_welcome_steps">الربط ليس في البداية مباشرة — بعد فهم التطبيق تضغطين «ابدئي الإعداد»:\n١) تحقق بريدك (مرة واحدة)\n٢) ربط جهاز الطفل (كود CHILD + رمز من Gmail)\n٣) اسم الطفل وإتمام الربط\n٤) لوحة التحكم — الحظر والتنبيهات</string>
+    <string name="parent_btn_start_setup">ابدئي الإعداد — ربط الطفل</string>
+    <string name="parent_btn_back_to_control">العودة للوحة التحكم</string>
+    <string name="parent_btn_show_welcome">عن التطبيق والنصائح</string>
+    <string name="parent_step_welcome">الصفحة الرئيسية</string>
     <string name="parent_hint_email">بريد ولي الأمر</string>
     <string name="parent_hint_role">صفة ولي الأمر</string>
     <string name="parent_role_mother">أم</string>
@@ -15,30 +26,30 @@
     <string name="parent_hint_email_code">رمز التحقق الإلكتروني (6 أرقام)</string>
     <string name="parent_btn_verify">تحقق من الرمز</string>
     <string name="parent_step_email">الخطوة ١ — تحقق البريد</string>
-    <string name="parent_step_add_child">الخطوة ٢ — إضافة الطفل</string>
-    <string name="parent_step_link_device">الخطوة ٣ — ربط جهاز الطفل</string>
+    <string name="parent_step_link_device">الخطوة ٢ — ربط جهاز الطفل</string>
+    <string name="parent_step_add_child">الخطوة ٣ — إضافة بيانات الطفل</string>
     <string name="parent_step_control">لوحة التحكم</string>
-    <string name="parent_add_child_subtitle">أدخلي اسم الطفل أولاً، ثم انتقلي لربط جواله.</string>
+    <string name="parent_add_child_subtitle">بعد إدخال كود الطفل ورمز الربط، اكتبي اسم الطفل وعمره ثم اضغطي «إتمام الربط».</string>
     <string name="parent_hint_child_age">عمر الطفل (اختياري)</string>
-    <string name="parent_btn_continue_to_link">متابعة — ربط الجهاز</string>
+    <string name="parent_btn_continue_to_link">إتمام الربط</string>
     <string name="parent_btn_verify_device">تحقق من رمز الجهاز</string>
-    <string name="parent_btn_add_another_child">إضافة طفل آخر</string>
-    <string name="parent_select_active_child">اختيار الطفل للتحكم:</string>
-    <string name="parent_child_spinner_item">%1$s — %2$s (%3$s)</string>
-    <string name="parent_linked_children_summary">الأطفال المرتبطون: %1$d — اختر من القائمة للتحكم</string>
+    <string name="parent_btn_add_another_child">+ إضافة طفل آخر</string>
+    <string name="parent_btn_cancel_add_another">إلغاء — العودة للوحة التحكم</string>
+    <string name="parent_step_add_another_child">إضافة طفل آخر — ربط جهاز جديد</string>
+    <string name="parent_adding_another_hint">الطفل الحالي يبقى مربوطاً — أدخلي كود CHILD للطفل الجديد</string>
+    <string name="parent_cancel_add_another_done">تم الإلغاء — عدتِ للوحة التحكم</string>
+    <string name="parent_another_child_linked">تم ربط %1$s — اختاريه من القائمة للتحكم</string>
+    <string name="parent_single_child_active">الطفل المرتبط: %1$s — %2$s</string>
     <string name="parent_pending_child_label">الطفل: %1$s (عمر %2$d)</string>
     <string name="parent_add_child_name_required">أدخلي اسم الطفل</string>
-    <string name="parent_link_subtitle">مشروع التخرج — 3 رسائل Gmail: (1) تحقق البريد (2) كود CHILD (3) رمز الربط. الصقي CHILD من Gmail ثم اطلبي رمز الربط.</string>
-    <string name="parent_btn_auto_link">إرسال رمز الربط ثم ربط</string>
-    <string name="parent_auto_linking">جاري الربط التلقائي…</string>
-    <string name="parent_auto_link_success">تم الربط — جوال الطفل سيفتح اللعبة تلقائياً</string>
+    <string name="parent_link_subtitle">من جوال الطفل: سجّلي الجهاز وانسخي كود CHILD. أرسلي رمز الربط لبريدك، أدخلي الرمز هنا، ثم اضغطي «متابعة — بيانات الطفل».</string>
     <string name="parent_hint_child_name">اسم الطفل</string>
     <string name="parent_hint_child_code">كود الطفل — CHILD-XXXXXXXX (يُضاف تلقائياً)</string>
-    <string name="parent_hint_verify_code">رمز الربط — الرسالة الثانية من Gmail (6 أرقام)</string>
-    <string name="parent_link_incomplete">أكملي كود الطفل ورمز الربط من Gmail (الرسالة الثانية)</string>
+    <string name="parent_hint_verify_code">رمز الربط من بريدك (6 أرقام)</string>
+    <string name="parent_link_incomplete">أكملي كود الطفل ورمز التحقق</string>
     <string name="parent_device_verified">تم التحقق — الجهاز: %1$s</string>
     <string name="parent_link_verified_info">كود الطفل: %1$s\nبريد الجهاز: %2$s\n\nأدخلي اسم الطفل ثم اضغطي ربط.</string>
-    <string name="parent_btn_link">ربط الطفل</string>
+    <string name="parent_btn_link">متابعة — بيانات الطفل</string>
     <string name="parent_hint_target">موقع أو حزمة تطبيق</string>
     <string name="parent_btn_block_site">حظر موقع</string>
     <string name="parent_btn_block_app">حظر تطبيق (اسم الحزمة)</string>
@@ -56,7 +67,7 @@
     <string name="parent_link_success_monitoring">تم الربط ✓ فعّلي «خدمة الوصول» على جوال الطفل ثم جرّبي البحث في Chrome</string>
     <string name="parent_code_copied_hint">تم وضع الرمز في الحقل — يمكنك تعديله أو نسخه</string>
     <string name="parent_btn_paste_child_code">لصق كود الطفل</string>
-    <string name="parent_paste_empty">الحافظة فارغة — انسخي كود CHILD من Gmail أولاً</string>
+    <string name="parent_paste_empty">الحافظة فارغة — انسخي الكود من جوال الطفل أولاً</string>
     <string name="parent_usage_report_title">استخدام التطبيقات (آخر 7 أيام — يُرفع تلقائياً كل 24 ساعة)</string>
     <string name="parent_usage_empty">لا توجد بيانات بعد. تأكدي أن جهاز الطفل متصل وصلاحية الاستخدام مفعّلة.</string>
     <string name="parent_usage_loading">جاري طلب التقرير من جهاز الطفل…</string>
@@ -83,16 +94,41 @@
     <string name="parent_btn_daily_report">تقرير يومي</string>
     <string name="parent_btn_weekly_report">تقرير أسبوعي</string>
     <string name="parent_weekly_report_header">تقرير الأسبوع (7 أيام):</string>
-    <string name="parent_child_code_label">كود الطفل: %1$s</string>
-    <string name="parent_alerts_stats">تنبيهات اليوم: %1$d | الأسبوع: %2$d | استخدام بعد النوم: %3$d</string>
-    <string name="parent_educational_stats">تعليمي: %1$d د | مراقَب: %2$d د</string>
+
+    <!-- مفاتيح تُستخدم في layouts الخاصة بولي الأمر -->
+    <string name="parent_btn_check_child_code">✓ تأكيد الكود على السيرفر</string>
+    <string name="parent_link_code_label">رمز الربط — من Gmail (6 أرقام):</string>
+    <string name="parent_btn_check_server">فحص الاتصال / إيقاظ السيرفر</string>
+    <string name="parent_btn_open_server_browser">فتح السيرفر في Chrome</string>
+    <string name="parent_btn_auto_link">إرسال رمز الربط ثم متابعة</string>
+    <string name="parent_select_active_child">اختيار الطفل للتحكم (يمكنك ربط أكثر من طفل):</string>
+    <string name="parent_apply_all_children">تطبيق الأمر على كل الأطفال المرتبطين</string>
+    <string name="parent_apply_all_children_count">تطبيق على كل الأطفال (%1$d أجهزة)</string>
+    <string name="parent_multi_child_hint">💡 لكل طفل جواله وتطبيق الطفل — ثم «+ إضافة طفل آخر»</string>
+    <string name="parent_bulk_from_list_hint">☑ حدّدي أطفالاً من القائمة → أرسلي حظر/تجميد/تقرير لعدة أجهزة دفعة واحدة</string>
+    <string name="parent_btn_select_all_list">تحديد الكل من القائمة</string>
+    <string name="parent_select_for_bulk">إرسال</string>
+    <string name="parent_child_row_online">🟢 %1$s — %2$s\n%3$d د اليوم | إغلاق %4$s–%5$s</string>
+    <string name="parent_child_row_online_short">🟢 %1$s — %2$s (متصل)</string>
+    <string name="parent_child_row_offline">⚫ %1$s — %2$s (غير متصل)</string>
+    <string name="parent_btn_child_report">تقرير</string>
+    <string name="parent_btn_child_chart">رسم</string>
+    <string name="parent_btn_child_sleep">نوم</string>
+    <string name="parent_btn_child_activate">تنشيط</string>
+    <string name="parent_child_report_title">تقرير %1$s</string>
+    <string name="parent_child_sleep_title">وقت إغلاق — %1$s</string>
+    <string name="parent_child_sleep_message">وقت النوم (إغلاق الشاشة):\nمن %1$s إلى %2$s</string>
+    <string name="parent_btn_edit_sleep">تعديل وقت النوم</string>
+    <string name="parent_dashboard_sleep">وقت الإغلاق: %1$s — %2$s</string>
+    <string name="parent_broadcast_done">تم — نجح %1$d من %2$d جهاز</string>
+    <string name="parent_broadcast_partial">نجح %1$d — فشل %2$d من %3$d أجهزة</string>
+    <string name="parent_child_chip_active">%1$s ✓ — نشط (%2$s)</string>
+    <string name="parent_child_chip_inactive">%1$s — %2$s</string>
+    <string name="parent_btn_open_settings">إعدادات وسجل التغييرات</string>
     <string name="parent_chart_daily_usage">رسم — وقت الاستخدام اليومي (7 أيام)</string>
     <string name="parent_chart_top_apps">رسم — أكثر التطبيقات (7 أيام)</string>
-    <string name="parent_dashboard_mini">اليوم: %1$d د | تطبيقات: %2$d | تنبيهات: %3$d</string>
-    <string name="parent_online_status">%1$s</string>
-    <string name="parent_status_online">متصل</string>
-    <string name="parent_status_offline">غير متصل</string>
 
+    <!-- شاشة الإعدادات -->
     <string name="parent_settings_title">إعدادات ولي الأمر</string>
     <string name="parent_settings_retention_hint">حذف البيانات الأقدم من (7–90 يوماً)</string>
     <string name="parent_settings_daily_email">ملخص يومي بالبريد</string>
@@ -102,12 +138,33 @@
     <string name="parent_btn_send_daily_email">إرسال الملخص اليومي الآن</string>
     <string name="parent_btn_send_weekly_email">إرسال الملخص الأسبوعي الآن</string>
     <string name="parent_btn_load_audit">عرض سجل التغييرات</string>
-    <string name="parent_btn_open_settings">إعدادات وسجل التغييرات</string>
-    <string name="parent_audit_empty">لا تغييرات مسجّلة بعد</string>
+
+    <!-- عناصر لوحة التحكم المختصرة -->
+    <string name="parent_status_online">متصل</string>
+    <string name="parent_status_offline">غير متصل</string>
+    <string name="parent_dashboard_mini">اليوم: %1$d د | تطبيقات: %2$d | تنبيهات: %3$d</string>
+    <string name="parent_child_spinner_item">%1$s — %2$s (%3$s)</string>
+    <string name="parent_linked_children_summary">%1$d أطفال مرتبطون — اضغطي على اسم الطفل للتبديل</string>
+    <string name="parent_checking_server">جاري فحص السيرفر (قد يستغرق 90 ثانية)…</string>
+    <string name="parent_child_code_ok">✓ الكود صحيح على السيرفر: %1$s — تابعي إدخال رمز الربط</string>
+    <string name="parent_child_not_on_server_steps">① جوال الطفل: اضغطي «تسجيل الجهاز»\n② افتحي Gmail — رسالة «كود جهاز الطفل»\n③ انسخي CHILD-88278A25 (8 أحرف) — ليس البريد\n④ جوال الأم: الصقي الكود ثم «إرسال رمز الربط»</string>
+    <string name="parent_child_code_field_hint">مثال صحيح: CHILD-88278A25 — ليس البريد الإلكتروني</string>
+    <string name="parent_child_code_missing">✗ الكود غير موجود — من جوال الطفل: «تسجيل الجهاز» ثم انسخي CHILD-XXXXXXXX من Gmail</string>
+    <string name="parent_auto_link_success">تم الربط — جوال الطفل سيفتح الأكاديمية تلقائياً</string>
+
+    <!-- صلاحيات الطفل (ملخص) -->
     <string name="parent_perm_ok">مفعّل</string>
     <string name="parent_perm_missing">غير مفعّل</string>
+    <string name="parent_permissions_unknown">صلاحيات الطفل: بانتظار أول اتصال من جوال الطفل</string>
+    <string name="parent_permissions_status">الاستخدام %1$s | الوصول %2$s | الإشعارات %3$s | البطارية %4$s | الملفات %5$s</string>
     <string name="parent_permissions_all_ok">صلاحيات جوال الطفل الأساسية مفعّلة ✓</string>
     <string name="parent_permissions_incomplete">بعض الصلاحيات غير مفعّلة على جوال الطفل — فعّلي الوصول وبيانات الاستخدام</string>
-    <string name="parent_permissions_unknown">صلاحيات الطفل: بانتظار أول اتصال من جوال الطفل</string>
-    <string name="parent_permissions_status">الاستخدام %1$s | الوصول %2$s | الإشعارات %3$s | البطارية %4$s</string>
+
+    <!-- شاشة وقت الاستخدام -->
+    <string name="parent_child_code_label">كود الطفل: %1$s</string>
+    <string name="parent_alerts_stats">تنبيهات اليوم: %1$d | الأسبوع: %2$d | استخدام بعد النوم: %3$d</string>
+    <string name="parent_educational_stats">تعليمي: %1$d د | مراقَب: %2$d د</string>
+
+    <!-- سجل التغييرات -->
+    <string name="parent_audit_empty">لا تغييرات مسجّلة بعد</string>
 </resources>

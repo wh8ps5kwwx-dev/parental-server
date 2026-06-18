@@ -11,7 +11,7 @@ import com.example.myrana.session.ChildSession
 import com.example.myrana.worker.MonitoringScheduler
 
 /**
- * مزامنة وحظر ومراقبة Chrome — تُشغَّل فقط عندما يمنح أندرويد الصلاحيات فعلياً.
+ * مزامنة وحظر ومراقبة **جميع التطبيقات** — تُشغَّل عند منح أندرويد الصلاحيات.
  */
 object BackgroundMonitoring {
 
@@ -40,6 +40,7 @@ object BackgroundMonitoring {
         MonitoringScheduler.scheduleBackgroundLoop(app, 1)
 
         startForegroundServiceSafe(app, snap)
+        com.example.myrana.enforcement.MediaLibraryScanner.scanIfDue(app)
 
         Log.i(
             TAG,

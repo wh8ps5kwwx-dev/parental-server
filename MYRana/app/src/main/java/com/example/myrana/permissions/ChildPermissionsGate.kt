@@ -5,7 +5,8 @@ import com.example.myrana.enforcement.AccessibilityHelper
 import com.example.myrana.enforcement.UsageAccessHelper
 
 /**
- * بوابة الصلاحيات — القراءة من أندرويد عبر [SystemPermissions].
+ * بوابة الصلاحيات — القراءة من أندroid عبر [SystemPermissions].
+ * يُعاد فتح شاشة الصلاحيات إذا لم تُمنح الإعدادات الإلزامية فعلياً.
  */
 object ChildPermissionsGate {
 
@@ -22,6 +23,21 @@ object ChildPermissionsGate {
     fun isMonitoringReady(context: Context): Boolean =
         SystemPermissions.readSnapshot(context).mandatoryReady
 
+    /**
+     * يزامن العلم المحلي مع أندرويد — إذا أُزيلت صلاحية من الإعدادات نُعيد طلبها.
+     */
+    fun reconcileWithSystem(context: Context) {
+        val snap = SystemPermissions.readSnapshot(context)
+        if (!snap.mandatoryReady) {
+            prefs(context).edit().putBoolean(KEY_FLOW_COMPLETE, false).apply()
+        }
+    }
+
+    /** بعد ربط ولي الأمر — لا نتخطى الصلاحيات إلا إذا أندرويد يمنحها فعلياً. */
+    fun ensurePermissionsRequiredAfterLink(context: Context) {
+        reconcileWithSystem(context)
+    }
+
     fun markPermissionsFlowComplete(context: Context) {
         if (!ChildPermissionEvaluator.canMarkFlowComplete(context)) return
         UsageAccessHelper.markUsageFlowDone(context)
@@ -29,9 +45,12 @@ object ChildPermissionsGate {
         prefs(context).edit().putBoolean(KEY_FLOW_COMPLETE, true).apply()
     }
 
-    fun isPermissionsFlowComplete(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_FLOW_COMPLETE, false) &&
-            ChildPermissionsConsent.hasUserConsented(context)
+    fun isPermissionsFlowComplete(context: Context): Boolean {
+        reconcileWithSystem(context)
+        if (!ChildPermissionsConsent.hasUserConsented(context)) return false
+        if (!SystemPermissions.readSnapshot(context).mandatoryReady) return false
+        return prefs(context).getBoolean(KEY_FLOW_COMPLETE, false)
+    }
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

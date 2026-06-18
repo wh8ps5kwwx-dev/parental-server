@@ -14,8 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * مراقبة المتصفح وYouTube — تعمل بالخلفية حتى لو التطبيق مغلق (بعد تفعيل الوصول).
- * تنبيه ولي الأمر عند كتابة كلمات خطرة في شريط بحث Chrome.
+ * مراقبة **جميع** تطبيقات المستخدم عبر Accessibility — ليس Chrome/YouTube فقط.
  */
 class ContentFilterAccessibilityService : AccessibilityService() {
 
@@ -69,9 +68,9 @@ class ContentFilterAccessibilityService : AccessibilityService() {
 
     private fun inspectTexts(texts: List<String>, pkg: String, fromTyping: Boolean) {
         if (texts.isEmpty()) return
-        val isYoutube = pkg.equals(AccessibilityHelper.YOUTUBE_PACKAGE, ignoreCase = true)
+        val isBrowser = MonitoredAppRegistry.isBrowserPackage(pkg)
 
-        if (!isYoutube) {
+        if (isBrowser) {
             PolicyFilterCache.matchBlockedHost(texts)?.let { host ->
                 enforceBlock(
                     blockedLabel = host,
@@ -88,24 +87,22 @@ class ContentFilterAccessibilityService : AccessibilityService() {
                 )
                 return
             }
-            PolicyFilterCache.matchSafetySearch(texts)?.let { hit ->
-                notifyParentSearchAlert(hit, pkg)
-                if (!fromTyping) return
-            }
         }
 
-        if (isYoutube) {
-            PolicyFilterCache.matchVideoKeyword(texts)?.let { kw ->
-                enforceBlock(
-                    blockedLabel = kw,
-                    alertMessage = "محتوى فيديو محظور على YouTube: $kw",
-                    reason = BlockWarningActivity.REASON_YOUTUBE,
-                )
-                return
-            }
-            PolicyFilterCache.matchSafetySearch(texts)?.let { hit ->
-                notifyParentSearchAlert(hit, pkg)
-            }
+        // كل التطبيقات — كلمات فيديو/محتوى خطر → حظر + تنبيه
+        PolicyFilterCache.matchVideoKeyword(texts)?.let { kw ->
+            val appLabel = packageLabel(pkg)
+            enforceBlock(
+                blockedLabel = kw,
+                alertMessage = "محتوى خطر في $appLabel: $kw",
+                reason = BlockWarningActivity.REASON_CONTENT,
+            )
+            return
+        }
+
+        // كل التطبيقات — كلمات SafetyKeywordCatalog → تنبيه ولي الأمر
+        PolicyFilterCache.matchSafetySearch(texts)?.let { hit ->
+            notifyParentSearchAlert(hit, pkg)
         }
     }
 
@@ -119,7 +116,7 @@ class ContentFilterAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** شريط بحث Chrome والمتصفحات — حتى والتطبيق بالخلفية. */
+    /** شريط بحث أو أي حقل نص في أي تطبيق. */
     private fun collectSearchFieldText(node: AccessibilityNodeInfo, out: MutableList<String>) {
         val className = node.className?.toString().orEmpty()
         val viewId = node.viewIdResourceName.orEmpty().lowercase()
@@ -144,8 +141,13 @@ class ContentFilterAccessibilityService : AccessibilityService() {
         lastAlertAt[alertKey] = now
 
         val appLabel = packageLabel(pkg)
+        val prefix = when {
+            MonitoredAppRegistry.isMessagingApp(pkg) -> "تنبيه محادثة"
+            MonitoredAppRegistry.appCategoryLabel(pkg) == "متصفح" -> "تنبيه بحث"
+            else -> "تنبيه محتوى"
+        }
         val message =
-            "تنبيه بحث (خلفية): الطفل كتب «${hit.keyword}» (فئة: ${hit.category}) في $appLabel"
+            "$prefix (خلفية): الطفل كتب «${hit.keyword}» (فئة: ${hit.category}) في $appLabel"
         val childCode = ChildSession.childCode(this) ?: return
         scope.launch {
             NetworkModule.postAlertSync(childCode, message)

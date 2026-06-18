@@ -9,6 +9,8 @@ import com.google.gson.annotations.SerializedName
 data class PolicyEnvelopeDto(
     /** رقم مراجعة يزيد عند كل تغيير على السيرفر (للمقارنة لاحقاً). */
     @SerializedName("revision") val revision: Long?,
+    /** true إذا لم تتغير السياسة منذ since_revision */
+    @SerializedName("unchanged") val unchanged: Boolean? = null,
     @SerializedName("blockedHosts") val blockedHosts: List<String>?,
     @SerializedName("blockedPackages") val blockedPackages: List<String>?,
     @SerializedName("videoKeywords") val videoKeywords: List<String>?

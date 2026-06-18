@@ -67,6 +67,13 @@ object ChildSession {
             .apply()
     }
 
+    /** تحديث كود الطفل دون إلغاء الإعداد (بعد إعادة تسجيل على السيرفر). */
+    fun updateChildCode(context: Context, childCode: String) {
+        prefs(context).edit()
+            .putString(KEY_CHILD_CODE, childCode.trim())
+            .apply()
+    }
+
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

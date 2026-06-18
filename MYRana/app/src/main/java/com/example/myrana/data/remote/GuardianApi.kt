@@ -1,8 +1,10 @@
 package com.example.myrana.data.remote
 
+import android.content.Context
 import com.example.myrana.data.remote.dto.UsageAppItem
 import com.example.myrana.screentime.ScreenTimePolicy
 import com.example.myrana.util.ChildCodeNormalizer
+import com.example.myrana.util.ServerConnectionHelper
 import java.net.URLEncoder
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -14,6 +16,12 @@ import com.google.gson.reflect.TypeToken
 object GuardianApi {
 
     private val gson = Gson()
+
+    /** فحص السيرفر قبل الربط — إنترنت + إيقاظ Render + 3 محاولات. */
+    fun checkServerConnection(context: Context): ApiResult {
+        val result = ServerConnectionHelper.checkConnectivity(context)
+        return if (result.ok) ApiResult.Ok(result.message) else ApiResult.Error(result.message)
+    }
 
     /** إرسال رمز تحقق لبريد ولي الأمر. */
     fun sendEmailCode(email: String): ApiResult {
@@ -569,6 +577,16 @@ object GuardianApi {
 
     private fun friendlyError(e: Exception): String {
         val raw = e.message.orEmpty()
+        if (raw.contains("لا يوجد إنترنت") ||
+            raw.contains("تعذّر الوصول للسيرفر") ||
+            raw.contains("السيرفر بطيء")
+        ) {
+            return raw
+        }
+        val kind = ServerConnectionHelper.classify(e)
+        if (kind != ServerConnectionHelper.ErrorKind.OTHER) {
+            return ServerConnectionHelper.messageFor(kind, e)
+        }
         val jsonStart = raw.indexOf('{')
         if (jsonStart >= 0) {
             try {
@@ -587,7 +605,7 @@ object GuardianApi {
             } catch (_: Exception) {
             }
         }
-        return translateServerMessage(raw).ifBlank { "خطأ في الاتصال — حاولي مرة أخرى" }
+        return ServerConnectionHelper.friendlyMessage(e)
     }
 
     sealed class ApiResult {

@@ -19,6 +19,7 @@ object ChildUiRouter {
 
     /** نقطة الدخول من أيقونة التطبيق (Launcher). */
     fun routeFromLauncher(context: Context) {
+        ChildPermissionsGate.reconcileWithSystem(context)
         when {
             !ChildSession.isSetupComplete(context) -> openRegistration(context)
             !ChildPermissionsGate.isPermissionsFlowComplete(context) -> openPermissions(context)

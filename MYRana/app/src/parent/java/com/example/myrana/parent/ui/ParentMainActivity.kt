@@ -1,5 +1,6 @@
 package com.example.myrana.parent.ui
 
+import android.graphics.Color
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
@@ -9,22 +10,32 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.util.PatternsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.myrana.BuildConfig
 import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
+import com.example.myrana.data.remote.NetworkModule
+import com.example.myrana.parent.ParentLinkSync
 import com.example.myrana.parent.ParentSession
+import android.net.Uri
 import com.example.myrana.util.ChildCodeNormalizer
+import com.example.myrana.util.ServerConnectionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -34,15 +45,27 @@ import kotlinx.coroutines.withContext
  * تطبيق ولي الأمر (نكهة `parent`) — لوحة التحكم الكاملة.
  *
  * **الخطوات:**
+ * 0. صفحة رئيسية — تعريف بالتطبيق ونصائح
  * 1. بريد + صفة → تحقق
- * 2. إضافة الطفل (الاسم والعمر)
- * 3. ربط الجهاز (كود + رمز الربط) → تأكيد
+ * 2. ربط جهاز الطفل (كود CHILD + رمز الربط)
+ * 3. اسم الطفل → إتمام الربط
  * 4. تحكم: حظر، وقت استخدام، تنبيهات، إضافة طفل آخر
  *
  * **السيرفر:** [com.example.myrana.data.remote.GuardianApi] + [NetworkModule]
  */
 class ParentMainActivity : AppCompatActivity() {
 
+    private data class LinkedChildInfo(
+        val code: String,
+        val name: String,
+        val online: Boolean,
+        val todayMinutes: Int = -1,
+        val sleepStart: String = "22:00",
+        val sleepEnd: String = "07:00",
+    )
+
+    private lateinit var parentScroll: ScrollView
+    private lateinit var stepWelcome: LinearLayout
     private lateinit var stepLogin: LinearLayout
     private lateinit var stepVerify: LinearLayout
     private lateinit var stepAddChild: LinearLayout
@@ -55,8 +78,13 @@ class ParentMainActivity : AppCompatActivity() {
     private lateinit var textDashboardMini: TextView
     private lateinit var textPermissionsMini: TextView
     private lateinit var spinnerChildren: Spinner
+    private lateinit var textSelectActiveChild: TextView
+    private lateinit var layoutLinkedChildrenList: LinearLayout
+    private lateinit var textMultiChildHint: TextView
+    private lateinit var checkApplyAllChildren: CheckBox
     private lateinit var textAlertsPreview: TextView
-    private var linkedChildrenRows: List<Pair<String, String>> = emptyList()
+    private var linkedChildrenRows: List<LinkedChildInfo> = emptyList()
+    private val selectedChildCodes = linkedSetOf<String>()
     private var childSpinnerIgnoreSelection = false
     private lateinit var textUsageTitle: TextView
     private var alertPollingJob: Job? = null
@@ -68,6 +96,8 @@ class ParentMainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_parent_main)
 
+        parentScroll = findViewById(R.id.parentScroll)
+        stepWelcome = findViewById(R.id.stepWelcome)
         stepLogin = findViewById(R.id.stepLogin)
         stepVerify = findViewById(R.id.stepVerify)
         stepAddChild = findViewById(R.id.stepAddChild)
@@ -80,6 +110,10 @@ class ParentMainActivity : AppCompatActivity() {
         textDashboardMini = findViewById(R.id.textDashboardMini)
         textPermissionsMini = findViewById(R.id.textPermissionsMini)
         spinnerChildren = findViewById(R.id.spinnerChildren)
+        textSelectActiveChild = findViewById(R.id.textSelectActiveChild)
+        layoutLinkedChildrenList = findViewById(R.id.layoutLinkedChildrenList)
+        textMultiChildHint = findViewById(R.id.textMultiChildHint)
+        checkApplyAllChildren = findViewById(R.id.checkApplyAllChildren)
         textAlertsPreview = findViewById(R.id.textAlertsPreview)
         textUsageTitle = findViewById(R.id.textUsageReportTitle)
         textUsageEmpty = findViewById(R.id.textUsageEmpty)
@@ -94,21 +128,32 @@ class ParentMainActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (childSpinnerIgnoreSelection) return
                 val row = linkedChildrenRows.getOrNull(position) ?: return
-                ParentSession.saveLinkedChild(this@ParentMainActivity, row.first, row.second)
-                lifecycleScope.launch { refreshDashboardMini() }
+                selectActiveChild(row.code, row.name)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
         findViewById<Button>(R.id.btnSendEmailCode).setOnClickListener { sendEmailCode() }
         findViewById<Button>(R.id.btnVerifyEmail).setOnClickListener { verifyEmail() }
-        findViewById<Button>(R.id.btnContinueToLink).setOnClickListener { continueToLink() }
+        // بعد الربط (كود + OTP) ندخل بيانات الطفل ثم "إتمام الربط"
+        findViewById<Button>(R.id.btnContinueToLink).setOnClickListener { linkChild() }
         findViewById<Button>(R.id.btnAutoLink).setOnClickListener { autoLinkChild() }
         findViewById<Button>(R.id.btnSendLinkCode).setOnClickListener { sendLinkCode() }
         findViewById<Button>(R.id.btnVerifyDevice).setOnClickListener { verifyDeviceCode() }
         findViewById<Button>(R.id.btnPasteChildCode).setOnClickListener { pasteChildCodeFromClipboard() }
-        findViewById<Button>(R.id.btnLinkChild).setOnClickListener { linkChild() }
+        findViewById<Button>(R.id.btnCheckChildCode).setOnClickListener { checkChildCodeOnServer() }
+        findViewById<Button>(R.id.btnCheckServer).setOnClickListener { checkServerConnection() }
+        findViewById<Button>(R.id.btnOpenServerBrowser).setOnClickListener { openServerInBrowser() }
+        // في خطوة الربط: نتحقق من (CHILD + OTP) ثم ننتقل لإدخال بيانات الطفل
+        findViewById<Button>(R.id.btnLinkChild).setOnClickListener { goToAddChildAfterLinkInputs() }
+        findViewById<Button>(R.id.btnLinkChildOnLinkStep).setOnClickListener { goToAddChildAfterLinkInputs() }
+        findViewById<Button>(R.id.btnSendLinkCodeConfirm).setOnClickListener { sendLinkCode() }
         findViewById<Button>(R.id.btnAddAnotherChild).setOnClickListener { addAnotherChild() }
+        findViewById<Button>(R.id.btnCancelAddAnother).setOnClickListener { cancelAddAnotherChild() }
+        findViewById<Button>(R.id.btnStartSetup).setOnClickListener { startSetupFromWelcome() }
+        findViewById<Button>(R.id.btnBackFromWelcome).setOnClickListener { showControl() }
+        findViewById<Button>(R.id.btnShowWelcome).setOnClickListener { showWelcome(fromControl = true) }
+        findViewById<Button>(R.id.btnSelectAllFromList).setOnClickListener { toggleSelectAllFromList() }
 
         findViewById<Button>(R.id.btnBlockSite).setOnClickListener {
             sendCommand("block_site", findViewById<EditText>(R.id.inputTarget).text.toString())
@@ -134,18 +179,57 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnViewAlerts).setOnClickListener { viewAlerts() }
         findViewById<Button>(R.id.btnSendMessage).setOnClickListener { sendGuardianMessage() }
 
-        restoreUiState()
+        ParentSession.sanitizeInvalidPendingCodes(this)
+        findViewById<TextView>(R.id.textAppVersion).text =
+            "إصدار ${BuildConfig.VERSION_NAME} — سيرفر: ${com.example.myrana.util.ServerConfig.healthUrl()}"
+
+        restoreWizardState()
     }
 
     override fun onResume() {
         super.onResume()
-        if (ParentSession.isChildLinked(this)) {
-            lifecycleScope.launch {
+        lifecycleScope.launch {
+            if (ParentSession.isAddingAnotherChild(this@ParentMainActivity)) {
+                showLink()
+                return@launch
+            }
+            if (ParentSession.isChildLinked(this@ParentMainActivity)) {
+                when (withContext(Dispatchers.IO) { ParentLinkSync.refreshFromServer(this@ParentMainActivity) }) {
+                    ParentLinkSync.Result.STALE_CLEARED ->
+                        toast("انقطع الربط على السيرفر — أعيدي إضافة الطفل والربط", true)
+                    else -> Unit
+                }
+            } else {
+                val email = ParentSession.guardianEmail(this@ParentMainActivity).orEmpty()
+                if (email.isNotBlank()) {
+                    when (withContext(Dispatchers.IO) { ParentLinkSync.refreshFromServer(this@ParentMainActivity) }) {
+                        ParentLinkSync.Result.OK -> {
+                            if (ParentSession.isChildLinked(this@ParentMainActivity)) {
+                                ParentSession.markWelcomeSeen(this@ParentMainActivity)
+                                showControl()
+                            } else {
+                                alertPollingJob?.cancel()
+                                restoreWizardState()
+                            }
+                        }
+                        else -> {
+                            alertPollingJob?.cancel()
+                            restoreWizardState()
+                        }
+                    }
+                    if (!ParentSession.isChildLinked(this@ParentMainActivity)) return@launch
+                } else {
+                    alertPollingJob?.cancel()
+                    restoreWizardState()
+                    return@launch
+                }
+            }
+            if (ParentSession.isChildLinked(this@ParentMainActivity)) {
                 refreshAlertsQuietly()
                 refreshLinkedChildrenSummary()
                 refreshDashboardMini()
+                startAlertPolling()
             }
-            startAlertPolling()
         }
     }
 
@@ -172,38 +256,48 @@ class ParentMainActivity : AppCompatActivity() {
             ?: getString(R.string.parent_role_guardian)
     }
 
-    private fun restoreUiState() {
+    /** يوجّه للخطوة الصحيحة حسب الجلسة ويُمرّر الشاشة للأعلى. */
+    private fun restoreWizardState() {
         val email = ParentSession.guardianEmail(this)
         if (!email.isNullOrBlank()) {
             findViewById<EditText>(R.id.inputGuardianEmail).setText(email)
         }
         when {
+            ParentSession.isChildLinked(this) && ParentSession.isAddingAnotherChild(this) -> showLink()
             ParentSession.isChildLinked(this) -> showControl()
-            ParentSession.isDeviceLinkVerified(this) -> showLinkConfirm()
-            ParentSession.hasPendingChildProfile(this) -> showLink()
-            ParentSession.isEmailVerified(this) -> showAddChild()
+            // بعد CHILD+OTP نكون في خطوة ٣ (بيانات الطفل) حتى لو لم يُحفظ الاسم بعد
+            ParentSession.hasPendingChildProfile(this) || ParentSession.isDeviceLinkVerified(this) -> showAddChild()
+            ParentSession.isEmailVerified(this) -> showLink()
             !email.isNullOrBlank() -> showVerify()
+            !ParentSession.hasSeenWelcome(this) -> showWelcome()
             else -> showLogin()
         }
+        scrollWizardToTop()
     }
 
-    private fun continueToLink() {
-        val name = findViewById<EditText>(R.id.inputAddChildName).text.toString().trim()
-            .ifBlank { "طفل" }
-        val age = findViewById<EditText>(R.id.inputAddChildAge).text.toString().toIntOrNull() ?: 10
-        ParentSession.savePendingChildProfile(this, name, age)
-        showLink()
-        toast("تم — الصقي كود الطفل ثم أرسلي رمز الربط من Gmail", false)
+    private fun scrollWizardToTop() {
+        parentScroll.post { parentScroll.scrollTo(0, 0) }
     }
 
-    private fun verifyDeviceCode() {
-        val childCode = normalizedChildCodeFromInput()
-        val verify = findViewById<EditText>(R.id.inputDeviceVerify).text.toString().trim()
-        if (childCode.isEmpty() || verify.isEmpty()) {
-            toast(getString(R.string.parent_link_incomplete), true)
+    private fun restoreUiState() = restoreWizardState()
+
+    /** خطوة 2: بعد إدخال كود CHILD + رمز الربط نتحقق من السيرفر ثم ننتقل لإدخال اسم الطفل. */
+    private fun goToAddChildAfterLinkInputs() {
+        val childCode = ParentSession.pendingLinkChildCode(this)?.takeIf { it.isNotBlank() }
+            ?: ensureChildCodeFromInput()
+            ?: return
+        val verify = linkVerifyCode()
+        if (verify.isEmpty()) {
+            toast("أدخلي رمز الربط (6 أرقام) في الحقل — من Gmail", true)
             return
         }
+        syncLinkVerifyFields(verify)
+        setLinkButtonsEnabled(false)
         lifecycleScope.launch {
+            if (!ensureServerReady()) {
+                setLinkButtonsEnabled(true)
+                return@launch
+            }
             when (
                 val result = withContext(Dispatchers.IO) {
                     GuardianApi.verifyChildDeviceCode(childCode, verify)
@@ -216,15 +310,48 @@ class ParentMainActivity : AppCompatActivity() {
                         result.childEmail,
                         result.deviceName,
                         result.androidVersion,
+                        verify,
                     )
                     childCodeField().setText(result.childCode)
-                    findViewById<EditText>(R.id.inputDeviceVerify).setText(verify)
-                    performLink(
-                        childCode = result.childCode,
-                        verifyCode = verify,
-                        name = pendingChildName(),
-                        age = ParentSession.pendingChildAge(this@ParentMainActivity),
+                    showAddChild()
+                    scrollWizardToTop()
+                    toast("الخطوة ٣ — اكتبي اسم الطفل ثم اضغطي «إتمام الربط»", false)
+                }
+                is GuardianApi.ApiResult.Error -> toast(result.message, true)
+                else -> {}
+            }
+            setLinkButtonsEnabled(true)
+        }
+    }
+
+    private fun verifyDeviceCode() {
+        val childCode = normalizedChildCodeFromInput()
+        val verify = findViewById<EditText>(R.id.inputDeviceVerify).text.toString().trim()
+        if (childCode.isEmpty() || verify.isEmpty()) {
+            toast(getString(R.string.parent_link_incomplete), true)
+            return
+        }
+        lifecycleScope.launch {
+            if (!ensureServerReady()) return@launch
+            when (
+                val result = withContext(Dispatchers.IO) {
+                    GuardianApi.verifyChildDeviceCode(childCode, verify)
+                }
+            ) {
+                is GuardianApi.ApiResult.DeviceVerified -> {
+                    ParentSession.saveVerifiedDevice(
+                        this@ParentMainActivity,
+                        result.childCode,
+                        result.childEmail,
+                        result.deviceName,
+                        result.androidVersion,
+                        verify,
                     )
+                    childCodeField().setText(result.childCode)
+                    syncLinkVerifyFields(verify)
+                    showAddChild()
+                    scrollWizardToTop()
+                    toast("تم التحقق — اكتبي اسم الطفل ثم «إتمام الربط»", false)
                 }
                 is GuardianApi.ApiResult.Error -> toast(result.message, true)
                 else -> {}
@@ -233,31 +360,165 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun addAnotherChild() {
-        ParentSession.startAddAnotherChild(this)
+        ParentSession.beginAnotherChildLink(this)
         findViewById<EditText>(R.id.inputAddChildName).text?.clear()
         findViewById<EditText>(R.id.inputAddChildAge).text?.clear()
         childCodeField().text?.clear()
         findViewById<EditText>(R.id.inputDeviceVerify).text?.clear()
-        showAddChild()
-        toast("أدخلي بيانات الطفل الجديد", false)
+        findViewById<EditText>(R.id.inputLinkConfirmVerify).text?.clear()
+        textMessage.text = ""
+        showLink()
+        scrollWizardToTop()
+        toast(getString(R.string.parent_adding_another_hint), false)
+    }
+
+    private fun cancelAddAnotherChild() {
+        ParentSession.cancelAnotherChildLink(this)
+        showControl()
+        scrollWizardToTop()
+        toast(getString(R.string.parent_cancel_add_another_done), false)
     }
 
     /**
      * 1) إرسال أمر للطفل لرفع الاستخدام فوراً.
      * 2) انتظار قصير ثم جلب التقرير وعرضه في قائمة.
      */
+    /** أهداف الأمر: المحدّدون من ☑ القائمة، أو الكل، أو الطفل النشط. */
+    private fun commandTargets(): List<Pair<String, String>> {
+        if (selectedChildCodes.isNotEmpty()) {
+            return linkedChildrenRows
+                .filter { selectedChildCodes.contains(ChildCodeNormalizer.forApi(it.code)) }
+                .map { it.code to it.name }
+        }
+        if (checkApplyAllChildren.isChecked && linkedChildrenRows.size > 1) {
+            return linkedChildrenRows.map { it.code to it.name }
+        }
+        val code = ParentSession.childCode(this)?.trim().orEmpty()
+        if (code.isBlank()) return emptyList()
+        val name = ParentSession.childName(this).orEmpty().ifBlank { "طفل" }
+        return listOf(code to name)
+    }
+
+    private fun toggleSelectAllFromList() {
+        if (linkedChildrenRows.isEmpty()) return
+        if (selectedChildCodes.size == linkedChildrenRows.size) {
+            selectedChildCodes.clear()
+        } else {
+            selectedChildCodes.clear()
+            linkedChildrenRows.forEach { selectedChildCodes.add(ChildCodeNormalizer.forApi(it.code)) }
+        }
+        checkApplyAllChildren.isChecked = false
+        renderChildrenChips()
+        toast(
+            if (selectedChildCodes.isEmpty()) "تم إلغاء التحديد" else "تم تحديد ${selectedChildCodes.size} من القائمة",
+            false,
+        )
+    }
+
+    private fun openScreenTimeForChild(code: String, focusSleep: Boolean = false) {
+        selectActiveChild(code, linkedChildrenRows.firstOrNull {
+            ChildCodeNormalizer.forApi(it.code) == ChildCodeNormalizer.forApi(code)
+        }?.name ?: "طفل")
+        startActivity(
+            Intent(this, ParentScreenTimeActivity::class.java).apply {
+                putExtra(ParentScreenTimeActivity.EXTRA_CHILD_CODE, code)
+                if (focusSleep) putExtra(ParentScreenTimeActivity.EXTRA_FOCUS_SLEEP, true)
+            },
+        )
+    }
+
+    private fun requestReportForChild(code: String, name: String) {
+        val email = ParentSession.guardianEmail(this).orEmpty()
+        if (email.isBlank()) {
+            toast("اربط الطفل أولاً", true)
+            return
+        }
+        toast(getString(R.string.parent_usage_loading), false)
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) { GuardianApi.requestUsageFromChild(code, email) }
+            delay(4_000L)
+            when (val report = withContext(Dispatchers.IO) { GuardianApi.fetchDailyReport(code) }) {
+                is GuardianApi.ApiResult.ReportText -> {
+                    AlertDialog.Builder(this@ParentMainActivity)
+                        .setTitle(getString(R.string.parent_child_report_title, name))
+                        .setMessage(report.text.ifBlank { getString(R.string.parent_usage_empty) })
+                        .setPositiveButton("حسناً", null)
+                        .show()
+                }
+                is GuardianApi.ApiResult.Error -> toast(report.message, true)
+                else -> toast("فشل التقرير", true)
+            }
+        }
+    }
+
+    private fun showSleepInfoForChild(info: LinkedChildInfo) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.parent_child_sleep_title, info.name))
+            .setMessage(
+                getString(
+                    R.string.parent_child_sleep_message,
+                    info.sleepStart,
+                    info.sleepEnd,
+                ),
+            )
+            .setPositiveButton(getString(R.string.parent_btn_edit_sleep)) { _, _ ->
+                openScreenTimeForChild(info.code, focusSleep = true)
+            }
+            .setNegativeButton("إغلاق", null)
+            .show()
+    }
+
+    private fun toastBroadcastResult(success: Int, failed: Int, total: Int) {
+        when {
+            total <= 1 && failed == 0 -> Unit
+            failed == 0 -> toast(getString(R.string.parent_broadcast_done, success, total), false)
+            else -> toast(getString(R.string.parent_broadcast_partial, success, failed, total), true)
+        }
+    }
+
+    private suspend fun broadcastCommand(
+        action: String,
+        value: String,
+        email: String,
+        targets: List<Pair<String, String>>,
+    ): Pair<Int, Int> {
+        var ok = 0
+        var fail = 0
+        for ((code, _) in targets) {
+            when (
+                withContext(Dispatchers.IO) {
+                    GuardianApi.sendCommand(action, value, code, email)
+                }
+            ) {
+                is GuardianApi.ApiResult.Ok -> ok++
+                is GuardianApi.ApiResult.Error -> fail++
+                else -> fail++
+            }
+        }
+        return ok to fail
+    }
+
     private fun applyDefaultBlocklist() {
-        val childCode = ParentSession.childCode(this)
-        if (childCode.isNullOrBlank()) {
+        val targets = commandTargets()
+        if (targets.isEmpty()) {
             toast("اربط الطفل أولاً", true)
             return
         }
         findViewById<Button>(R.id.btnApplyDefaultBlocklist).isEnabled = false
         lifecycleScope.launch {
-            when (val result = withContext(Dispatchers.IO) { GuardianApi.applyDefaultBlocklist(childCode) }) {
-                is GuardianApi.ApiResult.Ok -> toast(result.message, false)
-                is GuardianApi.ApiResult.Error -> toast(result.message, true)
-                else -> toast("فشل تطبيق القائمة", true)
+            var ok = 0
+            var fail = 0
+            for ((code, _) in targets) {
+                when (withContext(Dispatchers.IO) { GuardianApi.applyDefaultBlocklist(code) }) {
+                    is GuardianApi.ApiResult.Ok -> ok++
+                    is GuardianApi.ApiResult.Error -> fail++
+                    else -> fail++
+                }
+            }
+            if (targets.size == 1 && fail == 0) {
+                toast("تم تطبيق قائمة الحظر", false)
+            } else {
+                toastBroadcastResult(ok, fail, targets.size)
             }
             findViewById<Button>(R.id.btnApplyDefaultBlocklist).isEnabled = true
         }
@@ -313,10 +574,17 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun onLinkSuccess(childCode: String, name: String) {
+        val wasAddingAnother = ParentSession.isAddingAnotherChild(this)
+        ParentSession.markWelcomeSeen(this)
         ParentSession.saveLinkedChild(this, childCode, name)
         showControl()
         startAlertPolling()
-        toast(getString(R.string.parent_link_success_monitoring), false)
+        val msg = if (wasAddingAnother) {
+            getString(R.string.parent_another_child_linked, name)
+        } else {
+            getString(R.string.parent_link_success_monitoring)
+        }
+        toast(msg, false)
         lifecycleScope.launch {
             withContext(Dispatchers.IO) { GuardianApi.applyDefaultBlocklist(childCode) }
             refreshAlertsQuietly()
@@ -342,7 +610,8 @@ class ParentMainActivity : AppCompatActivity() {
                     d.appsOpened,
                     d.alertsToday,
                 )
-                textDashboardMini.text = "$status — $mini\n${d.childCode}"
+                val sleep = getString(R.string.parent_dashboard_sleep, d.policy.sleepStart, d.policy.sleepEnd)
+                textDashboardMini.text = "$status — $mini\n$sleep\n${d.childCode}"
                 textPermissionsMini.text = ParentPermissionsFormatter.summary(
                     this@ParentMainActivity,
                     d.permissionsOk,
@@ -353,13 +622,29 @@ class ParentMainActivity : AppCompatActivity() {
         }
     }
 
+    private fun selectActiveChild(childCode: String, childName: String) {
+        ParentSession.saveLinkedChild(this, childCode, childName)
+        lifecycleScope.launch {
+            refreshDashboardMini()
+            refreshAlertsQuietly()
+            updateActiveChildHeader(linkedChildrenRows.size)
+            renderChildrenChips()
+        }
+    }
+
     /** جلب قائمة الأطفال من السيرفر — دعم تعدد الأطفال لولي الأمر الواحد. */
     private suspend fun refreshLinkedChildrenSummary() {
         val email = ParentSession.guardianEmail(this@ParentMainActivity).orEmpty()
-        if (email.isBlank()) return
+        if (email.isBlank()) {
+            applyLinkedChildrenFromCache()
+            return
+        }
         when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchLinkedChildren(email) }) {
             is GuardianApi.ApiResult.ChildrenList -> {
-                if (result.children.isEmpty()) return
+                if (result.children.isEmpty()) {
+                    applyLinkedChildrenFromCache()
+                    return
+                }
                 val rows = result.children.mapNotNull { child ->
                     val code = child["child_code"]?.toString().orEmpty()
                     if (code.isBlank()) return@mapNotNull null
@@ -367,33 +652,217 @@ class ParentMainActivity : AppCompatActivity() {
                     val online = if (child["online"] == true) "متصل" else "غير متصل"
                     Triple(code, name, online)
                 }
-                if (rows.isEmpty()) return
-                linkedChildrenRows = rows.map { it.first to it.second }
-                val labels = rows.map { (code, name, status) ->
-                    getString(R.string.parent_child_spinner_item, name, code, status)
+                if (rows.isEmpty()) {
+                    applyLinkedChildrenFromCache()
+                    return
                 }
-                childSpinnerIgnoreSelection = true
-                spinnerChildren.adapter = ArrayAdapter(
+                ParentSession.saveLinkedChildrenCache(
                     this@ParentMainActivity,
-                    android.R.layout.simple_spinner_dropdown_item,
-                    labels,
+                    rows.map { it.first to it.second },
                 )
-                val active = ParentSession.childCode(this@ParentMainActivity)
-                val activeNorm = ChildCodeNormalizer.forApi(active.orEmpty())
-                var selectIndex = rows.indexOfFirst { ChildCodeNormalizer.forApi(it.first) == activeNorm }
-                if (selectIndex < 0) {
-                    selectIndex = 0
-                    ParentSession.saveLinkedChild(
-                        this@ParentMainActivity,
-                        rows[0].first,
-                        rows[0].second,
-                    )
-                }
-                spinnerChildren.setSelection(selectIndex)
-                childSpinnerIgnoreSelection = false
-                textLinkedChild.text = getString(R.string.parent_linked_children_summary, rows.size)
+                applyLinkedChildrenRows(rows)
+                enrichAndRenderChildren(rows)
             }
-            else -> {}
+            else -> applyLinkedChildrenFromCache()
+        }
+    }
+
+    private fun enrichAndRenderChildren(rows: List<Triple<String, String, String>>) {
+        lifecycleScope.launch {
+            linkedChildrenRows = enrichChildrenRows(rows)
+            renderChildrenChips()
+        }
+    }
+
+    private suspend fun enrichChildrenRows(
+        rows: List<Triple<String, String, String>>,
+    ): List<LinkedChildInfo> = coroutineScope {
+        rows.map { (code, name, statusLabel) ->
+            async {
+                val onlineFromList = statusLabel == "متصل"
+                when (val dash = withContext(Dispatchers.IO) { GuardianApi.fetchChildDashboard(code) }) {
+                    is GuardianApi.ApiResult.ChildDashboard -> {
+                        val d = dash.data
+                        LinkedChildInfo(
+                            code = code,
+                            name = name,
+                            online = d.online,
+                            todayMinutes = (d.todaySeconds / 60).toInt(),
+                            sleepStart = d.policy.sleepStart,
+                            sleepEnd = d.policy.sleepEnd,
+                        )
+                    }
+                    else -> LinkedChildInfo(code, name, onlineFromList)
+                }
+            }
+        }.map { it.await() }
+    }
+
+    private fun applyLinkedChildrenFromCache() {
+        val cached = ParentSession.linkedChildrenCached(this)
+        if (cached.isEmpty()) return
+        val rows = cached.map { (code, name) -> Triple(code, name, "—") }
+        applyLinkedChildrenRows(rows)
+        enrichAndRenderChildren(rows)
+    }
+
+    private fun applyLinkedChildrenRows(rows: List<Triple<String, String, String>>) {
+        if (rows.isEmpty()) return
+        linkedChildrenRows = rows.map { (code, name, status) ->
+            LinkedChildInfo(code, name, status == "متصل")
+        }
+        val labels = rows.map { (code, name, status) ->
+            getString(R.string.parent_child_spinner_item, name, code, status)
+        }
+        childSpinnerIgnoreSelection = true
+        spinnerChildren.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            labels,
+        )
+        val active = ParentSession.childCode(this)
+        val activeNorm = ChildCodeNormalizer.forApi(active.orEmpty())
+        var selectIndex = rows.indexOfFirst { ChildCodeNormalizer.forApi(it.first) == activeNorm }
+        if (selectIndex < 0) {
+            selectIndex = 0
+            ParentSession.saveLinkedChild(this, rows[0].first, rows[0].second)
+        }
+        spinnerChildren.setSelection(selectIndex)
+        childSpinnerIgnoreSelection = false
+        updateChildrenPickerUi(rows.size)
+        renderChildrenChips()
+    }
+
+    /** بطاقة لكل طفل: متصل، تقرير، رسم، وقت نوم، تحديد للإرسال الجماعي. */
+    private fun renderChildrenChips() {
+        layoutLinkedChildrenList.removeAllViews()
+        if (linkedChildrenRows.isEmpty()) return
+        val activeNorm = ChildCodeNormalizer.forApi(ParentSession.childCode(this).orEmpty())
+        val dp8 = (8 * resources.displayMetrics.density).toInt()
+        val dp12 = (12 * resources.displayMetrics.density).toInt()
+
+        for (info in linkedChildrenRows) {
+            val codeNorm = ChildCodeNormalizer.forApi(info.code)
+            val isActive = codeNorm == activeNorm
+            val isSelected = selectedChildCodes.contains(codeNorm)
+
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp12, dp12, dp12, dp12)
+                setBackgroundColor(
+                    when {
+                        isActive -> Color.parseColor("#1A4CAF50")
+                        isSelected -> Color.parseColor("#1A2196F3")
+                        else -> Color.parseColor("#0D000000")
+                    },
+                )
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = dp8 }
+            }
+
+            val statusLine = if (info.online) {
+                if (info.todayMinutes >= 0) {
+                    getString(
+                        R.string.parent_child_row_online,
+                        info.name,
+                        info.code,
+                        info.todayMinutes,
+                        info.sleepStart,
+                        info.sleepEnd,
+                    )
+                } else {
+                    getString(R.string.parent_child_row_online_short, info.name, info.code)
+                }
+            } else {
+                getString(R.string.parent_child_row_offline, info.name, info.code)
+            }
+            card.addView(
+                TextView(this).apply {
+                    text = statusLine
+                    textSize = 14f
+                    setTextColor(if (info.online) Color.parseColor("#2E7D32") else Color.parseColor("#757575"))
+                },
+            )
+
+            val actions = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp8 }
+            }
+
+            val check = CheckBox(this).apply {
+                text = getString(R.string.parent_select_for_bulk)
+                isChecked = isSelected
+                setOnCheckedChangeListener { _, checked ->
+                    if (checked) {
+                        selectedChildCodes.add(codeNorm)
+                        checkApplyAllChildren.isChecked = false
+                    } else {
+                        selectedChildCodes.remove(codeNorm)
+                    }
+                }
+            }
+            actions.addView(check)
+
+            fun smallBtn(label: String, onClick: () -> Unit): Button =
+                Button(this, null, android.R.attr.borderlessButtonStyle).apply {
+                    text = label
+                    textSize = 12f
+                    setOnClickListener { onClick() }
+                }
+
+            actions.addView(smallBtn(getString(R.string.parent_btn_child_report)) {
+                requestReportForChild(info.code, info.name)
+            })
+            actions.addView(smallBtn(getString(R.string.parent_btn_child_chart)) {
+                openScreenTimeForChild(info.code, focusSleep = false)
+            })
+            actions.addView(smallBtn(getString(R.string.parent_btn_child_sleep)) {
+                showSleepInfoForChild(info)
+            })
+            if (!isActive) {
+                actions.addView(smallBtn(getString(R.string.parent_btn_child_activate)) {
+                    selectActiveChild(info.code, info.name)
+                })
+            }
+
+            card.addView(actions)
+            layoutLinkedChildrenList.addView(card)
+        }
+    }
+
+    /** قائمة الأطفال تظهر دائماً بعد الربط — حتى لطفل واحد. */
+    private fun updateChildrenPickerUi(childCount: Int) {
+        val show = childCount >= 1 && ParentSession.isChildLinked(this)
+        val multi = childCount > 1
+        textSelectActiveChild.visibility = if (show) View.VISIBLE else View.GONE
+        spinnerChildren.visibility = if (multi) View.VISIBLE else View.GONE
+        layoutLinkedChildrenList.visibility = if (show) View.VISIBLE else View.GONE
+        textMultiChildHint.visibility = if (show) View.VISIBLE else View.GONE
+        checkApplyAllChildren.visibility = if (multi) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.btnSelectAllFromList).visibility = if (multi) View.VISIBLE else View.GONE
+        if (multi) {
+            checkApplyAllChildren.text = getString(R.string.parent_apply_all_children_count, childCount)
+        }
+        updateActiveChildHeader(childCount)
+    }
+
+    private fun updateActiveChildHeader(childCount: Int) {
+        val name = ParentSession.childName(this).orEmpty().ifBlank { "طفل" }
+        val code = ParentSession.childCode(this).orEmpty()
+        textLinkedChild.text = when {
+            childCount > 1 -> getString(R.string.parent_linked_children_summary, childCount)
+            childCount == 1 -> getString(R.string.parent_single_child_active, name, code)
+            else -> getString(
+                R.string.parent_linked_with_role,
+                name,
+                ParentSession.guardianRole(this),
+                code,
+            )
         }
     }
 
@@ -455,6 +924,7 @@ class ParentMainActivity : AppCompatActivity() {
             when (val result = withContext(Dispatchers.IO) { GuardianApi.sendEmailCode(email) }) {
                 is GuardianApi.ApiResult.EmailCodeSent -> {
                     showVerify()
+                    scrollWizardToTop()
                     textMessage.text = result.message
                     findViewById<EditText>(R.id.inputEmailCode).text?.clear()
                     toast("تحققي من بريدك ($email) وأدخلي الرمز يدوياً", false)
@@ -469,14 +939,95 @@ class ParentMainActivity : AppCompatActivity() {
 
     /** يضيف CHILD- تلقائياً إذا لصقتِ الجزء فقط (مثل 2776E398). */
     private fun normalizedChildCodeFromInput(): String {
-        val normalized = ChildCodeNormalizer.normalize(childCodeField().text.toString())
-        if (normalized.isNotEmpty()) {
+        val fieldText = childCodeField().text.toString()
+        val extracted = ChildCodeNormalizer.extractFromPaste(fieldText)
+        val normalized = extracted.ifBlank { ChildCodeNormalizer.normalize(fieldText) }
+        if (normalized.isNotEmpty() && ChildCodeNormalizer.isValid(normalized)) {
             childCodeField().setText(normalized)
         }
-        return normalized
+        return if (ChildCodeNormalizer.isValid(normalized)) normalized else ""
     }
 
     /** رمزا Gmail: 1 تحقق بريد + 2 رمز ربط — ثم ربط الطفل. */
+    private fun openServerInBrowser() {
+        startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(ServerConnectionHelper.healthUrl()))
+        )
+        toast("انتظري 60–90 ثانية حتى يظهر running ثم «فحص الاتصال»", false)
+    }
+
+    private fun checkServerConnection() {
+        findViewById<Button>(R.id.btnCheckServer).isEnabled = false
+        toast(getString(R.string.parent_checking_server), false)
+        lifecycleScope.launch {
+            when (val result = withContext(Dispatchers.IO) { GuardianApi.checkServerConnection(this@ParentMainActivity) }) {
+                is GuardianApi.ApiResult.Ok -> toast(result.message, false)
+                is GuardianApi.ApiResult.Error -> toast(result.message, true)
+                else -> Unit
+            }
+            findViewById<Button>(R.id.btnCheckServer).isEnabled = true
+        }
+    }
+
+    /** @return false إذا السيرفر غير متاح */
+    private suspend fun ensureServerReady(): Boolean {
+        when (val result = withContext(Dispatchers.IO) { GuardianApi.checkServerConnection(this@ParentMainActivity) }) {
+            is GuardianApi.ApiResult.Ok -> {
+                toast(result.message, false)
+                return true
+            }
+            is GuardianApi.ApiResult.Error -> {
+                toast(result.message, true)
+                return false
+            }
+            else -> return false
+        }
+    }
+
+    private fun checkChildCodeOnServer(showSuccess: Boolean = true): Boolean {
+        val childCode = normalizedChildCodeFromInput()
+        if (childCode.isEmpty()) {
+            ensureChildCodeFromInput()
+            return false
+        }
+        lifecycleScope.launch {
+            val status = withContext(Dispatchers.IO) {
+                NetworkModule.queryChildLinkStatus(childCode)
+            }
+            when (status.state) {
+                NetworkModule.ChildRegistrationState.WAITING -> {
+                    childCodeField().setText(childCode)
+                    if (showSuccess) {
+                        toast(status.detail.ifBlank { getString(R.string.parent_child_code_ok, childCode) }, false)
+                    }
+                }
+                NetworkModule.ChildRegistrationState.LINKED ->
+                    toast("الجهاز مربوط مسبقاً — $childCode", false)
+                NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
+                    val bad = childCodeField().text.toString()
+                    if (ChildCodeNormalizer.looksLikeEmailMistake(bad)) {
+                        showInvalidChildCodeDialog(bad)
+                    } else {
+                        childCodeField().text?.clear()
+                        AlertDialog.Builder(this@ParentMainActivity)
+                            .setTitle("الطفل غير مسجل على السيرفر")
+                            .setMessage(
+                                getString(R.string.parent_child_not_on_server_steps) +
+                                    "\n\n" + (status.detail.ifBlank { getString(R.string.parent_child_code_missing) }),
+                            )
+                            .setPositiveButton("حسناً", null)
+                            .show()
+                    }
+                }
+                else -> toast(
+                    status.detail.ifBlank { "تعذّر فحص السيرفر — اضغطي «فحص الاتصال»" },
+                    true,
+                )
+            }
+        }
+        return true
+    }
+
     private fun autoLinkChild() {
         ensureChildCodeFromInput() ?: return
         val childCode = normalizedChildCodeFromInput()
@@ -490,28 +1041,46 @@ class ParentMainActivity : AppCompatActivity() {
             toast("تحققي من بريدك أولاً (الرمز الأول من Gmail)", true)
             return
         }
-        val name = pendingChildName()
-        val age = ParentSession.pendingChildAge(this).takeIf { it > 0 }
-            ?: findViewById<EditText>(R.id.inputAddChildAge).text.toString().toIntOrNull()
-            ?: 10
-        ParentSession.savePendingChildProfile(this, name, age)
 
+        // إذا OTP موجود: انتقلي لخطوة بيانات الطفل (لا تربطي مباشرة)
         if (verifyFromField.isNotEmpty()) {
-            setLinkButtonsEnabled(false)
-            lifecycleScope.launch {
-                performLink(childCode, verifyFromField, name, age)
-                setLinkButtonsEnabled(true)
-            }
+            goToAddChildAfterLinkInputs()
             return
         }
 
         setLinkButtonsEnabled(false)
-        toast("جاري إرسال رمز الربط (الرسالة الثانية) إلى Gmail…", false)
+        toast("جاري إرسال رمز الربط إلى Gmail…", false)
         lifecycleScope.launch {
+            if (!ensureServerReady()) {
+                setLinkButtonsEnabled(true)
+                return@launch
+            }
+            val status = withContext(Dispatchers.IO) {
+                NetworkModule.queryChildLinkStatus(childCode)
+            }
+            if (status.state == NetworkModule.ChildRegistrationState.NOT_ON_SERVER) {
+                val bad = childCodeField().text.toString()
+                if (ChildCodeNormalizer.looksLikeEmailMistake(bad)) {
+                    showInvalidChildCodeDialog(bad)
+                } else {
+                    AlertDialog.Builder(this@ParentMainActivity)
+                        .setTitle("الطفل غير مسجل على السيرفر")
+                        .setMessage(getString(R.string.parent_child_not_on_server_steps))
+                        .setPositiveButton("حسناً", null)
+                        .show()
+                }
+                setLinkButtonsEnabled(true)
+                return@launch
+            }
+            if (status.state == NetworkModule.ChildRegistrationState.ERROR) {
+                toast(status.detail, true)
+                setLinkButtonsEnabled(true)
+                return@launch
+            }
             when (val result = withContext(Dispatchers.IO) { GuardianApi.sendLinkCode(email, childCode) }) {
                 is GuardianApi.ApiResult.EmailCodeSent -> {
                     textMessage.text = result.message
-                    toast("افتحي Gmail — الرمز الثاني — ثم أدخليه واضغطي «ربط الطفل»", false)
+                    toast("افتحي Gmail — أدخلي OTP ثم اضغطي «متابعة لبيانات الطفل»", false)
                 }
                 is GuardianApi.ApiResult.Error -> toast(result.message, true)
                 else -> {}
@@ -521,9 +1090,17 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun sendLinkCode() {
-        ensureChildCodeFromInput() ?: return
+        val pending = ParentSession.pendingLinkChildCode(this)?.trim().orEmpty()
+        if (pending.isNotEmpty() && !ChildCodeNormalizer.isValid(pending)) {
+            ParentSession.clearPendingLink(this)
+            showInvalidChildCodeDialog(pending)
+            return
+        }
+        val childCode = pending.takeIf { it.isNotBlank() }
+            ?: ensureChildCodeFromInput()
+            ?: return
+        childCodeField().setText(childCode)
         val email = ParentSession.guardianEmail(this).orEmpty()
-        val childCode = normalizedChildCodeFromInput()
         if (!PatternsCompat.EMAIL_ADDRESS.matcher(email).matches()) {
             toast("أدخل بريد ولي الأمر أولاً", true)
             return
@@ -533,6 +1110,7 @@ class ParentMainActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch {
+            if (!ensureServerReady()) return@launch
             when (val result = withContext(Dispatchers.IO) { GuardianApi.sendLinkCode(email, childCode) }) {
                 is GuardianApi.ApiResult.EmailCodeSent -> {
                     textMessage.text = result.message
@@ -544,14 +1122,44 @@ class ParentMainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showInvalidChildCodeDialog(raw: String) {
+        val hint = ChildCodeNormalizer.pasteErrorHint(raw)
+            ?: "الكود غير صالح"
+        childCodeField().text?.clear()
+        ParentSession.clearPendingLink(this)
+        AlertDialog.Builder(this)
+            .setTitle("كود الطفل غلط")
+            .setMessage(
+                "$hint\n\n" +
+                    "① جوال الطفل: تسجيل الجهاز\n" +
+                    "② انسخي CHILD-88278A25 (8 أحرف)\n" +
+                    "③ ليس البريد الإلكتروني"
+            )
+            .setPositiveButton("حسناً", null)
+            .show()
+        toast(hint, true)
+    }
+
     private fun ensureChildCodeFromInput(): String? {
+        val raw = childCodeField().text.toString().trim()
+        if (raw.isNotEmpty() && !ChildCodeNormalizer.isValid(raw)) {
+            val extracted = ChildCodeNormalizer.extractFromPaste(raw)
+            if (ChildCodeNormalizer.isValid(extracted)) {
+                childCodeField().setText(extracted)
+            } else {
+                showInvalidChildCodeDialog(raw)
+                return null
+            }
+        }
         var childCode = normalizedChildCodeFromInput()
         if (childCode.isEmpty()) {
             pasteChildCodeFromClipboard(silent = true)
             childCode = normalizedChildCodeFromInput()
         }
         if (childCode.isEmpty()) {
-            toast("أدخلي كود CHILD من Gmail (رسالة تسجيل الطفل)", true)
+            val hint = ChildCodeNormalizer.pasteErrorHint(childCodeField().text.toString())
+                ?: "أدخلي كود CHILD-XXXXXXXX من Gmail (رسالة «كود جهاز الطفل») — ليس البريد"
+            toast(hint, true)
             return null
         }
         return childCode
@@ -565,8 +1173,10 @@ class ParentMainActivity : AppCompatActivity() {
     private fun setLinkButtonsEnabled(enabled: Boolean) {
         findViewById<Button>(R.id.btnAutoLink).isEnabled = enabled
         findViewById<Button>(R.id.btnSendLinkCode).isEnabled = enabled
+        findViewById<Button>(R.id.btnSendLinkCodeConfirm).isEnabled = enabled
         findViewById<Button>(R.id.btnVerifyDevice).isEnabled = enabled
         findViewById<Button>(R.id.btnLinkChild).isEnabled = enabled
+        findViewById<Button>(R.id.btnLinkChildOnLinkStep).isEnabled = enabled
     }
 
     private fun verifyEmail() {
@@ -583,7 +1193,9 @@ class ParentMainActivity : AppCompatActivity() {
         when (val result = withContext(Dispatchers.IO) { GuardianApi.verifyEmailCode(email, code) }) {
             is GuardianApi.ApiResult.Ok -> {
                 ParentSession.markEmailVerified(this@ParentMainActivity)
-                showAddChild()
+                // بعد تحقق البريد ننتقل مباشرة لربط جهاز الطفل
+                showLink()
+                scrollWizardToTop()
                 toast(result.message, false)
                 pasteChildCodeFromClipboard(silent = true)
             }
@@ -592,25 +1204,46 @@ class ParentMainActivity : AppCompatActivity() {
         }
     }
 
+    private fun linkVerifyCode(): String {
+        val confirm = findViewById<EditText>(R.id.inputLinkConfirmVerify).text.toString().trim()
+        if (confirm.isNotEmpty()) return confirm
+        val linkStep = findViewById<EditText>(R.id.inputDeviceVerify).text.toString().trim()
+        if (linkStep.isNotEmpty()) return linkStep
+        return ParentSession.pendingDeviceVerifyCode(this).orEmpty()
+    }
+
+    private fun syncLinkVerifyFields(code: String) {
+        findViewById<EditText>(R.id.inputDeviceVerify).setText(code)
+        findViewById<EditText>(R.id.inputLinkConfirmVerify).setText(code)
+    }
+
     private fun linkChild() {
-        ensureChildCodeFromInput() ?: return
-        val childCode = normalizedChildCodeFromInput()
-        val verify = findViewById<EditText>(R.id.inputDeviceVerify).text.toString().trim()
+        val childCode = ParentSession.pendingLinkChildCode(this)?.takeIf { it.isNotBlank() }
+            ?: ensureChildCodeFromInput()
+            ?: return
+        val verify = linkVerifyCode()
         if (verify.isEmpty()) {
-            toast("أدخلي رمز الربط من Gmail (الرسالة الثانية)", true)
+            toast("أدخلي رمز الربط (6 أرقام) — من Gmail", true)
             return
         }
+        syncLinkVerifyFields(verify)
         if (!ParentSession.isEmailVerified(this)) {
             toast("تحققي من بريدك أولاً (الرمز الأول من Gmail)", true)
             return
         }
-        val name = pendingChildName()
-        val age = ParentSession.pendingChildAge(this).takeIf { it > 0 }
-            ?: findViewById<EditText>(R.id.inputAddChildAge).text.toString().toIntOrNull()
-            ?: 10
+        val name = findViewById<EditText>(R.id.inputAddChildName).text.toString().trim()
+        if (name.isEmpty()) {
+            toast(getString(R.string.parent_add_child_name_required), true)
+            return
+        }
+        val age = findViewById<EditText>(R.id.inputAddChildAge).text.toString().toIntOrNull() ?: 10
         ParentSession.savePendingChildProfile(this, name, age)
         setLinkButtonsEnabled(false)
         lifecycleScope.launch {
+            if (!ensureServerReady()) {
+                setLinkButtonsEnabled(true)
+                return@launch
+            }
             performLink(childCode, verify, name, age)
             setLinkButtonsEnabled(true)
         }
@@ -659,31 +1292,42 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun scheduleFreeze() {
-        val childCode = ParentSession.childCode(this)
+        val email = ParentSession.guardianEmail(this)
+        val targets = commandTargets()
         val pkg = findViewById<EditText>(R.id.inputTarget).text.toString().trim()
         val start = findViewById<EditText>(R.id.inputScheduleStart).text.toString().trim()
         val end = findViewById<EditText>(R.id.inputScheduleEnd).text.toString().trim()
-        if (childCode.isNullOrBlank() || pkg.isBlank() || start.isBlank() || end.isBlank()) {
+        if (email.isNullOrBlank() || targets.isEmpty() || pkg.isBlank() || start.isBlank() || end.isBlank()) {
             toast("أدخل الحزمة ووقت البداية والنهاية", true)
             return
         }
         lifecycleScope.launch {
-            when (
-                val result = withContext(Dispatchers.IO) {
-                    GuardianApi.addSchedule(childCode, "freeze_app", pkg, start, end)
+            var ok = 0
+            var fail = 0
+            for ((code, _) in targets) {
+                when (
+                    withContext(Dispatchers.IO) {
+                        GuardianApi.addSchedule(code, "freeze_app", pkg, start, end)
+                    }
+                ) {
+                    is GuardianApi.ApiResult.Ok -> ok++
+                    is GuardianApi.ApiResult.Error -> fail++
+                    else -> fail++
                 }
-            ) {
-                is GuardianApi.ApiResult.Ok -> toast(result.message, false)
-                is GuardianApi.ApiResult.Error -> toast(result.message, true)
-                else -> {}
+            }
+            if (targets.size == 1 && fail == 0) {
+                toast("تمت جدولة التجميد", false)
+            } else {
+                toastBroadcastResult(ok, fail, targets.size)
             }
         }
     }
 
     private fun sendGuardianMessage() {
-        val childCode = ParentSession.childCode(this)
+        val email = ParentSession.guardianEmail(this)
+        val targets = commandTargets()
         val text = findViewById<EditText>(R.id.inputTarget).text.toString().trim()
-        if (childCode.isNullOrBlank()) {
+        if (email.isNullOrBlank() || targets.isEmpty()) {
             toast("اربط الطفل أولاً", true)
             return
         }
@@ -693,26 +1337,33 @@ class ParentMainActivity : AppCompatActivity() {
         }
         val role = ParentSession.guardianRole(this)
         lifecycleScope.launch {
-            when (
-                val result = withContext(Dispatchers.IO) {
-                    GuardianApi.sendGuardianMessage(childCode, role, text)
+            var ok = 0
+            var fail = 0
+            for ((code, _) in targets) {
+                when (
+                    withContext(Dispatchers.IO) {
+                        GuardianApi.sendGuardianMessage(code, role, text)
+                    }
+                ) {
+                    is GuardianApi.ApiResult.Ok -> ok++
+                    is GuardianApi.ApiResult.Error -> fail++
+                    else -> fail++
                 }
-            ) {
-                is GuardianApi.ApiResult.Ok -> {
-                    toast(getString(R.string.parent_message_sent), false)
-                    textMessage.text = result.message
-                    viewAlerts()
-                }
-                is GuardianApi.ApiResult.Error -> toast(result.message, true)
-                else -> {}
+            }
+            if (ok > 0) {
+                toast(getString(R.string.parent_message_sent), false)
+                viewAlerts()
+            }
+            if (targets.size > 1) {
+                toastBroadcastResult(ok, fail, targets.size)
             }
         }
     }
 
     private fun sendCommand(action: String, value: String) {
-        val childCode = ParentSession.childCode(this)
         val email = ParentSession.guardianEmail(this)
-        if (childCode.isNullOrBlank() || email.isNullOrBlank()) {
+        val targets = commandTargets()
+        if (email.isNullOrBlank() || targets.isEmpty()) {
             toast("اربط الطفل أولاً", true)
             return
         }
@@ -721,19 +1372,38 @@ class ParentMainActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch {
-            when (
-                val result = withContext(Dispatchers.IO) {
-                    GuardianApi.sendCommand(action, value, childCode, email)
+            val (ok, fail) = broadcastCommand(action, value, email, targets)
+            if (targets.size == 1) {
+                when {
+                    ok == 1 -> toast("تم إرسال الأمر", false)
+                    else -> toast("فشل إرسال الأمر", true)
                 }
-            ) {
-                is GuardianApi.ApiResult.Ok -> toast(result.message, false)
-                is GuardianApi.ApiResult.Error -> toast(result.message, true)
-                else -> {}
+            } else {
+                toastBroadcastResult(ok, fail, targets.size)
             }
         }
     }
 
+    private fun startSetupFromWelcome() {
+        ParentSession.markWelcomeSeen(this)
+        showLogin()
+        toast(getString(R.string.parent_welcome_steps_title), false)
+    }
+
+    private fun showWelcome(fromControl: Boolean = false) {
+        hideAllSteps()
+        stepWelcome.visibility = View.VISIBLE
+        textStepIndicator.text = getString(R.string.parent_step_welcome)
+        findViewById<Button>(R.id.btnStartSetup).visibility =
+            if (fromControl) View.GONE else View.VISIBLE
+        findViewById<Button>(R.id.btnBackFromWelcome).visibility =
+            if (fromControl && ParentSession.isChildLinked(this)) View.VISIBLE else View.GONE
+        scrollWizardToTop()
+    }
+
     private fun hideAllSteps() {
+        alertPollingJob?.cancel()
+        stepWelcome.visibility = View.GONE
         stepLogin.visibility = View.GONE
         stepVerify.visibility = View.GONE
         stepAddChild.visibility = View.GONE
@@ -746,12 +1416,14 @@ class ParentMainActivity : AppCompatActivity() {
         hideAllSteps()
         stepLogin.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_email)
+        scrollWizardToTop()
     }
 
     private fun showVerify() {
         hideAllSteps()
         stepVerify.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_email)
+        scrollWizardToTop()
     }
 
     private fun showAddChild() {
@@ -765,19 +1437,41 @@ class ParentMainActivity : AppCompatActivity() {
                 ParentSession.pendingChildAge(this).toString()
             )
         }
+        scrollWizardToTop()
     }
 
     private fun showLink() {
         hideAllSteps()
         stepLink.visibility = View.VISIBLE
-        textStepIndicator.text = getString(R.string.parent_step_link_device)
+        textStepIndicator.text = if (ParentSession.isAddingAnotherChild(this)) {
+            getString(R.string.parent_step_add_another_child)
+        } else {
+            getString(R.string.parent_step_link_device)
+        }
+        findViewById<Button>(R.id.btnCancelAddAnother).visibility =
+            if (ParentSession.isAddingAnotherChild(this)) View.VISIBLE else View.GONE
         val pendingName = ParentSession.pendingChildName(this).orEmpty()
         if (pendingName.isNotEmpty()) {
             textStepIndicator.text = "${getString(R.string.parent_step_link_device)} — $pendingName"
         }
-        if (childCodeField().text.toString().isBlank()) {
-            pasteChildCodeFromClipboard(silent = true)
+        val code = ParentSession.pendingLinkChildCode(this).orEmpty()
+        if (code.isNotBlank() && ChildCodeNormalizer.isValid(code)) {
+            childCodeField().setText(code)
+        } else {
+            val current = childCodeField().text.toString()
+            if (current.isNotBlank() && !ChildCodeNormalizer.isValid(current)) {
+                childCodeField().text?.clear()
+            }
+            if (childCodeField().text.toString().isBlank()) {
+                pasteChildCodeFromClipboard(silent = true)
+            }
         }
+        syncLinkVerifyFields(ParentSession.pendingDeviceVerifyCode(this).orEmpty())
+        val currentCode = childCodeField().text.toString().trim()
+        if (currentCode.isNotEmpty() && !ChildCodeNormalizer.isValid(currentCode)) {
+            showInvalidChildCodeDialog(currentCode)
+        }
+        scrollWizardToTop()
     }
 
     private fun showLinkConfirm() {
@@ -788,6 +1482,8 @@ class ParentMainActivity : AppCompatActivity() {
         val code = ParentSession.pendingLinkChildCode(this).orEmpty()
         val name = ParentSession.pendingChildName(this).orEmpty()
         val age = ParentSession.pendingChildAge(this)
+        childCodeField().setText(code)
+        syncLinkVerifyFields(ParentSession.pendingDeviceVerifyCode(this).orEmpty())
         findViewById<TextView>(R.id.textLinkVerifiedInfo).text =
             getString(R.string.parent_link_verified_info, code, email)
         findViewById<TextView>(R.id.textPendingChildName).text =
@@ -798,14 +1494,10 @@ class ParentMainActivity : AppCompatActivity() {
         hideAllSteps()
         stepControl.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_control)
-        val name = ParentSession.childName(this).orEmpty()
-        val code = ParentSession.childCode(this).orEmpty()
-        textLinkedChild.text = getString(
-            R.string.parent_linked_with_role,
-            name,
-            ParentSession.guardianRole(this),
-            code
+        updateActiveChildHeader(
+            ParentSession.linkedChildCount(this).coerceAtLeast(1),
         )
+        renderChildrenChips()
         textAlertsPreview.text = getString(R.string.parent_alerts_waiting)
         startAlertPolling()
         lifecycleScope.launch { refreshLinkedChildrenSummary() }
@@ -825,9 +1517,10 @@ class ParentMainActivity : AppCompatActivity() {
             if (!silent) toast(getString(R.string.parent_paste_empty), true)
             return
         }
-        val normalized = ChildCodeNormalizer.normalize(pasted)
-        if (normalized.isEmpty()) {
-            if (!silent) toast("كود الطفل غير صالح", true)
+        val normalized = ChildCodeNormalizer.extractFromPaste(pasted)
+            .ifBlank { ChildCodeNormalizer.normalize(pasted) }
+        if (!ChildCodeNormalizer.isValid(normalized)) {
+            if (!silent) showInvalidChildCodeDialog(pasted)
             return
         }
         childCodeField().setText(normalized)

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/parentScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -18,11 +19,102 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/textAppVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#666666"
+            android:textSize="12sp" />
+
+        <TextView
             android:id="@+id/textStepIndicator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:textSize="13sp" />
+
+        <!-- الصفحة الرئيسية — تعريف بالتطبيق قبل الربط -->
+        <LinearLayout
+            android:id="@+id/stepWelcome"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_welcome_title"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="4dp"
+                android:text="@string/parent_welcome_purpose"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="#1A2196F3"
+                android:padding="12dp"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/parent_welcome_features"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_welcome_tips_title"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="4dp"
+                android:text="@string/parent_welcome_tips"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_welcome_steps_title"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="4dp"
+                android:text="@string/parent_welcome_steps"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnStartSetup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/parent_btn_start_setup"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnBackFromWelcome"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_back_to_control"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <!-- خطوة 1: بريد ولي الأمر -->
         <LinearLayout
@@ -139,6 +231,14 @@
                 android:hint="@string/parent_hint_child_code"
                 android:textIsSelectable="true" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/parent_child_code_field_hint"
+                android:textColor="#888888"
+                android:textSize="12sp" />
+
             <Button
                 android:id="@+id/btnPasteChildCode"
                 android:layout_width="match_parent"
@@ -146,20 +246,31 @@
                 android:text="@string/parent_btn_paste_child_code" />
 
             <Button
-                android:id="@+id/btnAutoLink"
+                android:id="@+id/btnCheckChildCode"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_auto_link"
+                android:layout_marginTop="4dp"
+                android:text="@string/parent_btn_check_child_code" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_link_code_label"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <EditText
                 android:id="@+id/inputDeviceVerify"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:hint="@string/parent_hint_verify_code"
                 android:inputType="number"
-                android:maxLength="6" />
+                android:maxLength="6"
+                android:minHeight="48dp"
+                android:textSize="18sp" />
 
             <Button
                 android:id="@+id/btnSendLinkCode"
@@ -174,6 +285,46 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/parent_btn_verify_device" />
+
+            <Button
+                android:id="@+id/btnLinkChildOnLinkStep"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_link"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnCancelAddAnother"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_cancel_add_another"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btnCheckServer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_btn_check_server"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnOpenServerBrowser"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_open_server_browser" />
+
+            <Button
+                android:id="@+id/btnAutoLink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_auto_link"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <!-- خطوة 4ب: تأكيد الربط -->
@@ -202,6 +353,32 @@
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_link_code_label"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/inputLinkConfirmVerify"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:hint="@string/parent_hint_verify_code"
+                android:inputType="number"
+                android:maxLength="6"
+                android:minHeight="48dp"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/btnSendLinkCodeConfirm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_send_link_code" />
+
             <Button
                 android:id="@+id/btnLinkChild"
                 android:layout_width="match_parent"
@@ -225,12 +402,76 @@
                 android:layout_height="wrap_content"
                 android:textSize="14sp" />
 
+            <TextView
+                android:id="@+id/textSelectActiveChild"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_select_active_child"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/spinnerChildren"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+
+            <LinearLayout
+                android:id="@+id/layoutLinkedChildrenList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/textMultiChildHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/parent_bulk_from_list_hint"
+                android:textColor="#666666"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnSelectAllFromList"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_select_all_list"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/textDashboardMini"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#1A4CAF50"
+                android:padding="10dp"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/textPermissionsMini"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#1AFF9800"
+                android:padding="10dp"
+                android:textSize="12sp" />
+
             <Button
                 android:id="@+id/btnAddAnotherChild"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/parent_btn_add_another_child" />
+
+            <Button
+                android:id="@+id/btnShowWelcome"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_show_welcome" />
 
             <TextView
                 android:id="@+id/textAlertsHint"
@@ -258,6 +499,14 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:hint="@string/parent_hint_target" />
+
+            <CheckBox
+                android:id="@+id/checkApplyAllChildren"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/parent_apply_all_children"
+                android:visibility="gone" />
 
             <Button
                 android:id="@+id/btnSendMessage"
@@ -323,6 +572,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/parent_btn_view_alerts" />
+
+            <Button
+                android:id="@+id/btnOpenSettings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_open_settings" />
 
             <Button
                 android:id="@+id/btnOpenScreenTime"
