@@ -4,8 +4,10 @@
 
 | الجهاز | الرابط |
 |--------|--------|
-| **جوال الطفل** — أكاديمية العباقرة | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-child-debug.apk |
-| **جوال الأم** — MY Rana | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-parent-debug.apk |
+| **جوال الطفل** — أكاديمية العباقرة | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk |
+| **جوال الأم** — MY Rana | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk |
+
+> **مهم:** لا تستخدمي `media.githubusercontent.com` — يعطي 404. استخدمي الروابط أعلاه فقط.
 
 ### خطوات التثبيت
 1. افتحي الرابط في **Chrome** على الجوال
