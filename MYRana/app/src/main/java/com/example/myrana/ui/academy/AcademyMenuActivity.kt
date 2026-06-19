@@ -44,9 +44,15 @@ class AcademyMenuActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_academy_menu)
         ChildProjectRuntime.activateMonitoring(this)
-        ChildProjectRuntime.activateAcademyEngine(this)
-        bindMenu()
-        refreshStats()
+        try {
+            ChildProjectRuntime.activateAcademyEngine(this)
+            bindMenu()
+            refreshStats()
+        } catch (e: Exception) {
+            findViewById<TextView>(R.id.textAcademyStats)?.text =
+                getString(R.string.academy_python_error)
+            bindMenu()
+        }
         AcademyReporter.sendReport(this, "academy_opened", "فتح أكاديمية العباقرة")
     }
 

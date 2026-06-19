@@ -5,7 +5,7 @@ import com.example.myrana.enforcement.AccessibilityHelper
 import com.example.myrana.enforcement.UsageAccessHelper
 
 /**
- * بوابة الصلاحيات — القراءة من أندroid عبر [SystemPermissions].
+ * بوابة الصلاحيات — القراءة من أندرويد عبر [SystemPermissions].
  * يُعاد فتح شاشة الصلاحيات إذا لم تُمنح الإعدادات الإلزامية فعلياً.
  */
 object ChildPermissionsGate {
@@ -19,21 +19,20 @@ object ChildPermissionsGate {
     fun hasAccessibility(context: Context): Boolean =
         SystemPermissions.readSnapshot(context).accessibility
 
-    /** جاهز للمراقبة — من النظام مباشرة (استخدام + وصول). */
+    /** جاهز للمراقبة الأساسية (حظر التطبيقات) — استخدام على الأقل. */
     fun isMonitoringReady(context: Context): Boolean =
+        UsageAccessHelper.hasUsageAccess(context)
+
+    /** مراقبة كاملة — استخدام + وصول. */
+    fun isFullMonitoringReady(context: Context): Boolean =
         SystemPermissions.readSnapshot(context).mandatoryReady
 
-    /**
-     * يزامن العلم المحلي مع أندرويد — إذا أُزيلت صلاحية من الإعدادات نُعيد طلبها.
-     */
     fun reconcileWithSystem(context: Context) {
-        val snap = SystemPermissions.readSnapshot(context)
-        if (!snap.mandatoryReady) {
+        if (!UsageAccessHelper.hasUsageAccess(context)) {
             prefs(context).edit().putBoolean(KEY_FLOW_COMPLETE, false).apply()
         }
     }
 
-    /** بعد ربط ولي الأمر — لا نتخطى الصلاحيات إلا إذا أندرويد يمنحها فعلياً. */
     fun ensurePermissionsRequiredAfterLink(context: Context) {
         reconcileWithSystem(context)
     }
@@ -41,15 +40,17 @@ object ChildPermissionsGate {
     fun markPermissionsFlowComplete(context: Context) {
         if (!ChildPermissionEvaluator.canMarkFlowComplete(context)) return
         UsageAccessHelper.markUsageFlowDone(context)
-        AccessibilityHelper.markAccessibilityFlowDone(context)
+        if (AccessibilityHelper.isServiceEnabled(context)) {
+            AccessibilityHelper.markAccessibilityFlowDone(context)
+        }
         prefs(context).edit().putBoolean(KEY_FLOW_COMPLETE, true).apply()
     }
 
+    /** اكتمل الإعداد — موافقة + بيانات الاستخدام (الحد الأدنى للأكاديمية والحظر). */
     fun isPermissionsFlowComplete(context: Context): Boolean {
         reconcileWithSystem(context)
         if (!ChildPermissionsConsent.hasUserConsented(context)) return false
-        if (!SystemPermissions.readSnapshot(context).mandatoryReady) return false
-        return prefs(context).getBoolean(KEY_FLOW_COMPLETE, false)
+        return UsageAccessHelper.hasUsageAccess(context)
     }
 
     private fun prefs(context: Context) =

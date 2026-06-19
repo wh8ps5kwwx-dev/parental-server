@@ -42,10 +42,15 @@ object ChildPermissionEvaluator {
         isCountedGranted(context, Kind.USAGE) &&
             isCountedGranted(context, Kind.ACCESSIBILITY)
 
-    /** جاهز لبدء اللعبة: موافقة + ما منحه أندرويد فعلياً (استخدام + وصول). */
+    /** جاهز لبدء الأكاديمية: موافقة + بيانات الاستخدام (الحد الأدنى). */
+    fun canEnterAcademy(context: Context): Boolean =
+        ChildPermissionsConsent.hasUserConsented(context) &&
+            isSystemGranted(context, Kind.USAGE)
+
+    /** مراقبة كاملة: موافقة + استخدام + وصول. */
     fun canEnterGame(context: Context): Boolean =
         ChildPermissionsConsent.hasUserConsented(context) &&
             SystemPermissions.readSnapshot(context).mandatoryReady
 
-    fun canMarkFlowComplete(context: Context): Boolean = canEnterGame(context)
+    fun canMarkFlowComplete(context: Context): Boolean = canEnterAcademy(context)
 }
