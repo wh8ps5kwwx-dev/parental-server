@@ -40,8 +40,7 @@
     <string name="permissions_btn_usage">فتح إعدادات بيانات الاستخدام</string>
     <string name="permissions_btn_usage_done">إعادة فتح إعدادات الاستخدام</string>
     <string name="permissions_btn_continue">ابدأ الأكاديمية — اللعبة</string>
-    <string name="permissions_btn_continue_partial">ابدأ الأكاديمية (فعّلي الوصول لاحقاً للمراقبة الكاملة)</string>
-    <string name="permissions_a11y_recommended">💡 للمراقبة الكاملة (Chrome/YouTube): فعّلي «خدمة الوصول» أيضاً</string>
+    <string name="permissions_full_apps_required">⚠️ للمراقبة الكاملة لكل التطبيقات: فعّلي «بيانات الاستخدام» و«خدمة الوصول» معاً</string>
     <string name="permissions_status_accessibility_ok">✓ خدمة الوصول: مفعّلة — مراقبة جميع التطبيقات</string>
     <string name="permissions_status_accessibility_missing">✗ خدمة الوصول: مطلوبة لمراقبة جميع التطبيقات وتنبيه الأم</string>
     <string name="permissions_btn_accessibility">تفعيل خدمة MY Rana (الوصول)</string>

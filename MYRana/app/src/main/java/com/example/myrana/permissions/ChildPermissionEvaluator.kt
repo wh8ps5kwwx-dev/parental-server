@@ -37,20 +37,15 @@ object ChildPermissionEvaluator {
     fun countedGrantedCount(context: Context): Int =
         trackableKinds.count { isCountedGranted(context, it) }
 
-    /** الإلزامي: استخدام + وصول — بعد موافقة المستخدم. */
+    /** الإلزامي: استخدام + وصول — مراقبة كل التطبيقات. */
     fun isMandatoryReadyWithConsent(context: Context): Boolean =
         isCountedGranted(context, Kind.USAGE) &&
             isCountedGranted(context, Kind.ACCESSIBILITY)
 
-    /** جاهز لبدء الأكاديمية: موافقة + بيانات الاستخدام (الحد الأدنى). */
-    fun canEnterAcademy(context: Context): Boolean =
-        ChildPermissionsConsent.hasUserConsented(context) &&
-            isSystemGranted(context, Kind.USAGE)
-
-    /** مراقبة كاملة: موافقة + استخدام + وصول. */
+    /** جاهز للأكاديمية والمراقبة الكاملة — موافقة + استخدام + وصول. */
     fun canEnterGame(context: Context): Boolean =
         ChildPermissionsConsent.hasUserConsented(context) &&
             SystemPermissions.readSnapshot(context).mandatoryReady
 
-    fun canMarkFlowComplete(context: Context): Boolean = canEnterAcademy(context)
+    fun canMarkFlowComplete(context: Context): Boolean = canEnterGame(context)
 }

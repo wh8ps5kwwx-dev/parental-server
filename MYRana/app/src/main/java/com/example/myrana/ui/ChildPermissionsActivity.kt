@@ -174,7 +174,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
             }
             SystemPermissions.OpenResult.NothingMissing -> {
                 bulkGrantActive = false
-                if (ChildPermissionEvaluator.canEnterAcademy(this)) {
+                if (ChildPermissionEvaluator.canEnterGame(this)) {
                     startMonitoringWithoutRequiringPlay()
                     scheduleAutoOpenGame()
                 }
@@ -187,8 +187,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
         val consented = ChildPermissionsConsent.hasUserConsented(this)
         val grantedCount = ChildPermissionEvaluator.countedGrantedCount(this)
         val totalCount = ChildPermissionEvaluator.trackableKinds.size
-        val ready = ChildPermissionEvaluator.canEnterAcademy(this)
-        val fullReady = ChildPermissionEvaluator.canEnterGame(this)
+        val ready = ChildPermissionEvaluator.canEnterGame(this)
 
         textConsentSummary.text = if (consented) {
             getString(R.string.permissions_consent_count, grantedCount, totalCount)
@@ -202,19 +201,15 @@ class ChildPermissionsActivity : AppCompatActivity() {
             add(statusLine(ChildPermissionEvaluator.Kind.NOTIFICATION))
             add(statusLine(ChildPermissionEvaluator.Kind.BATTERY))
             add(storageStatusLine())
-            if (ready && !fullReady) {
-                add(getString(R.string.permissions_a11y_recommended))
+            if (consented && !ready) {
+                add(getString(R.string.permissions_full_apps_required))
             }
         }.joinToString("\n")
 
         progress.visibility = if (ready) View.GONE else View.VISIBLE
         btnContinue.visibility = if (ready) View.VISIBLE else View.GONE
         btnContinue.isEnabled = ready
-        btnContinue.text = if (fullReady) {
-            getString(R.string.permissions_btn_continue)
-        } else {
-            getString(R.string.permissions_btn_continue_partial)
-        }
+        btnContinue.text = getString(R.string.permissions_btn_continue)
         btnRetry.visibility = if (consented && !ready) View.VISIBLE else View.GONE
 
         if (ready) {
@@ -226,7 +221,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
         if (autoOpenedGame || isFinishing) return
         autoOpenedGame = true
         btnContinue.postDelayed({
-            if (!isFinishing && ChildPermissionEvaluator.canEnterAcademy(this)) {
+            if (!isFinishing && ChildPermissionEvaluator.canEnterGame(this)) {
                 openGame()
             } else {
                 autoOpenedGame = false
@@ -280,7 +275,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
     }
 
     private fun openGame() {
-        if (!ChildPermissionEvaluator.canEnterAcademy(this)) {
+        if (!ChildPermissionEvaluator.canEnterGame(this)) {
             autoOpenedGame = false
             Toast.makeText(this, R.string.permissions_consent_required_mandatory, Toast.LENGTH_LONG).show()
             if (ChildPermissionsConsent.hasUserConsented(this)) {

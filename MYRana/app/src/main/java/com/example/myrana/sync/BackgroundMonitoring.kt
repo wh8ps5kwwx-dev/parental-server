@@ -27,8 +27,8 @@ object BackgroundMonitoring {
     fun ensureRunning(context: Context) {
         if (!ChildSession.isSetupComplete(context)) return
         val snap = SystemPermissions.readSnapshot(context)
-        if (!snap.usage) {
-            Log.w(TAG, "skipped — grant usage access in Android settings")
+        if (!snap.mandatoryReady) {
+            Log.w(TAG, "skipped — usage=${snap.usage} a11y=${snap.accessibility} (grant both for full app monitoring)")
             return
         }
 

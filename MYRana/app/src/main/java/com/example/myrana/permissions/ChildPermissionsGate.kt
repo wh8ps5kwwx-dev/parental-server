@@ -6,7 +6,7 @@ import com.example.myrana.enforcement.UsageAccessHelper
 
 /**
  * بوابة الصلاحيات — القراءة من أندرويد عبر [SystemPermissions].
- * يُعاد فتح شاشة الصلاحيات إذا لم تُمنح الإعدادات الإلزامية فعلياً.
+ * لا تُتخطى شاشة الصلاحيات إلا بعد تفعيل الاستخدام + الوصول (مراقبة كاملة).
  */
 object ChildPermissionsGate {
 
@@ -19,16 +19,12 @@ object ChildPermissionsGate {
     fun hasAccessibility(context: Context): Boolean =
         SystemPermissions.readSnapshot(context).accessibility
 
-    /** جاهز للمراقبة الأساسية (حظر التطبيقات) — استخدام على الأقل. */
+    /** جاهز للمراقبة الكاملة — استخدام + وصول. */
     fun isMonitoringReady(context: Context): Boolean =
-        UsageAccessHelper.hasUsageAccess(context)
-
-    /** مراقبة كاملة — استخدام + وصول. */
-    fun isFullMonitoringReady(context: Context): Boolean =
         SystemPermissions.readSnapshot(context).mandatoryReady
 
     fun reconcileWithSystem(context: Context) {
-        if (!UsageAccessHelper.hasUsageAccess(context)) {
+        if (!SystemPermissions.readSnapshot(context).mandatoryReady) {
             prefs(context).edit().putBoolean(KEY_FLOW_COMPLETE, false).apply()
         }
     }
@@ -40,17 +36,15 @@ object ChildPermissionsGate {
     fun markPermissionsFlowComplete(context: Context) {
         if (!ChildPermissionEvaluator.canMarkFlowComplete(context)) return
         UsageAccessHelper.markUsageFlowDone(context)
-        if (AccessibilityHelper.isServiceEnabled(context)) {
-            AccessibilityHelper.markAccessibilityFlowDone(context)
-        }
+        AccessibilityHelper.markAccessibilityFlowDone(context)
         prefs(context).edit().putBoolean(KEY_FLOW_COMPLETE, true).apply()
     }
 
-    /** اكتمل الإعداد — موافقة + بيانات الاستخدام (الحد الأدنى للأكاديمية والحظر). */
     fun isPermissionsFlowComplete(context: Context): Boolean {
         reconcileWithSystem(context)
         if (!ChildPermissionsConsent.hasUserConsented(context)) return false
-        return UsageAccessHelper.hasUsageAccess(context)
+        if (!SystemPermissions.readSnapshot(context).mandatoryReady) return false
+        return prefs(context).getBoolean(KEY_FLOW_COMPLETE, false)
     }
 
     private fun prefs(context: Context) =

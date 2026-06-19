@@ -2,7 +2,6 @@ package com.example.myrana.permissions
 
 import android.content.Context
 import com.example.myrana.academy.AcademyPythonBridge
-import com.example.myrana.enforcement.UsageAccessHelper
 import com.example.myrana.session.ChildSession
 import com.example.myrana.sync.BackgroundMonitoring
 
@@ -20,11 +19,10 @@ object ChildProjectRuntime {
         SystemPermissions.readSnapshot(context)
 
     fun isMonitoringOperational(context: Context): Boolean =
-        ChildSession.isSetupComplete(context) &&
-            UsageAccessHelper.hasUsageAccess(context)
+        ChildSession.isSetupComplete(context) && snapshot(context).mandatoryReady
 
     fun isChildStackReady(context: Context): Boolean =
-        ChildPermissionEvaluator.canEnterAcademy(context)
+        ChildPermissionEvaluator.canEnterGame(context)
 
     /**
      * المراقبة بالخلفية — **بدون فتح اللعبة**.
