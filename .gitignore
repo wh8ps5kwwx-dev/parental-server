@@ -1,15 +1,65 @@
+# Environment & secrets
 .env
-*.db
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Python
 __pycache__/
-*.pyc
-devices.local.json
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# SQLite / local databases (never commit)
+*.db
+*.sqlite
+*.sqlite3
 parent_control.db
+
+# Android / Gradle
+.gradle/
+**/build/
+**/local.properties
+*.iml
+.idea/
+*.apk
+!releases/*.apk
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project-specific
+devices.local.json
+__pycache__/
+Network Security managament/
 *.vmem
 *.vmdk
-Network Security managament/
-MYRana/.gradle/
-MYRana/build/
-MYRana/local.properties
 
-# APK داخل build فقط — releases/ مرفوعة للتحميل المباشر
-MYRana/**/build/**/*.apk
+# Logs
+*.log
+logs/
+
+# Temp / lock
+~$*
+*.tmp
+*.swp

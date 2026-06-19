@@ -152,11 +152,21 @@ def find_child_device(cur, child_code_raw, log_on_miss=True):
 def _child_not_found_response(raw, detail_ar: str = ""):
     """JSON موحّد — Child not found + الكود الأصلي والمنظّف في السجلات."""
     cleaned = clean_child_code(raw)
-    logger.warning("child_not_found original=%r cleaned=%r", raw, cleaned)
+    logger.warning(
+        "[child-link-status] NOT FOUND original=%r cleaned=%r db=%s",
+        raw,
+        cleaned,
+        DB,
+    )
     extra = {
         "error_code": "child_not_found",
         "child_code_input": (raw or "").strip(),
         "child_code_clean": cleaned,
+        "child_code_display": normalize_child_code(raw) if cleaned else "",
+        "hint_ar": detail_ar or (
+            "من جوال الطفل: اضغطي «تسجيل الجهاز» ثم انسخي CHILD-XXXXXXXX من الشاشة أو Gmail. "
+            "إذا كان السيرفر أُعيد تشغيله بدون قرص دائم، أعيدي التسجيل."
+        ),
     }
     if detail_ar:
         extra["detail_ar"] = detail_ar
@@ -253,6 +263,17 @@ def _ensure_guardian(cur, email: str) -> int:
 def _children_table_columns(cur) -> set[str]:
     cur.execute("PRAGMA table_info(children)")
     return {str(r[1]) for r in cur.fetchall()}
+
+
+def _ensure_child_devices_columns(cur):
+    """ترقية child_devices — android_device_id لإعادة التسجيل بعد مسح DB على Render."""
+    for col, typedef in (
+        ("android_device_id", "TEXT"),
+    ):
+        try:
+            cur.execute(f"ALTER TABLE child_devices ADD COLUMN {col} {typedef}")
+        except sqlite3.OperationalError:
+            pass
 
 
 def _ensure_children_columns(cur):
@@ -776,6 +797,7 @@ def init_db():
         cur.execute("ALTER TABLE child_devices ADD COLUMN device_verified INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
+    _ensure_child_devices_columns(cur)
 
     # جدول أولياء الأمور (parent_id)
     cur.execute("""
@@ -1186,7 +1208,31 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "message": "Parental Control Server is running"})
+    try:
+        conn = db()
+        cur = conn.cursor()
+        _ensure_child_devices_columns(cur)
+        cur.execute("SELECT COUNT(*) FROM child_devices")
+        registered = int(cur.fetchone()[0])
+        cur.execute("SELECT COUNT(*) FROM child_devices WHERE linked = 1")
+        linked = int(cur.fetchone()[0])
+        conn.close()
+    except Exception as exc:
+        logger.exception("health db check failed: %s", exc)
+        registered = -1
+        linked = -1
+    return jsonify({
+        "status": "ok",
+        "message": "Parental Control Server is running",
+        "db_path": DB,
+        "persistent_storage": DB.startswith("/var/data") or os.path.isabs(DB),
+        "child_devices_registered": registered,
+        "child_devices_linked": linked,
+        "hint": (
+            "If registered=0 after child setup, tap Register Device on child phone again "
+            "or attach persistent disk on Render (DATA_DIR=/var/data)."
+        ),
+    })
 
 
 # ==============================
@@ -1377,6 +1423,16 @@ def register_child_device():
         notify_email = child_email or guardian_email
         device_name = (data.get("device_name") or data.get("device") or "").strip()
         android_version = (data.get("android_version") or "").strip()
+        android_device_id = str(data.get("android_device_id") or data.get("androidDeviceId") or "").strip()
+
+        logger.info(
+            "[register-child-device] IN raw=%r cleaned=%r device=%r android_id=%r email=%r",
+            raw_child,
+            suffix,
+            device_name,
+            android_device_id[:16] + "…" if len(android_device_id) > 16 else android_device_id,
+            notify_email,
+        )
 
         if not suffix or not device_name:
             return _json_error("child_code و device_name مطلوبان", 400)
@@ -1390,33 +1446,66 @@ def register_child_device():
 
         conn = db()
         cur = conn.cursor()
-        existing = find_child_device(cur, raw_child)
+        _ensure_child_devices_columns(cur)
+        existing = find_child_device(cur, raw_child, log_on_miss=False)
+
+        if not existing and android_device_id:
+            cur.execute(
+                """
+                SELECT * FROM child_devices
+                WHERE android_device_id = ? AND COALESCE(linked, 0) = 0
+                ORDER BY id DESC LIMIT 1
+                """,
+                (android_device_id,),
+            )
+            existing = cur.fetchone()
+            if existing:
+                logger.info(
+                    "[register-child-device] matched android_device_id → reuse row child_code=%r",
+                    existing["child_code"],
+                )
 
         if existing and existing["linked"]:
             conn.close()
             return _json_error("الجهاز مربوط مسبقاً", 400, error_code="already_linked")
 
         if existing:
-            # لا نغيّر device_verify_code عند إعادة التسجيل — حتى يبقى رمز الربط صالحاً
             cur.execute(
                 """
                 UPDATE child_devices
-                SET child_email = ?, device_name = ?, android_version = ?
+                SET child_email = ?, device_name = ?, android_version = ?,
+                    child_code = ?, android_device_id = ?
                 WHERE child_code = ?
                 """,
-                (notify_email, device_name, android_version, existing["child_code"]),
+                (
+                    notify_email,
+                    device_name,
+                    android_version,
+                    suffix,
+                    android_device_id or None,
+                    existing["child_code"],
+                ),
             )
-            stored = existing["child_code"]
+            stored = suffix if suffix else existing["child_code"]
         else:
             device_code = str(random.randint(100000, 999999))
-            # FIX: normalize child_code — يُخزَّن بدون بادئة: 1DF71288
             cur.execute(
                 """
                 INSERT INTO child_devices
-                (child_code, child_email, device_name, android_version, device_verify_code, linked, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (child_code, child_email, device_name, android_version,
+                 device_verify_code, linked, created_at, android_device_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (suffix, notify_email, device_name, android_version, device_code, 0, now()),
+                (
+                    suffix,
+                    notify_email,
+                    device_name,
+                    android_version,
+                    device_code,
+                    0,
+                    now(),
+                    android_device_id or None,
+                ),
             )
             stored = suffix
 
@@ -1452,10 +1541,11 @@ def register_child_device():
                 f"انسخي الكود {display_code} من جوال الطفل إلى تطبيق الأم."
             )
         logger.info(
-            "[register-child-device] OK stored=%r display=%r email_sent=%s",
+            "[register-child-device] OK stored=%r display=%r email_sent=%s db=%s",
             stored,
             display_code,
             email_sent,
+            DB,
         )
         return jsonify(payload)
     except Exception as exc:
@@ -1473,6 +1563,12 @@ def send_link_code():
 
         if not parent_email or not child_code:
             return _json_error("parent_email و child_code مطلوبان", 400)
+
+        logger.info(
+            "[send-link-code] parent=%s child_code=%r",
+            parent_email,
+            child_code,
+        )
 
         conn = db()
         cur = conn.cursor()
@@ -1562,8 +1658,11 @@ def send_link_code():
 @app.route("/child-link-status", methods=["GET"])
 def child_link_status():
     raw = request.args.get("child_code", "")
-    if not clean_child_code(raw):
+    cleaned = clean_child_code(raw)
+    if not cleaned:
         return _json_error("child_code required", 400, error_code="missing_child_code")
+
+    logger.info("[child-link-status] check raw=%r cleaned=%r", raw, cleaned)
 
     conn = db()
     cur = conn.cursor()
@@ -1573,9 +1672,15 @@ def child_link_status():
     if not row:
         return _child_not_found_response(
             raw,
-            "لم يُعثر على جهاز الطفل — افتحي تطبيق الطفل واضغطي تسجيل الجهاز",
+            "الكود غير موجود — من جوال الطفل اضغطي «تسجيل الجهاز» ثم أعيدي الربط.",
         )
 
+    logger.info(
+        "[child-link-status] FOUND cleaned=%r linked=%s device=%r",
+        cleaned,
+        bool(row["linked"]),
+        row["device_name"],
+    )
     return _json_success(
         "Child link status",
         child_code=normalize_child_code(row["child_code"]),

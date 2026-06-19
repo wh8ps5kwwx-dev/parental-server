@@ -10,6 +10,7 @@ import com.example.myrana.screentime.ScreenTimePolicy
 import com.google.gson.Gson
 import com.example.myrana.util.ServerConfig
 import com.example.myrana.util.ServerConnectionHelper
+import android.util.Log
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -31,6 +32,8 @@ import java.util.concurrent.TimeUnit
  * كل الطلبات تضيف رأس `X-API-KEY` كما في mother-app.
  */
 object NetworkModule {
+
+    private const val TAG = "MYRanaLink"
 
     @Volatile
     private var api: ParentPolicyApi? = null
@@ -58,6 +61,7 @@ object NetworkModule {
             ?: throw IllegalStateException("عنوان السيرفر غير صالح")
         val url = base.newBuilder().addPathSegments("register-child-device").build()
         val body = gson.toJson(request).toRequestBody("application/json".toMediaType())
+        Log.i(TAG, "register-child-device → code=${request.childCode} device=${request.deviceName}")
         val httpRequest = Request.Builder()
             .url(url)
             .header("X-API-KEY", ServerConfig.apiKey)
@@ -67,12 +71,15 @@ object NetworkModule {
             executeWithRetry(httpRequest).use { response ->
                 val text = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
+                    Log.w(TAG, "register-child-device FAILED http=${response.code} body=$text")
                     val hint = if (response.code == 404) {
                         " — السيرفر قديم على Render (حدّثي server.py)"
                     } else ""
                     throw IllegalStateException("فشل التسجيل (${response.code})$hint: $text")
                 }
-                gson.fromJson(text, RegisterChildResponse::class.java)
+                val parsed = gson.fromJson(text, RegisterChildResponse::class.java)
+                Log.i(TAG, "register-child-device OK serverCode=${parsed.childCode} emailSent=${parsed.emailSent}")
+                parsed
             }
         } catch (e: Exception) {
             throw IllegalStateException(ServerConnectionHelper.friendlyMessage(e), e)
@@ -105,6 +112,7 @@ object NetworkModule {
             .addPathSegments("child-link-status")
             .addQueryParameter("child_code", code)
             .build()
+        Log.i(TAG, "child-link-status → apiCode=$code url=$url")
         val request = Request.Builder()
             .url(url)
             .header("X-API-KEY", ServerConfig.apiKey)
@@ -114,6 +122,7 @@ object NetworkModule {
             val response = executeWithRetry(request)
             response.use { r ->
                 if (r.code == 404) {
+                    Log.w(TAG, "child-link-status NOT_ON_SERVER code=$code")
                     return ChildLinkStatus(
                         ChildRegistrationState.NOT_ON_SERVER,
                         "كود الطفل غير مسجّل على السيرفر — سجّلي من جوال الطفل أولاً",
@@ -130,7 +139,9 @@ object NetworkModule {
                 }
                 val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
                 val json: Map<String, Any?> = gson.fromJson(text, mapType)
-                if (json["linked"] == true) {
+                val linked = json["linked"] == true
+                Log.i(TAG, "child-link-status OK code=$code linked=$linked")
+                if (linked) {
                     ChildLinkStatus(ChildRegistrationState.LINKED)
                 } else {
                     ChildLinkStatus(ChildRegistrationState.WAITING, "الطفل مسجّل — أكملي رمز الربط")
