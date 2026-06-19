@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_ANDROID = Path(r"c:\Users\rannn\AndroidStudioProjects\MYRana")
+DEFAULT_ANDROID = Path(r"E:\parent_monitor_project\MYRana")
 
 
 @dataclass

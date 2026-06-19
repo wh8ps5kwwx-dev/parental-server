@@ -1,0 +1,80 @@
+
+    fun fetchGuardianSettings(parentEmail: String): ApiResult {
+        return try {
+            val email = parentEmail.trim()
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            val url = "$base/guardian-settings?parent_email=${URLEncoder.encode(email, "UTF-8")}"
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 20_000
+            val body = conn.inputStream.bufferedReader().readText()
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(body, mapType)
+            if (json["success"] == true) {
+                @Suppress("UNCHECKED_CAST")
+                val settings = (json["settings"] as? Map<String, Any?>) ?: emptyMap()
+                ApiResult.GuardianSettingsLoaded(settings)
+            } else {
+                ApiResult.Error(json["message"]?.toString() ?: body)
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
+    fun saveGuardianSettings(parentEmail: String, settings: Map<String, Any?>): ApiResult {
+        return post(
+            "guardian-settings",
+            mapOf(
+                "parent_email" to parentEmail.trim(),
+                "email" to parentEmail.trim(),
+                "settings" to settings,
+            )
+        )
+    }
+
+    fun fetchAuditLog(parentEmail: String, childCode: String?): ApiResult {
+        return try {
+            val email = parentEmail.trim()
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            var url = "$base/audit-log?parent_email=${URLEncoder.encode(email, "UTF-8")}"
+            if (!childCode.isNullOrBlank()) {
+                url += "&child_code=${URLEncoder.encode(ChildCodeNormalizer.forApi(childCode), "UTF-8")}"
+            }
+            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            val body = conn.inputStream.bufferedReader().readText()
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(body, mapType)
+            if (json["success"] == true) {
+                @Suppress("UNCHECKED_CAST")
+                val entries = (json["entries"] as? List<Map<String, Any?>>).orEmpty()
+                val lines = entries.map { row ->
+                    val time = row["created_at"]?.toString().orEmpty()
+                    val action = row["action"]?.toString().orEmpty()
+                    val detail = row["detail"]?.toString().orEmpty()
+                    val code = row["child_code"]?.toString().orEmpty()
+                    "$time — $action${if (code.isNotBlank()) " ($code)" else ""}\n$detail"
+                }
+                ApiResult.AuditLog(lines)
+            } else {
+                ApiResult.Error(json["message"]?.toString() ?: body)
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
+    fun sendEmailSummary(parentEmail: String, childCode: String, period: String): ApiResult {
+        return post(
+            "send-email-summary",
+            mapOf(
+                "parent_email" to parentEmail.trim(),
+                "child_code" to ChildCodeNormalizer.forApi(childCode),
+                "period" to period,
+            )
+        )
+    }

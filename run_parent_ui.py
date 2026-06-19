@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-MYRANA = Path(r"c:\Users\rannn\AndroidStudioProjects\MYRana")
+MYRANA = Path(r"E:\parent_monitor_project\MYRana")
 
 CANDIDATES = [
     MYRANA / "parent_console" / "main.py",

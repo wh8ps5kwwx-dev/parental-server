@@ -45,7 +45,7 @@ git push
 ## 4) جوال الطفل
 
 ```powershell
-cd c:\Users\rannn\AndroidStudioProjects\MYRana
+cd E:\parent_monitor_project\MYRana
 .\gradlew assembleChildDebug
 ```
 
