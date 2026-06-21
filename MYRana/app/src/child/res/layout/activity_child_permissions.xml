@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/child_bg"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <include layout="@layout/include_child_header" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_child_card"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/permissions_real_device_title"
+            android:textAppearance="@style/ChildText.Section"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/permissions_real_device_hint"
+            android:textAppearance="@style/ChildText.Caption"
+            android:textSize="14sp" />
+
+        <ProgressBar
+            android:id="@+id/progressDeviceSetup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:indeterminateTint="@color/child_primary" />
+
+        <TextView
+            android:id="@+id/textConsentSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@color/child_info_bg"
+            android:gravity="center"
+            android:padding="12dp"
+            android:textAppearance="@style/ChildText.Section"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/textPermissionStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:textAppearance="@style/ChildText.Body"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/btnRetrySystemPermissions"
+            style="@style/ChildButton.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/permissions_btn_retry_system"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnContinueToGame"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:enabled="false"
+            android:text="@string/permissions_btn_continue"
+            android:visibility="gone" />
+    </LinearLayout>
+</LinearLayout>

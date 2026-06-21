@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="child_primary">#6D28D9</color>
+    <color name="child_primary_dark">#5B21B6</color>
+    <color name="child_secondary">#8B5CF6</color>
+    <color name="child_bg">#F8F7FF</color>
+    <color name="child_card">#FFFFFF</color>
+    <color name="child_card_stroke">#E9E5FF</color>
+    <color name="child_text_primary">#1E1B4B</color>
+    <color name="child_text_secondary">#6B7280</color>
+    <color name="child_text_hint">#9CA3AF</color>
+    <color name="child_success">#10B981</color>
+    <color name="child_success_bg">#ECFDF5</color>
+    <color name="child_warning">#F59E0B</color>
+    <color name="child_warning_bg">#FFFBEB</color>
+    <color name="child_danger">#EF4444</color>
+    <color name="child_danger_bg">#FEF2F2</color>
+    <color name="child_info_bg">#EDE9FE</color>
+</resources>

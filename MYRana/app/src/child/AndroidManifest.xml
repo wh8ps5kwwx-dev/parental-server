@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <application>
+    <application
+        android:theme="@style/Theme.MYRana.Child"
+        tools:replace="android:theme">
         <activity
             android:name=".ui.PermissionsLauncherActivity"
             android:exported="true"
@@ -62,22 +65,19 @@
             android:name=".ui.BlockWarningActivity"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.MYRana" />
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".ui.ScreenTimeWarningActivity"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.MYRana" />
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".ui.ScreenTimeLimitActivity"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.MYRana" />
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".MainActivity"

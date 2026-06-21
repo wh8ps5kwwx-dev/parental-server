@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/child_bg"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_child_card"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:indeterminateTint="@color/child_primary" />
+
+        <TextView
+            android:id="@+id/textMonitoringTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:text="@string/monitoring_active_title"
+            android:textAppearance="@style/ChildText.Section"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/textMonitoringDetail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/monitoring_active_detail"
+            android:textAppearance="@style/ChildText.Caption"
+            android:textSize="14sp" />
+    </LinearLayout>
+</LinearLayout>

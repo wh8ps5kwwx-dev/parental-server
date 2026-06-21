@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MYRana.Child" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/child_primary</item>
+        <item name="colorPrimaryVariant">@color/child_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/child_secondary</item>
+        <item name="colorSecondaryVariant">@color/child_primary_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">@color/child_primary_dark</item>
+        <item name="android:windowBackground">@color/child_bg</item>
+        <item name="android:textColorPrimary">@color/child_text_primary</item>
+        <item name="android:textColorSecondary">@color/child_text_secondary</item>
+        <item name="android:fontFamily">@font/cairo</item>
+        <item name="fontFamily">@font/cairo</item>
+        <item name="materialButtonStyle">@style/ChildButton.Primary</item>
+        <item name="borderlessButtonStyle">@style/ChildButton.Text</item>
+        <item name="editTextStyle">@style/ChildEditText</item>
+    </style>
+</resources>

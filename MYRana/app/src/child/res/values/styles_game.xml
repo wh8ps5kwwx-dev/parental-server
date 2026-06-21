@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Widget.MYRana.AcademyButton" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">14dp</item>
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="backgroundTint">@color/child_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="Theme.MYRana.Game" parent="Theme.MYRana.Child">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:statusBarColor">@color/child_primary_dark</item>
+        <item name="android:navigationBarColor">@color/child_primary_dark</item>
+        <item name="android:windowBackground">@drawable/bg_game_gradient</item>
+    </style>
+</resources>
