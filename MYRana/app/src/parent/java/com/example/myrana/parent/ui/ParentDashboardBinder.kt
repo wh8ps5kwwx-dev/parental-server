@@ -42,7 +42,11 @@ object ParentDashboardBinder {
             } else {
                 activity.getString(R.string.parent_protection_needs)
             }
-        activity.findViewById<TextView>(R.id.textDashBattery)?.text = "—"
+        activity.findViewById<TextView>(R.id.textDashBattery)?.text =
+            when (val pct = data.batteryPct) {
+                in 0..100 -> "$pct%"
+                else -> "—"
+            }
 
         val minutes = (data.todaySeconds / 60).toInt()
         val hours = minutes / 60

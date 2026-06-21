@@ -966,6 +966,7 @@ def init_db():
     for col, typedef in (
         ("permissions_json", "TEXT"),
         ("permissions_ok", "INTEGER DEFAULT 0"),
+        ("battery_pct", "INTEGER DEFAULT -1"),
     ):
         try:
             cur.execute(f"ALTER TABLE child_status ADD COLUMN {col} {typedef}")
@@ -2658,18 +2659,26 @@ def child_heartbeat():
             perms = {}
         perms_ok = 1 if perms.get("mandatory_ok") else 0
         perms_json = json.dumps(perms, ensure_ascii=False)
+        battery_raw = data.get("battery_pct")
+        try:
+            battery_pct = int(battery_raw) if battery_raw is not None else -1
+        except (TypeError, ValueError):
+            battery_pct = -1
+        if battery_pct < 0 or battery_pct > 100:
+            battery_pct = -1
         ts_val = ts_ms or int(datetime.now().timestamp() * 1000)
         cur.execute(
             """
-            INSERT INTO child_status (child_code, last_seen_ms, device_name, permissions_json, permissions_ok)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO child_status (child_code, last_seen_ms, device_name, permissions_json, permissions_ok, battery_pct)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(child_code) DO UPDATE SET
                 last_seen_ms = excluded.last_seen_ms,
                 device_name = excluded.device_name,
                 permissions_json = excluded.permissions_json,
-                permissions_ok = excluded.permissions_ok
+                permissions_ok = excluded.permissions_ok,
+                battery_pct = CASE WHEN excluded.battery_pct >= 0 THEN excluded.battery_pct ELSE child_status.battery_pct END
             """,
-            (child_code, ts_val, device_name, perms_json, perms_ok),
+            (child_code, ts_val, device_name, perms_json, perms_ok, battery_pct),
         )
         conn.commit()
         conn.close()
@@ -2737,13 +2746,16 @@ def child_dashboard():
     child_name = child_row["name"] if child_row else child_code
 
     cur.execute(
-        "SELECT last_seen_ms, device_name, permissions_json, permissions_ok FROM child_status WHERE child_code = ?",
+        "SELECT last_seen_ms, device_name, permissions_json, permissions_ok, battery_pct FROM child_status WHERE child_code = ?",
         (child_code,),
     )
     status_row = cur.fetchone()
     last_seen_ms = int(status_row["last_seen_ms"]) if status_row else 0
     device_name = status_row["device_name"] if status_row else ""
     permissions_ok = bool(status_row["permissions_ok"]) if status_row else False
+    battery_pct = int(status_row["battery_pct"]) if status_row and status_row["battery_pct"] is not None else -1
+    if battery_pct < 0 or battery_pct > 100:
+        battery_pct = -1
     permissions = {}
     if status_row and status_row["permissions_json"]:
         try:
@@ -2835,6 +2847,7 @@ def child_dashboard():
         "top_apps_today": top_apps_today,
         "permissions_ok": permissions_ok,
         "permissions": permissions,
+        "battery_pct": battery_pct,
         "policy": policy,
     })
 

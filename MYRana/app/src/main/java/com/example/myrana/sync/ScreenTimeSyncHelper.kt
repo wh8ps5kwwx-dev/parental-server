@@ -6,6 +6,7 @@ import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.screentime.ScreenTimePolicyStore
 import com.example.myrana.screentime.ScreenTimeRepository
 import com.example.myrana.permissions.PermissionStatusReporter
+import com.example.myrana.util.BatteryLevelHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -19,7 +20,11 @@ object ScreenTimeSyncHelper {
             NetworkModule.fetchScreenTimePolicy(childCode)?.let {
                 ScreenTimePolicyStore.save(context, it)
             }
-            NetworkModule.postChildHeartbeat(childCode, PermissionStatusReporter.toPayload(context))
+            NetworkModule.postChildHeartbeat(
+                childCode,
+                PermissionStatusReporter.toPayload(context),
+                BatteryLevelHelper.readPercent(context),
+            )
             uploadPendingEvents(context, childCode)
         } catch (_: Exception) {
         }

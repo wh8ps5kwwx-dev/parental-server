@@ -239,6 +239,7 @@ object GuardianApi {
                     policy = policy,
                     permissionsOk = json["permissions_ok"] == true,
                     permissions = (json["permissions"] as? Map<String, Any?>) ?: emptyMap(),
+                    batteryPct = (json["battery_pct"] as? Number)?.toInt()?.coerceIn(-1, 100) ?: -1,
                 )
             )
         } catch (e: Exception) {
@@ -657,6 +658,7 @@ object GuardianApi {
         val policy: ScreenTimePolicy,
         val permissionsOk: Boolean = false,
         val permissions: Map<String, Any?> = emptyMap(),
+        val batteryPct: Int = -1,
     )
 
     data class WeeklyChartData(

@@ -371,8 +371,12 @@ object NetworkModule {
         }
     }
 
-    /** نبضة اتصال من جهاز الطفل — تتضمن حالة الصلاحيات لولي الأمر. */
-    fun postChildHeartbeat(childCode: String, permissions: Map<String, Any?>? = null): Boolean {
+    /** نبضة اتصال من جهاز الطفل — تتضمن حالة الصلاحيات ونسبة البطارية. */
+    fun postChildHeartbeat(
+        childCode: String,
+        permissions: Map<String, Any?>? = null,
+        batteryPct: Int? = null,
+    ): Boolean {
         val code = ChildCodeNormalizer.forApi(childCode)
         if (code.isBlank()) return false
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
@@ -383,6 +387,9 @@ object NetworkModule {
         )
         if (!permissions.isNullOrEmpty()) {
             payload["permissions"] = permissions
+        }
+        if (batteryPct != null && batteryPct in 0..100) {
+            payload["battery_pct"] = batteryPct
         }
         val body = gson.toJson(payload).toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
