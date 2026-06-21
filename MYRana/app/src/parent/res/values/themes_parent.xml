@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.MYRana.Parent" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/parent_primary</item>
+        <item name="colorPrimaryVariant">@color/parent_primary_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/parent_secondary</item>
+        <item name="colorSecondaryVariant">@color/parent_primary_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">@color/parent_primary_dark</item>
+        <item name="android:windowBackground">@color/parent_bg</item>
+        <item name="android:textColorPrimary">@color/parent_text_primary</item>
+        <item name="android:textColorSecondary">@color/parent_text_secondary</item>
+        <item name="android:fontFamily">@font/cairo</item>
+        <item name="fontFamily">@font/cairo</item>
+        <item name="materialButtonStyle">@style/ParentButton.Primary</item>
+        <item name="borderlessButtonStyle">@style/ParentButton.Text</item>
+        <item name="editTextStyle">@style/ParentEditText</item>
+        <item name="checkboxStyle">@style/ParentCheckBox</item>
+        <item name="bottomNavigationStyle">@style/ParentBottomNav</item>
+    </style>
+</resources>

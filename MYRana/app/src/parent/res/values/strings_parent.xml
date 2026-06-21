@@ -1,6 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="parent_title">لوحة ولي الأمر</string>
+    <string name="parent_header_title">MY Rana</string>
+    <string name="parent_header_subtitle">لوحة ولي الأمر — حماية رقمية ذكية</string>
+    <string name="parent_nav_home">الرئيسية</string>
+    <string name="parent_nav_alerts">التنبيهات</string>
+    <string name="parent_nav_reports">التقارير</string>
+    <string name="parent_nav_children">الأطفال</string>
+    <string name="parent_nav_settings">الإعدادات</string>
+    <string name="parent_btn_switch_child">تبديل طفل</string>
+    <string name="parent_dash_child_placeholder">طفل</string>
+    <string name="parent_dash_battery">البطارية</string>
+    <string name="parent_dash_connection">الاتصال</string>
+    <string name="parent_dash_protection">الحماية</string>
+    <string name="parent_dash_weekly_chart">ساعات الاستخدام خلال الأسبوع</string>
+    <string name="parent_dash_top_apps_empty">لا بيانات تطبيقات بعد</string>
+    <string name="parent_dash_quick_actions">إجراءات سريعة</string>
+    <string name="parent_stat_usage">وقت الاستخدام اليومي</string>
+    <string name="parent_stat_alerts">التنبيهات</string>
+    <string name="parent_stat_apps">التطبيقات المستخدمة</string>
+    <string name="parent_stat_blocked">التطبيقات المحظورة</string>
+    <string name="parent_quick_block">حظر تطبيق</string>
+    <string name="parent_quick_lock">وقت الاستخدام</string>
+    <string name="parent_quick_screen_time">التقارير</string>
+    <string name="parent_quick_notify">إرسال تنبيه</string>
+    <string name="parent_status_online_short">متصل الآن</string>
+    <string name="parent_status_offline_short">غير متصل</string>
+    <string name="parent_protection_ok">آمن</string>
+    <string name="parent_protection_needs">يحتاج إعداد</string>
     <string name="parent_welcome_title">مرحباً بك في MY Rana</string>
     <string name="parent_welcome_purpose">تطبيق رقابة أبوية يساعدك على حماية أطفالك رقمياً باحترام خصوصيتهم — من جوالك تتابعين الاستخدام، التنبيهات، والحظر دون الحاجة لمس جوال الطفل باستمرار.</string>
     <string name="parent_welcome_features">ماذا يفعل التطبيق؟\n• تنبيهات عند بحث الطفل عن محتوى خطر في المتصفح\n• حظر مواقع وتطبيقات وتجميد فوري\n• وقت استخدام الشاشة وحدود يومية\n• تقارير استخدام وتنبيهات يومية بالبريد\n• دعم أكثر من طفل من حساب ولي أمر واحد</string>

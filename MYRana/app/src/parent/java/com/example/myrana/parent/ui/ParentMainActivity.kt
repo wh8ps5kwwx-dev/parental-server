@@ -23,6 +23,7 @@ import androidx.core.util.PatternsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.example.myrana.BuildConfig
 import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
@@ -91,6 +92,7 @@ class ParentMainActivity : AppCompatActivity() {
     private lateinit var textUsageEmpty: TextView
     private lateinit var recyclerUsage: RecyclerView
     private lateinit var usageAdapter: UsageReportAdapter
+    private lateinit var parentBottomNav: BottomNavigationView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -183,6 +185,8 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.textAppVersion).text =
             "إصدار ${BuildConfig.VERSION_NAME} — سيرفر: ${com.example.myrana.util.ServerConfig.healthUrl()}"
 
+        setupBottomNavigation()
+        setupQuickActions()
         restoreWizardState()
     }
 
@@ -557,15 +561,19 @@ class ParentMainActivity : AppCompatActivity() {
         return when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchAlerts(childCode) }) {
             is GuardianApi.ApiResult.Alerts -> {
                 if (result.error != null) {
-                    textAlertsPreview.text = result.error
+                    ParentDashboardBinder.updateAlertsPreview(this@ParentMainActivity, result.error)
                     false
                 } else if (result.lines.isEmpty()) {
-                    textAlertsPreview.text = getString(R.string.parent_alerts_waiting)
+                    ParentDashboardBinder.updateAlertsPreview(
+                        this@ParentMainActivity,
+                        getString(R.string.parent_alerts_waiting),
+                    )
                     false
                 } else {
                     val preview = result.lines.take(8).joinToString("\n\n")
-                    textAlertsPreview.text =
+                    val full =
                         "${getString(R.string.parent_alerts_preview_title)}\n\n$preview"
+                    ParentDashboardBinder.updateAlertsPreview(this@ParentMainActivity, full)
                     true
                 }
             }
@@ -617,7 +625,13 @@ class ParentMainActivity : AppCompatActivity() {
                     d.permissionsOk,
                     d.permissions,
                 )
+                ParentDashboardBinder.bindDashboard(this@ParentMainActivity, d)
             }
+            else -> Unit
+        }
+        when (val chart = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyChart(code) }) {
+            is GuardianApi.ApiResult.WeeklyChart ->
+                ParentDashboardBinder.bindWeeklyChart(this@ParentMainActivity, chart.data)
             else -> Unit
         }
     }
@@ -751,9 +765,9 @@ class ParentMainActivity : AppCompatActivity() {
                 setPadding(dp12, dp12, dp12, dp12)
                 setBackgroundColor(
                     when {
-                        isActive -> Color.parseColor("#1A4CAF50")
-                        isSelected -> Color.parseColor("#1A2196F3")
-                        else -> Color.parseColor("#0D000000")
+                        isActive -> getColor(R.color.parent_chip_active)
+                        isSelected -> getColor(R.color.parent_chip_selected)
+                        else -> getColor(R.color.parent_chip_default)
                     },
                 )
                 layoutParams = LinearLayout.LayoutParams(
@@ -782,7 +796,11 @@ class ParentMainActivity : AppCompatActivity() {
                 TextView(this).apply {
                     text = statusLine
                     textSize = 14f
-                    setTextColor(if (info.online) Color.parseColor("#2E7D32") else Color.parseColor("#757575"))
+                    setTextColor(
+                        getColor(
+                            if (info.online) R.color.parent_online else R.color.parent_offline,
+                        ),
+                    )
                 },
             )
 
@@ -1410,6 +1428,8 @@ class ParentMainActivity : AppCompatActivity() {
         stepLink.visibility = View.GONE
         stepLinkConfirm.visibility = View.GONE
         stepControl.visibility = View.GONE
+        parentBottomNav.visibility = View.GONE
+        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.VISIBLE
     }
 
     private fun showLogin() {
@@ -1493,12 +1513,19 @@ class ParentMainActivity : AppCompatActivity() {
     private fun showControl() {
         hideAllSteps()
         stepControl.visibility = View.VISIBLE
+        parentBottomNav.visibility = View.VISIBLE
+        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.GONE
         textStepIndicator.text = getString(R.string.parent_step_control)
+        parentBottomNav.selectedItemId = R.id.nav_home
+        showDashboardTab(R.id.panelHome)
         updateActiveChildHeader(
             ParentSession.linkedChildCount(this).coerceAtLeast(1),
         )
         renderChildrenChips()
-        textAlertsPreview.text = getString(R.string.parent_alerts_waiting)
+        ParentDashboardBinder.updateAlertsPreview(
+            this,
+            getString(R.string.parent_alerts_waiting),
+        )
         startAlertPolling()
         lifecycleScope.launch { refreshLinkedChildrenSummary() }
     }
@@ -1533,5 +1560,54 @@ class ParentMainActivity : AppCompatActivity() {
             getColor(if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark)
         )
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setupBottomNavigation() {
+        parentBottomNav = findViewById(R.id.parentBottomNav)
+        parentBottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> showDashboardTab(R.id.panelHome)
+                R.id.nav_alerts -> showDashboardTab(R.id.panelAlerts)
+                R.id.nav_reports -> showDashboardTab(R.id.panelReports)
+                R.id.nav_children -> showDashboardTab(R.id.panelChildren)
+                R.id.nav_settings -> showDashboardTab(R.id.panelSettings)
+            }
+            true
+        }
+    }
+
+    private fun showDashboardTab(panelId: Int) {
+        listOf(
+            R.id.panelHome,
+            R.id.panelAlerts,
+            R.id.panelReports,
+            R.id.panelChildren,
+            R.id.panelSettings,
+        ).forEach { id ->
+            findViewById<View>(id)?.visibility =
+                if (id == panelId) View.VISIBLE else View.GONE
+        }
+        scrollWizardToTop()
+    }
+
+    private fun setupQuickActions() {
+        findViewById<View>(R.id.btnSwitchChild)?.setOnClickListener {
+            parentBottomNav.selectedItemId = R.id.nav_children
+            showDashboardTab(R.id.panelChildren)
+        }
+        findViewById<View>(R.id.btnQuickBlock)?.setOnClickListener {
+            parentBottomNav.selectedItemId = R.id.nav_settings
+            showDashboardTab(R.id.panelSettings)
+            findViewById<EditText>(R.id.inputTarget).requestFocus()
+        }
+        findViewById<View>(R.id.btnQuickLock)?.setOnClickListener {
+            findViewById<Button>(R.id.btnOpenScreenTime).performClick()
+        }
+        findViewById<View>(R.id.btnQuickScreenTime)?.setOnClickListener {
+            findViewById<Button>(R.id.btnOpenScreenTime).performClick()
+        }
+        findViewById<View>(R.id.btnQuickNotify)?.setOnClickListener {
+            findViewById<Button>(R.id.btnSendMessage).performClick()
+        }
     }
 }

@@ -1,37 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/parentScroll"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:padding="16dp">
+    android:background="@color/parent_bg"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:id="@+id/parentScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/parent_title"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/textAppVersion"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="#666666"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/textStepIndicator"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:textSize="13sp" />
+        <include
+            android:id="@+id/parentHeaderInclude"
+            layout="@layout/include_parent_header" />
 
         <!-- الصفحة الرئيسية — تعريف بالتطبيق قبل الربط -->
         <LinearLayout
@@ -387,245 +378,23 @@
                 android:text="@string/parent_btn_link" />
         </LinearLayout>
 
-        <!-- خطوة 5: التحكم -->
-        <LinearLayout
-            android:id="@+id/stepControl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/textLinkedChild"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/textSelectActiveChild"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_select_active_child"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <Spinner
-                android:id="@+id/spinnerChildren"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp" />
-
-            <LinearLayout
-                android:id="@+id/layoutLinkedChildrenList"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:orientation="vertical" />
-
-            <TextView
-                android:id="@+id/textMultiChildHint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/parent_bulk_from_list_hint"
-                android:textColor="#666666"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnSelectAllFromList"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_select_all_list"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/textDashboardMini"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#1A4CAF50"
-                android:padding="10dp"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/textPermissionsMini"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#1AFF9800"
-                android:padding="10dp"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnAddAnotherChild"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_add_another_child" />
-
-            <Button
-                android:id="@+id/btnShowWelcome"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_show_welcome" />
-
-            <TextView
-                android:id="@+id/textAlertsHint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_search_alert_hint"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/textAlertsPreview"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#1A000000"
-                android:padding="10dp"
-                android:text="@string/parent_alerts_waiting"
-                android:textIsSelectable="true"
-                android:textSize="13sp"
-                android:visibility="visible" />
-
-            <EditText
-                android:id="@+id/inputTarget"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="@string/parent_hint_target" />
-
-            <CheckBox
-                android:id="@+id/checkApplyAllChildren"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/parent_apply_all_children"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnSendMessage"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_send_message" />
-
-            <Button
-                android:id="@+id/btnBlockSite"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_block_site" />
-
-            <Button
-                android:id="@+id/btnBlockApp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_block_app" />
-
-            <Button
-                android:id="@+id/btnFreezeApp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_freeze_app" />
-
-            <Button
-                android:id="@+id/btnAllow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_allow" />
-
-            <EditText
-                android:id="@+id/inputScheduleStart"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/parent_hint_schedule_start"
-                android:inputType="time" />
-
-            <EditText
-                android:id="@+id/inputScheduleEnd"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/parent_hint_schedule_end"
-                android:inputType="time" />
-
-            <Button
-                android:id="@+id/btnScheduleFreeze"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_schedule_freeze" />
-
-            <Button
-                android:id="@+id/btnApplyDefaultBlocklist"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/parent_btn_apply_blocklist" />
-
-            <Button
-                android:id="@+id/btnViewAlerts"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_btn_view_alerts" />
-
-            <Button
-                android:id="@+id/btnOpenSettings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_open_settings" />
-
-            <Button
-                android:id="@+id/btnOpenScreenTime"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_screen_time" />
-
-            <Button
-                android:id="@+id/btnRequestUsageReport"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_request_usage" />
-
-            <TextView
-                android:id="@+id/textUsageReportTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/parent_usage_report_title"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/textUsageEmpty"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_usage_empty"
-                android:visibility="gone" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerUsage"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:nestedScrollingEnabled="false"
-                android:visibility="gone" />
-        </LinearLayout>
+        <include layout="@layout/parent_control_dashboard" />
 
         <TextView
             android:id="@+id/textParentMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:textColor="@color/parent_text_secondary"
             android:textSize="14sp" />
     </LinearLayout>
-</ScrollView>
+    </ScrollView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/parentBottomNav"
+        style="@style/ParentBottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:menu="@menu/parent_bottom_nav" />
+</LinearLayout>

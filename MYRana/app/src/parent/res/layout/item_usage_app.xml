@@ -4,7 +4,8 @@
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingVertical="10dp">
+    android:padding="12dp"
+    android:background="@drawable/bg_parent_card">
 
     <ImageView
         android:id="@+id/imgAppIcon"

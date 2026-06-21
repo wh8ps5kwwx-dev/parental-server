@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="parent_primary">#6D28D9</color>
+    <color name="parent_primary_dark">#5B21B6</color>
+    <color name="parent_secondary">#8B5CF6</color>
+    <color name="parent_bg">#F8F7FF</color>
+    <color name="parent_card">#FFFFFF</color>
+    <color name="parent_card_stroke">#E9E5FF</color>
+    <color name="parent_text_primary">#1E1B4B</color>
+    <color name="parent_text_secondary">#6B7280</color>
+    <color name="parent_text_hint">#9CA3AF</color>
+    <color name="parent_success">#10B981</color>
+    <color name="parent_success_bg">#ECFDF5</color>
+    <color name="parent_warning">#F59E0B</color>
+    <color name="parent_warning_bg">#FFFBEB</color>
+    <color name="parent_danger">#EF4444</color>
+    <color name="parent_danger_bg">#FEF2F2</color>
+    <color name="parent_info_bg">#EDE9FE</color>
+    <color name="parent_chip_active">#1A6D28D9</color>
+    <color name="parent_chip_selected">#268B5CF6</color>
+    <color name="parent_chip_default">#0F1E1B4B</color>
+    <color name="parent_online">#059669</color>
+    <color name="parent_offline">#9CA3AF</color>
+    <color name="parent_nav_inactive">#9CA3AF</color>
+    <color name="parent_stat_blue">#3B82F6</color>
+    <color name="parent_stat_orange">#F97316</color>
+</resources>

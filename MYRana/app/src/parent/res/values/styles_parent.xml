@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ParentText.Title" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="ParentText.Subtitle" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">#CCFFFFFF</item>
+    </style>
+
+    <style name="ParentText.Section" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textColor">@color/parent_text_primary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="ParentText.Body" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textColor">@color/parent_text_primary</item>
+        <item name="android:lineSpacingExtra">4dp</item>
+    </style>
+
+    <style name="ParentText.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/parent_text_secondary</item>
+    </style>
+
+    <style name="ParentButton.Primary" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/parent_primary</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="ParentButton.Accent" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/parent_secondary</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="ParentButton.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="strokeColor">@color/parent_primary</item>
+        <item name="android:textColor">@color/parent_primary</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="ParentButton.Text" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/parent_primary</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="ParentEditText" parent="Widget.AppCompat.EditText">
+        <item name="android:background">@drawable/bg_parent_input</item>
+        <item name="android:padding">14dp</item>
+        <item name="android:textColor">@color/parent_text_primary</item>
+        <item name="android:textColorHint">@color/parent_text_hint</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="ParentCheckBox" parent="Widget.AppCompat.CompoundButton.CheckBox">
+        <item name="android:textColor">@color/parent_text_primary</item>
+    </style>
+
+    <style name="ParentBottomNav" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="backgroundTint">@color/parent_card</item>
+        <item name="itemIconTint">@color/parent_bottom_nav_color</item>
+        <item name="itemTextColor">@color/parent_bottom_nav_color</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="elevation">8dp</item>
+    </style>
+
+    <style name="ParentProgressBar" parent="Widget.AppCompat.ProgressBar.Horizontal">
+        <item name="android:progressTint">@color/parent_secondary</item>
+        <item name="android:progressBackgroundTint">@color/parent_card_stroke</item>
+    </style>
+
+    <style name="ParentStatusChip">
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@color/parent_info_bg</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">10dp</item>
+    </style>
+
+    <style name="ParentCard">
+        <item name="android:background">@drawable/bg_parent_card</item>
+        <item name="android:padding">16dp</item>
+    </style>
+</resources>
