@@ -153,7 +153,6 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAddAnotherChild).setOnClickListener { addAnotherChild() }
         findViewById<Button>(R.id.btnCancelAddAnother).setOnClickListener { cancelAddAnotherChild() }
         findViewById<Button>(R.id.btnStartSetup)?.setOnClickListener { startSetupFromWelcome() }
-        findViewById<View>(R.id.btnBackFromWelcome)?.setOnClickListener { showControl() }
         findViewById<Button>(R.id.btnShowWelcome)?.setOnClickListener { showWelcome(fromControl = true) }
         findViewById<Button>(R.id.btnCheckServerWelcome)?.setOnClickListener { checkServerConnection() }
         findViewById<Button>(R.id.btnViewInstructions)?.setOnClickListener { showWelcomeInstructions() }
@@ -280,8 +279,7 @@ class ParentMainActivity : AppCompatActivity() {
             ParentSession.hasPendingChildProfile(this) || ParentSession.isDeviceLinkVerified(this) -> showAddChild()
             ParentSession.isEmailVerified(this) -> showLink()
             !email.isNullOrBlank() -> showVerify()
-            !ParentSession.hasSeenWelcome(this) -> showWelcome()
-            else -> showLogin()
+            else -> showWelcome()
         }
         scrollWizardToTop()
     }
@@ -1460,18 +1458,42 @@ class ParentMainActivity : AppCompatActivity() {
     private fun startSetupFromWelcome() {
         ParentSession.markWelcomeSeen(this)
         showLogin()
-        toast(getString(R.string.parent_welcome_steps_title), false)
+    }
+
+    private fun updateWizardHeader(title: String, subtitle: String) {
+        findViewById<TextView>(R.id.textWizardPageTitle)?.text = title
+        findViewById<TextView>(R.id.textWizardPageSubtitle)?.text = subtitle
+    }
+
+    private fun showWizardChrome(showBackToWelcome: Boolean = false) {
+        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.GONE
+        findViewById<View>(R.id.wizardHeaderInclude)?.visibility = View.VISIBLE
+        findViewById<View>(R.id.btnBackFromWelcome)?.visibility =
+            if (showBackToWelcome) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btnBackFromWelcome)?.setOnClickListener {
+            if (ParentSession.isChildLinked(this) && stepControl.visibility == View.VISIBLE) {
+                showControl()
+            } else {
+                showWelcome(fromControl = ParentSession.isChildLinked(this))
+            }
+        }
+    }
+
+    private fun hideWizardChrome() {
+        findViewById<View>(R.id.wizardHeaderInclude)?.visibility = View.GONE
     }
 
     private fun showWelcome(fromControl: Boolean = false) {
         hideAllSteps()
+        showWizardChrome(showBackToWelcome = fromControl && ParentSession.isChildLinked(this))
+        updateWizardHeader(
+            getString(R.string.parent_link_page_title),
+            getString(R.string.parent_link_page_subtitle),
+        )
         stepWelcome.visibility = View.VISIBLE
-        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.GONE
         textStepIndicator.text = getString(R.string.parent_step_welcome)
-        findViewById<View>(R.id.btnStartSetup).visibility =
+        findViewById<View>(R.id.btnStartSetup)?.visibility =
             if (fromControl) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.btnBackFromWelcome).visibility =
-            if (fromControl && ParentSession.isChildLinked(this)) View.VISIBLE else View.GONE
         findViewById<TextView>(R.id.textWelcomeServerUrl)?.text =
             com.example.myrana.util.ServerConfig.healthUrl()
         scrollWizardToTop()
@@ -1487,11 +1509,17 @@ class ParentMainActivity : AppCompatActivity() {
         stepLinkConfirm.visibility = View.GONE
         stepControl.visibility = View.GONE
         parentBottomNav.visibility = View.GONE
-        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.VISIBLE
+        hideWizardChrome()
+        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.GONE
     }
 
     private fun showLogin() {
         hideAllSteps()
+        showWizardChrome(showBackToWelcome = true)
+        updateWizardHeader(
+            getString(R.string.parent_step_email),
+            getString(R.string.parent_hint_email),
+        )
         stepLogin.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_email)
         scrollWizardToTop()
@@ -1499,6 +1527,11 @@ class ParentMainActivity : AppCompatActivity() {
 
     private fun showVerify() {
         hideAllSteps()
+        showWizardChrome(showBackToWelcome = true)
+        updateWizardHeader(
+            getString(R.string.parent_step_email),
+            getString(R.string.parent_hint_email_code),
+        )
         stepVerify.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_email)
         scrollWizardToTop()
@@ -1506,6 +1539,11 @@ class ParentMainActivity : AppCompatActivity() {
 
     private fun showAddChild() {
         hideAllSteps()
+        showWizardChrome(showBackToWelcome = true)
+        updateWizardHeader(
+            getString(R.string.parent_step_add_child),
+            getString(R.string.parent_add_child_subtitle),
+        )
         stepAddChild.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_add_child)
         val savedName = ParentSession.pendingChildName(this)
@@ -1520,6 +1558,13 @@ class ParentMainActivity : AppCompatActivity() {
 
     private fun showLink() {
         hideAllSteps()
+        showWizardChrome(showBackToWelcome = true)
+        val linkTitle = if (ParentSession.isAddingAnotherChild(this)) {
+            getString(R.string.parent_step_add_another_child)
+        } else {
+            getString(R.string.parent_step_link_device)
+        }
+        updateWizardHeader(linkTitle, getString(R.string.parent_link_subtitle))
         stepLink.visibility = View.VISIBLE
         textStepIndicator.text = if (ParentSession.isAddingAnotherChild(this)) {
             getString(R.string.parent_step_add_another_child)
@@ -1554,6 +1599,11 @@ class ParentMainActivity : AppCompatActivity() {
 
     private fun showLinkConfirm() {
         hideAllSteps()
+        showWizardChrome(showBackToWelcome = true)
+        updateWizardHeader(
+            getString(R.string.parent_step_link_device),
+            getString(R.string.parent_link_subtitle),
+        )
         stepLinkConfirm.visibility = View.VISIBLE
         textStepIndicator.text = getString(R.string.parent_step_link_device)
         val email = ParentSession.pendingLinkChildEmail(this).orEmpty()

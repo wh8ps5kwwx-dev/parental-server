@@ -64,6 +64,7 @@
         android:textSize="14sp" />
 
     <TextView
+        android:id="@+id/textWizardPageTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
@@ -74,6 +75,7 @@
         android:textStyle="bold" />
 
     <TextView
+        android:id="@+id/textWizardPageSubtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"

@@ -23,7 +23,13 @@
 
         <include
             android:id="@+id/parentHeaderInclude"
-            layout="@layout/include_parent_header" />
+            layout="@layout/include_parent_header"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/wizardHeaderInclude"
+            layout="@layout/include_parent_welcome_header"
+            android:visibility="gone" />
 
         <!-- الصفحة الرئيسية — ربط جهاز الطفل (تصميم أمان) -->
         <LinearLayout
@@ -33,8 +39,6 @@
             android:layoutDirection="rtl"
             android:orientation="vertical"
             android:visibility="gone">
-
-            <include layout="@layout/include_parent_welcome_header" />
 
             <!-- كرت ترحيبي -->
             <LinearLayout
@@ -57,7 +61,7 @@
                         android:layout_height="80dp"
                         android:contentDescription="@null"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/ic_child_avatar" />
+                        android:src="@drawable/ic_welcome_family" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -385,7 +389,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:orientation="vertical">
+            android:background="@drawable/bg_welcome_card"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
 
             <EditText
                 android:id="@+id/inputGuardianEmail"
@@ -414,7 +421,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:background="@drawable/bg_welcome_card"
             android:orientation="vertical"
+            android:padding="16dp"
             android:visibility="gone">
 
             <EditText
@@ -439,7 +448,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:background="@drawable/bg_welcome_card"
             android:orientation="vertical"
+            android:padding="16dp"
             android:visibility="gone">
 
             <TextView
@@ -477,7 +488,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:background="@drawable/bg_welcome_card"
             android:orientation="vertical"
+            android:padding="16dp"
             android:visibility="gone">
 
             <TextView
@@ -596,7 +609,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:background="@drawable/bg_welcome_card"
             android:orientation="vertical"
+            android:padding="16dp"
             android:visibility="gone">
 
             <TextView
