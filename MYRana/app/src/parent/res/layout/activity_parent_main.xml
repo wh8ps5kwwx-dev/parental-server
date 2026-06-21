@@ -37,15 +37,13 @@
             <include layout="@layout/include_parent_welcome_header" />
 
             <!-- كرت ترحيبي -->
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/parent_card"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="4dp"
-                app:strokeColor="@color/parent_card_stroke"
-                app:strokeWidth="1dp">
+                android:background="@drawable/bg_welcome_card"
+                android:elevation="3dp"
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -59,7 +57,7 @@
                         android:layout_height="80dp"
                         android:contentDescription="@null"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/ic_welcome_family" />
+                        android:src="@drawable/ic_child_avatar" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -86,18 +84,16 @@
                             android:textSize="13sp" />
                     </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
             <!-- كرت خطوات الربط -->
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="@color/parent_card"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="4dp"
-                app:strokeColor="@color/parent_card_stroke"
-                app:strokeWidth="1dp">
+                android:background="@drawable/bg_welcome_card"
+                android:elevation="3dp"
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -144,18 +140,16 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
             <!-- كرت معلومات مهمة -->
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="@color/parent_card"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="4dp"
-                app:strokeColor="@color/parent_card_stroke"
-                app:strokeWidth="1dp">
+                android:background="@drawable/bg_welcome_card"
+                android:elevation="3dp"
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -285,26 +279,25 @@
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
             <!-- زر رئيسي -->
-            <androidx.appcompat.widget.AppCompatButton
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStartSetup"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/bg_parent_btn_gradient"
-                android:drawableStart="@drawable/ic_welcome_link"
-                android:drawablePadding="10dp"
-                android:gravity="center"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                app:drawableTint="@color/white"
                 android:text="@string/parent_btn_start_setup"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                app:backgroundTint="@null"
+                app:icon="@drawable/ic_welcome_link"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:iconTint="@color/white" />
 
             <!-- أزرار ثانوية -->
             <LinearLayout
@@ -371,11 +364,19 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:layout_marginBottom="8dp"
                 android:gravity="center"
                 android:textColor="@color/parent_text_hint"
                 android:textIsSelectable="true"
                 android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/textWelcomeVersion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:gravity="center"
+                android:textColor="@color/parent_text_hint"
+                android:textSize="10sp" />
         </LinearLayout>
 
         <!-- خطوة 1: بريد ولي الأمر -->

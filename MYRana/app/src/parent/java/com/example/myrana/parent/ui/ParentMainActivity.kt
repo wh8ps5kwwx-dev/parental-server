@@ -160,7 +160,9 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnWelcomeMenu)?.setOnClickListener { showWelcomeInstructions() }
         findViewById<TextView>(R.id.textWelcomeServerUrl)?.text =
             com.example.myrana.util.ServerConfig.healthUrl()
-        findViewById<Button>(R.id.btnSelectAllFromList).setOnClickListener { toggleSelectAllFromList() }
+        findViewById<TextView>(R.id.textWelcomeVersion)?.text =
+            "إصدار ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        findViewById<Button>(R.id.btnSelectAllFromList)?.setOnClickListener { toggleSelectAllFromList() }
 
         findViewById<Button>(R.id.btnBlockSite).setOnClickListener {
             sendCommand("block_site", findViewById<EditText>(R.id.inputTarget).text.toString())
