@@ -153,8 +153,13 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAddAnotherChild).setOnClickListener { addAnotherChild() }
         findViewById<Button>(R.id.btnCancelAddAnother).setOnClickListener { cancelAddAnotherChild() }
         findViewById<Button>(R.id.btnStartSetup).setOnClickListener { startSetupFromWelcome() }
-        findViewById<Button>(R.id.btnBackFromWelcome).setOnClickListener { showControl() }
+        findViewById<View>(R.id.btnBackFromWelcome).setOnClickListener { showControl() }
         findViewById<Button>(R.id.btnShowWelcome).setOnClickListener { showWelcome(fromControl = true) }
+        findViewById<Button>(R.id.btnCheckServerWelcome).setOnClickListener { checkServerConnection() }
+        findViewById<Button>(R.id.btnViewInstructions).setOnClickListener { showWelcomeInstructions() }
+        findViewById<View>(R.id.btnWelcomeMenu).setOnClickListener { showWelcomeInstructions() }
+        findViewById<TextView>(R.id.textWelcomeServerUrl).text =
+            com.example.myrana.util.ServerConfig.healthUrl()
         findViewById<Button>(R.id.btnSelectAllFromList).setOnClickListener { toggleSelectAllFromList() }
 
         findViewById<Button>(R.id.btnBlockSite).setOnClickListener {
@@ -975,16 +980,64 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun checkServerConnection() {
-        findViewById<Button>(R.id.btnCheckServer).isEnabled = false
+        listOfNotNull(
+            findViewById<Button>(R.id.btnCheckServer),
+            findViewById<Button>(R.id.btnCheckServerWelcome),
+        ).forEach { it.isEnabled = false }
+        updateWelcomeServerStatus(checking = true)
         toast(getString(R.string.parent_checking_server), false)
         lifecycleScope.launch {
             when (val result = withContext(Dispatchers.IO) { GuardianApi.checkServerConnection(this@ParentMainActivity) }) {
-                is GuardianApi.ApiResult.Ok -> toast(result.message, false)
-                is GuardianApi.ApiResult.Error -> toast(result.message, true)
-                else -> Unit
+                is GuardianApi.ApiResult.Ok -> {
+                    toast(result.message, false)
+                    updateWelcomeServerStatus(connected = true)
+                }
+                is GuardianApi.ApiResult.Error -> {
+                    toast(result.message, true)
+                    updateWelcomeServerStatus(connected = false)
+                }
+                else -> updateWelcomeServerStatus(connected = false)
             }
-            findViewById<Button>(R.id.btnCheckServer).isEnabled = true
+            listOfNotNull(
+                findViewById<Button>(R.id.btnCheckServer),
+                findViewById<Button>(R.id.btnCheckServerWelcome),
+            ).forEach { it.isEnabled = true }
         }
+    }
+
+    private fun updateWelcomeServerStatus(
+        checking: Boolean = false,
+        connected: Boolean? = null,
+    ) {
+        val dot = findViewById<View>(R.id.viewWelcomeServerDot) ?: return
+        val status = findViewById<TextView>(R.id.textWelcomeServerStatus) ?: return
+        when {
+            checking -> {
+                dot.setBackgroundResource(R.drawable.bg_server_dot_offline)
+                status.text = getString(R.string.parent_server_status_checking)
+            }
+            connected == true -> {
+                dot.setBackgroundResource(R.drawable.bg_server_dot_online)
+                status.text = getString(R.string.parent_server_status_connected)
+            }
+            connected == false -> {
+                dot.setBackgroundResource(R.drawable.bg_server_dot_offline)
+                status.text = getString(R.string.parent_server_status_disconnected)
+            }
+        }
+    }
+
+    private fun showWelcomeInstructions() {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.parent_welcome_instructions_title))
+            .setMessage(
+                getString(
+                    R.string.parent_welcome_instructions_body,
+                    getString(R.string.parent_child_not_on_server_steps),
+                ),
+            )
+            .setPositiveButton("حسناً", null)
+            .show()
     }
 
     /** @return false إذا السيرفر غير متاح */
@@ -1411,11 +1464,14 @@ class ParentMainActivity : AppCompatActivity() {
     private fun showWelcome(fromControl: Boolean = false) {
         hideAllSteps()
         stepWelcome.visibility = View.VISIBLE
+        findViewById<View>(R.id.parentHeaderInclude)?.visibility = View.GONE
         textStepIndicator.text = getString(R.string.parent_step_welcome)
-        findViewById<Button>(R.id.btnStartSetup).visibility =
+        findViewById<View>(R.id.btnStartSetup).visibility =
             if (fromControl) View.GONE else View.VISIBLE
-        findViewById<Button>(R.id.btnBackFromWelcome).visibility =
+        findViewById<View>(R.id.btnBackFromWelcome).visibility =
             if (fromControl && ParentSession.isChildLinked(this)) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.textWelcomeServerUrl)?.text =
+            com.example.myrana.util.ServerConfig.healthUrl()
         scrollWizardToTop()
     }
 
