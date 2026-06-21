@@ -16,8 +16,8 @@ android {
 
         // نكهتان: child + parent — تطبيقان منفصلان على محاكيين مختلفين
         missingDimensionStrategy 'role', 'child'
-        versionCode 6
-        versionName "1.4.1"
+        versionCode 7
+        versionName "1.4.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 

@@ -199,7 +199,8 @@
                             android:layout_weight="1"
                             android:gravity="center_horizontal"
                             android:orientation="vertical"
-                            android:paddingHorizontal="4dp">
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp">
 
                             <ImageView
                                 android:layout_width="32dp"
@@ -230,7 +231,8 @@
                             android:layout_weight="1"
                             android:gravity="center_horizontal"
                             android:orientation="vertical"
-                            android:paddingHorizontal="4dp">
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp">
 
                             <ImageView
                                 android:layout_width="32dp"
@@ -261,7 +263,8 @@
                             android:layout_weight="1"
                             android:gravity="center_horizontal"
                             android:orientation="vertical"
-                            android:paddingHorizontal="4dp">
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp">
 
                             <ImageView
                                 android:layout_width="32dp"
@@ -285,22 +288,23 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- زر رئيسي -->
-            <com.google.android.material.button.MaterialButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnStartSetup"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/bg_parent_btn_gradient"
+                android:drawableStart="@drawable/ic_welcome_link"
+                android:drawablePadding="10dp"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                app:drawableTint="@color/white"
                 android:text="@string/parent_btn_start_setup"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                app:backgroundTint="@null"
-                app:icon="@drawable/ic_welcome_link"
-                app:iconGravity="textStart"
-                app:iconPadding="10dp"
-                app:iconTint="@color/white" />
+                android:textStyle="bold" />
 
             <!-- أزرار ثانوية -->
             <LinearLayout

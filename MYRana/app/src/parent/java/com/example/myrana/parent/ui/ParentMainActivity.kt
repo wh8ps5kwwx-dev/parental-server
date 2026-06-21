@@ -152,13 +152,13 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSendLinkCodeConfirm).setOnClickListener { sendLinkCode() }
         findViewById<Button>(R.id.btnAddAnotherChild).setOnClickListener { addAnotherChild() }
         findViewById<Button>(R.id.btnCancelAddAnother).setOnClickListener { cancelAddAnotherChild() }
-        findViewById<Button>(R.id.btnStartSetup).setOnClickListener { startSetupFromWelcome() }
-        findViewById<View>(R.id.btnBackFromWelcome).setOnClickListener { showControl() }
-        findViewById<Button>(R.id.btnShowWelcome).setOnClickListener { showWelcome(fromControl = true) }
-        findViewById<Button>(R.id.btnCheckServerWelcome).setOnClickListener { checkServerConnection() }
-        findViewById<Button>(R.id.btnViewInstructions).setOnClickListener { showWelcomeInstructions() }
-        findViewById<View>(R.id.btnWelcomeMenu).setOnClickListener { showWelcomeInstructions() }
-        findViewById<TextView>(R.id.textWelcomeServerUrl).text =
+        findViewById<Button>(R.id.btnStartSetup)?.setOnClickListener { startSetupFromWelcome() }
+        findViewById<View>(R.id.btnBackFromWelcome)?.setOnClickListener { showControl() }
+        findViewById<Button>(R.id.btnShowWelcome)?.setOnClickListener { showWelcome(fromControl = true) }
+        findViewById<Button>(R.id.btnCheckServerWelcome)?.setOnClickListener { checkServerConnection() }
+        findViewById<Button>(R.id.btnViewInstructions)?.setOnClickListener { showWelcomeInstructions() }
+        findViewById<View>(R.id.btnWelcomeMenu)?.setOnClickListener { showWelcomeInstructions() }
+        findViewById<TextView>(R.id.textWelcomeServerUrl)?.text =
             com.example.myrana.util.ServerConfig.healthUrl()
         findViewById<Button>(R.id.btnSelectAllFromList).setOnClickListener { toggleSelectAllFromList() }
 

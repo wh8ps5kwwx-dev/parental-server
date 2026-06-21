@@ -34,8 +34,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:background="@drawable/bg_parent_step_chip"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="8dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:textColor="@color/white"
         android:textSize="13sp"
         android:textStyle="bold" />
