@@ -85,26 +85,10 @@ object ParentDashboardBinder {
             if (online) activity.getString(R.string.parent_status_online) else activity.getString(R.string.parent_status_offline)
 
         activity.findViewById<TextView>(R.id.textDashProtection)?.text =
-
-            if (data.permissionsOk) {
-
-                activity.getString(R.string.parent_protection_ok)
-
-            } else {
-
-                activity.getString(R.string.parent_protection_needs)
-
-            }
+            permissionCountLabel(activity, data.permissions, data.permissionsOk)
 
         activity.findViewById<TextView>(R.id.textDashBattery)?.text =
-
-            when (val pct = data.batteryPct) {
-
-                in 0..100 -> "$pct%"
-
-                else -> "—"
-
-            }
+            batteryLabel(activity, data.batteryPct, data.permissions)
 
 
 
@@ -291,6 +275,41 @@ object ParentDashboardBinder {
     }
 
 
+
+    private fun permissionCountLabel(
+        activity: Activity,
+        permissions: Map<String, Any?>,
+        permissionsOk: Boolean,
+    ): String {
+        if (permissions.isEmpty()) {
+            return if (permissionsOk) {
+                activity.getString(R.string.parent_protection_ok)
+            } else {
+                activity.getString(R.string.parent_protection_needs)
+            }
+        }
+        val granted = ParentPermissionsFormatter.grantedCount(permissions)
+        val total = ParentPermissionsFormatter.totalCount(permissions)
+        return activity.getString(R.string.parent_protection_count, granted, total)
+    }
+
+    private fun batteryLabel(
+        activity: Activity,
+        batteryPct: Int,
+        permissions: Map<String, Any?>,
+    ): String {
+        val pctText = when (batteryPct) {
+            in 0..100 -> "$batteryPct%"
+            else -> "—"
+        }
+        val permOk = ParentPermissionsFormatter.batteryPermissionOk(permissions)
+        return when {
+            permissions.isEmpty() -> pctText
+            permOk -> pctText
+            pctText == "—" -> activity.getString(R.string.parent_battery_perm_missing)
+            else -> "$pctText\n⚠"
+        }
+    }
 
     private fun buildTopAppsText(
 

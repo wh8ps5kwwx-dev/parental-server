@@ -15,11 +15,12 @@ object ChildPermissionEvaluator {
         ACCESSIBILITY,
         NOTIFICATION,
         BATTERY,
+        MEDIA_READ,
     }
 
     val trackableKinds: List<Kind> = Kind.values().toList()
 
-    /** هل النظام يمنح الصلاحية فعلياً؟ (من [SystemPermissions]) */
+    /** هل النظام يمنح الصلاحية فعلياً؟ (من [SystemPermissions] أو [StorageAccessHelper]) */
     fun isSystemGranted(context: Context, kind: Kind): Boolean {
         val snap = SystemPermissions.readSnapshot(context)
         return when (kind) {
@@ -27,6 +28,7 @@ object ChildPermissionEvaluator {
             Kind.ACCESSIBILITY -> snap.accessibility
             Kind.NOTIFICATION -> snap.notifications
             Kind.BATTERY -> snap.battery
+            Kind.MEDIA_READ -> StorageAccessHelper.hasMediaReadAccess(context)
         }
     }
 

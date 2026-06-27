@@ -15,6 +15,7 @@ object PermissionStatusReporter {
             "media_read" to StorageAccessHelper.hasMediaReadAccess(context),
             "mandatory_ok" to snap.mandatoryReady,
             "granted_count" to ChildPermissionEvaluator.countedGrantedCount(context),
+            "total_count" to ChildPermissionEvaluator.trackableKinds.size,
         )
     }
 }

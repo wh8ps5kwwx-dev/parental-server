@@ -37,6 +37,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
     private var pausedUsage = false
     private var pausedA11y = false
     private var pausedBattery = false
+    private var pausedStorage = false
     private var consentDialog: AlertDialog? = null
     private var autoOpenedGame = false
 
@@ -99,6 +100,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
         pausedUsage = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.USAGE)
         pausedA11y = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.ACCESSIBILITY)
         pausedBattery = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.BATTERY)
+        pausedStorage = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.MEDIA_READ)
         super.onPause()
     }
 
@@ -111,8 +113,10 @@ class ChildPermissionsActivity : AppCompatActivity() {
         val usage = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.USAGE)
         val a11y = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.ACCESSIBILITY)
         val battery = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.BATTERY)
+        val storage = ChildPermissionEvaluator.isSystemGranted(this, ChildPermissionEvaluator.Kind.MEDIA_READ)
         val madeProgress =
-            (usage && !pausedUsage) || (a11y && !pausedA11y) || (battery && !pausedBattery)
+            (usage && !pausedUsage) || (a11y && !pausedA11y) ||
+                (battery && !pausedBattery) || (storage && !pausedStorage)
 
         if (madeProgress) {
             openNextSystemPermissionIfNeeded()
@@ -200,7 +204,7 @@ class ChildPermissionsActivity : AppCompatActivity() {
             add(statusLine(ChildPermissionEvaluator.Kind.ACCESSIBILITY))
             add(statusLine(ChildPermissionEvaluator.Kind.NOTIFICATION))
             add(statusLine(ChildPermissionEvaluator.Kind.BATTERY))
-            add(storageStatusLine())
+            add(statusLine(ChildPermissionEvaluator.Kind.MEDIA_READ))
             if (consented && !ready) {
                 add(getString(R.string.permissions_full_apps_required))
             }
@@ -254,16 +258,11 @@ class ChildPermissionsActivity : AppCompatActivity() {
                 consented && !system -> getString(R.string.permissions_status_battery_missing)
                 else -> getString(R.string.permissions_status_battery_pending_consent)
             }
-        }
-    }
-
-    private fun storageStatusLine(): String {
-        val consented = ChildPermissionsConsent.hasUserConsented(this)
-        val ok = StorageAccessHelper.hasMediaReadAccess(this)
-        return when {
-            ok -> getString(R.string.permissions_status_storage_ok)
-            consented -> getString(R.string.permissions_status_storage_missing)
-            else -> getString(R.string.permissions_status_storage_pending)
+            ChildPermissionEvaluator.Kind.MEDIA_READ -> when {
+                counted -> getString(R.string.permissions_status_storage_ok)
+                consented && !system -> getString(R.string.permissions_status_storage_missing)
+                else -> getString(R.string.permissions_status_storage_pending)
+            }
         }
     }
 

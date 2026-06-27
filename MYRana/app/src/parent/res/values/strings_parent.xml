@@ -12,7 +12,7 @@
     <string name="parent_dash_child_placeholder">طفل</string>
     <string name="parent_dash_battery">البطارية</string>
     <string name="parent_dash_connection">الاتصال</string>
-    <string name="parent_dash_protection">الحماية</string>
+    <string name="parent_dash_protection">الصلاحيات</string>
     <string name="parent_dash_weekly_chart">استخدام الأسبوع (7 أيام)</string>
     <string name="parent_reports_loading">جاري تحميل التقارير من السيرفر…</string>
     <string name="parent_reports_real_data_hint">البيانات من جهاز الطفل الفعلي — اضغطي «طلب تقرير» لتحديث فوري</string>
@@ -208,8 +208,11 @@
     <string name="parent_perm_missing">غير مفعّل</string>
     <string name="parent_permissions_unknown">صلاحيات الطفل: بانتظار أول اتصال من جوال الطفل</string>
     <string name="parent_permissions_status">الاستخدام %1$s | الوصول %2$s | الإشعارات %3$s | البطارية %4$s | الملفات %5$s</string>
-    <string name="parent_permissions_all_ok">صلاحيات جوال الطفل الأساسية مفعّلة ✓</string>
-    <string name="parent_permissions_incomplete">بعض الصلاحيات غير مفعّلة على جوال الطفل — فعّلي الوصول وبيانات الاستخدام</string>
+    <string name="parent_protection_count">%1$d/%2$d</string>
+    <string name="parent_battery_perm_missing">⚠ خلفية</string>
+    <string name="parent_permissions_all_ok_count">كل الصلاحيات مفعّلة (%1$d/%2$d) ✓</string>
+    <string name="parent_permissions_mandatory_ok">الأساسية مفعّلة — %1$d/%2$d صلاحية</string>
+    <string name="parent_permissions_incomplete_count">%1$d/%2$d صلاحية مفعّلة — أكملي البطارية والملفات على جوال الطفل</string>
 
     <!-- شاشة وقت الاستخدام -->
     <string name="parent_child_code_label">كود الطفل: %1$s</string>
