@@ -68,11 +68,78 @@
             android:text="@string/parent_nav_reports"
             android:textSize="18sp" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/parent_chart_daily_usage"
+            android:textColor="@color/parent_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <com.example.myrana.parent.ui.SimpleBarChartView
+            android:id="@+id/chartReportsWeekly"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/parent_chart_top_apps"
+            android:textColor="@color/parent_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <com.example.myrana.parent.ui.SimpleBarChartView
+            android:id="@+id/chartReportsTopApps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnReportsDaily"
+                style="@style/ParentButton.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="@string/parent_btn_daily_report" />
+
+            <Button
+                android:id="@+id/btnReportsWeekly"
+                style="@style/ParentButton.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:text="@string/parent_btn_weekly_report" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/textReportSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_parent_card"
+            android:padding="14dp"
+            android:text="@string/parent_reports_loading"
+            android:textColor="@color/parent_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="13sp" />
+
         <Button
             android:id="@+id/btnRequestUsageReport"
             style="@style/ParentButton.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:text="@string/parent_btn_request_usage" />
 
         <Button

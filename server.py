@@ -2983,10 +2983,16 @@ def weekly_chart():
             """,
             (child_code, since_day),
         )
-        usage_by_day = [
-            {"day": r["day"], "total_seconds": int(r["total_seconds"] or 0)}
+        usage_rows = {
+            r["day"]: int(r["total_seconds"] or 0)
             for r in cur.fetchall()
-        ]
+        }
+        usage_by_day = []
+        for offset in range(6, -1, -1):
+            day = (datetime.now() - timedelta(days=offset)).strftime("%Y-%m-%d")
+            usage_by_day.append(
+                {"day": day, "total_seconds": int(usage_rows.get(day, 0))}
+            )
 
         cur.execute(
             """

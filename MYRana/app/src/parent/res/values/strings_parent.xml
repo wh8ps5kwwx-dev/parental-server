@@ -13,7 +13,9 @@
     <string name="parent_dash_battery">البطارية</string>
     <string name="parent_dash_connection">الاتصال</string>
     <string name="parent_dash_protection">الحماية</string>
-    <string name="parent_dash_weekly_chart">ساعات الاستخدام خلال الأسبوع</string>
+    <string name="parent_dash_weekly_chart">استخدام الأسبوع (7 أيام)</string>
+    <string name="parent_reports_loading">جاري تحميل التقارير من السيرفر…</string>
+    <string name="parent_reports_real_data_hint">البيانات من جهاز الطفل الفعلي — اضغطي «طلب تقرير» لتحديث فوري</string>
     <string name="parent_dash_top_apps_empty">لا بيانات تطبيقات بعد</string>
     <string name="parent_dash_quick_actions">إجراءات سريعة</string>
     <string name="parent_stat_usage">وقت الاستخدام اليومي</string>

@@ -90,6 +90,7 @@ class ParentMainActivity : AppCompatActivity() {
     private lateinit var textUsageTitle: TextView
     private var alertPollingJob: Job? = null
     private lateinit var textUsageEmpty: TextView
+    private lateinit var textReportSummary: TextView
     private lateinit var recyclerUsage: RecyclerView
     private lateinit var usageAdapter: UsageReportAdapter
     private lateinit var parentBottomNav: BottomNavigationView
@@ -119,6 +120,7 @@ class ParentMainActivity : AppCompatActivity() {
         textAlertsPreview = findViewById(R.id.textAlertsPreview)
         textUsageTitle = findViewById(R.id.textUsageReportTitle)
         textUsageEmpty = findViewById(R.id.textUsageEmpty)
+        textReportSummary = findViewById(R.id.textReportSummary)
         recyclerUsage = findViewById(R.id.recyclerUsage)
 
         usageAdapter = UsageReportAdapter(packageManager)
@@ -183,6 +185,8 @@ class ParentMainActivity : AppCompatActivity() {
             startActivity(Intent(this, ParentScreenTimeActivity::class.java))
         }
         findViewById<Button>(R.id.btnRequestUsageReport).setOnClickListener { requestUsageReport() }
+        findViewById<Button>(R.id.btnReportsDaily).setOnClickListener { loadDailyReportText() }
+        findViewById<Button>(R.id.btnReportsWeekly).setOnClickListener { loadWeeklyReportText() }
         findViewById<Button>(R.id.btnApplyDefaultBlocklist).setOnClickListener { applyDefaultBlocklist() }
         findViewById<Button>(R.id.btnViewAlerts).setOnClickListener { viewAlerts() }
         findViewById<Button>(R.id.btnSendMessage).setOnClickListener { sendGuardianMessage() }
@@ -641,6 +645,63 @@ class ParentMainActivity : AppCompatActivity() {
         }
     }
 
+    /** تحميل الرسوم والتقرير اليومي في تبويب التقارير — بيانات حقيقية من السيرفر. */
+    private fun refreshReportsPanel() {
+        val code = ParentSession.childCode(this) ?: run {
+            textReportSummary.text = getString(R.string.parent_link_incomplete)
+            return
+        }
+        textReportSummary.text = getString(R.string.parent_reports_loading)
+        lifecycleScope.launch {
+            when (val chart = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyChart(code) }) {
+                is GuardianApi.ApiResult.WeeklyChart ->
+                    ParentDashboardBinder.bindReportsCharts(this@ParentMainActivity, chart.data)
+                is GuardianApi.ApiResult.Error ->
+                    textReportSummary.text = chart.message
+                else -> Unit
+            }
+            loadDailyReportText(silent = true)
+        }
+    }
+
+    private fun loadDailyReportText(silent: Boolean = false) {
+        val code = ParentSession.childCode(this) ?: return
+        if (!silent) textReportSummary.text = getString(R.string.parent_reports_loading)
+        lifecycleScope.launch {
+            when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchDailyReport(code) }) {
+                is GuardianApi.ApiResult.ReportText ->
+                    textReportSummary.text = result.text
+                is GuardianApi.ApiResult.Error -> {
+                    if (!silent) textReportSummary.text = result.message
+                }
+                else -> if (!silent) textReportSummary.text = "فشل التقرير اليومي"
+            }
+        }
+    }
+
+    private fun loadWeeklyReportText() {
+        val code = ParentSession.childCode(this) ?: return
+        textReportSummary.text = getString(R.string.parent_reports_loading)
+        lifecycleScope.launch {
+            when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyUsage(code) }) {
+                is GuardianApi.ApiResult.UsageList -> {
+                    if (result.items.isEmpty()) {
+                        textReportSummary.text = getString(R.string.parent_usage_empty)
+                    } else {
+                        val lines = result.items.take(15).mapIndexed { i, item ->
+                            "${i + 1}. ${item.packageName} — ${item.totalMinutes} د"
+                        }
+                        textReportSummary.text =
+                            getString(R.string.parent_weekly_report_header) +
+                                "\n" + lines.joinToString("\n")
+                    }
+                }
+                is GuardianApi.ApiResult.Error -> textReportSummary.text = result.message
+                else -> textReportSummary.text = "فشل التقرير الأسبوعي"
+            }
+        }
+    }
+
     private fun selectActiveChild(childCode: String, childName: String) {
         ParentSession.saveLinkedChild(this, childCode, childName)
         lifecycleScope.launch {
@@ -917,6 +978,7 @@ class ParentMainActivity : AppCompatActivity() {
                 is GuardianApi.ApiResult.Error -> toast(report.message, true)
                 else -> toast("فشل تحميل التقرير", true)
             }
+            refreshReportsPanel()
             findViewById<Button>(R.id.btnRequestUsageReport).isEnabled = true
         }
     }
@@ -1676,7 +1738,10 @@ class ParentMainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_home -> showDashboardTab(R.id.panelHome)
                 R.id.nav_alerts -> showDashboardTab(R.id.panelAlerts)
-                R.id.nav_reports -> showDashboardTab(R.id.panelReports)
+                R.id.nav_reports -> {
+                    showDashboardTab(R.id.panelReports)
+                    refreshReportsPanel()
+                }
                 R.id.nav_children -> showDashboardTab(R.id.panelChildren)
                 R.id.nav_settings -> showDashboardTab(R.id.panelSettings)
             }
@@ -1712,7 +1777,9 @@ class ParentMainActivity : AppCompatActivity() {
             findViewById<Button>(R.id.btnOpenScreenTime).performClick()
         }
         findViewById<View>(R.id.btnQuickScreenTime)?.setOnClickListener {
-            findViewById<Button>(R.id.btnOpenScreenTime).performClick()
+            parentBottomNav.selectedItemId = R.id.nav_reports
+            showDashboardTab(R.id.panelReports)
+            refreshReportsPanel()
         }
         findViewById<View>(R.id.btnQuickNotify)?.setOnClickListener {
             findViewById<Button>(R.id.btnSendMessage).performClick()
