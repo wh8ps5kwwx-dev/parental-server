@@ -66,6 +66,7 @@ class ScreenTimeEnforcer(private val context: Context) {
             repo.logEvent(EVENT_BLOCKED, packageName, msg, totalSeconds)
             notifyParent(msg)
         }
+        ParentResponseWatchdog.cancelForPackage(packageName)
     }
 
     fun enforceMaxAppsOpen(packageName: String, policy: ScreenTimePolicy) {
@@ -156,6 +157,7 @@ class ScreenTimeEnforcer(private val context: Context) {
             repo.logEvent(eventType, packageName, msg, totalSeconds)
             notifyParent(msg)
         }
+        ParentResponseWatchdog.schedule(appContext, packageName, level, totalSeconds, policy)
     }
 
     private fun notifyParent(message: String) {

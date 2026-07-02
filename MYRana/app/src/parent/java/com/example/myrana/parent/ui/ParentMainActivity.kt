@@ -19,6 +19,7 @@ import androidx.core.util.PatternsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.myrana.BuildConfig
 import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
 import com.example.myrana.parent.ParentSession
@@ -68,6 +69,9 @@ class ParentMainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_parent_main)
 
+        findViewById<TextView>(R.id.textAppVersion)?.text =
+            getString(R.string.parent_app_version_label, BuildConfig.VERSION_NAME)
+
         stepLogin = findViewById(R.id.stepLogin)
         stepVerify = findViewById(R.id.stepVerify)
         stepAddChild = findViewById(R.id.stepAddChild)
@@ -85,7 +89,10 @@ class ParentMainActivity : AppCompatActivity() {
         textUsageEmpty = findViewById(R.id.textUsageEmpty)
         recyclerUsage = findViewById(R.id.recyclerUsage)
 
-        usageAdapter = UsageReportAdapter(packageManager)
+        usageAdapter = UsageReportAdapter(packageManager) { item ->
+            findViewById<EditText>(R.id.inputTarget).setText(item.packageName)
+            sendCommand("freeze_app", item.packageName)
+        }
         recyclerUsage.layoutManager = LinearLayoutManager(this)
         recyclerUsage.adapter = usageAdapter
 
@@ -347,9 +354,46 @@ class ParentMainActivity : AppCompatActivity() {
                     d.permissionsOk,
                     d.permissions,
                 )
+                bindUsageApps(usageItemsFromDashboard(d.topAppsToday), quiet = true)
             }
             else -> Unit
         }
+    }
+
+    private fun usageItemsFromDashboard(
+        topApps: List<Map<String, Any?>>,
+    ): List<com.example.myrana.data.remote.dto.UsageAppItem> {
+        return topApps.mapNotNull { row ->
+            val pkg = row["package_name"]?.toString()?.trim().orEmpty()
+            if (pkg.isEmpty()) return@mapNotNull null
+            val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
+            com.example.myrana.data.remote.dto.UsageAppItem(
+                packageName = pkg,
+                totalSeconds = sec,
+                avgSecondsPerDay = sec,
+                appLabel = row["app_label"]?.toString(),
+                iconBase64 = row["icon_b64"]?.toString(),
+                showDailyTotal = true,
+            )
+        }
+    }
+
+    private fun bindUsageApps(
+        items: List<com.example.myrana.data.remote.dto.UsageAppItem>,
+        quiet: Boolean = false,
+    ) {
+        if (items.isEmpty()) {
+            textUsageTitle.visibility = View.VISIBLE
+            textUsageEmpty.visibility = View.VISIBLE
+            recyclerUsage.visibility = View.GONE
+            if (!quiet) toast(getString(R.string.parent_usage_empty), true)
+            return
+        }
+        textUsageEmpty.visibility = View.GONE
+        textUsageTitle.visibility = View.VISIBLE
+        recyclerUsage.visibility = View.VISIBLE
+        usageAdapter.submit(items)
+        if (!quiet) toast("تم عرض ${items.size} تطبيق", false)
     }
 
     /** جلب قائمة الأطفال من السيرفر — دعم تعدد الأطفال لولي الأمر الواحد. */
@@ -419,8 +463,14 @@ class ParentMainActivity : AppCompatActivity() {
 
             delay(5_000L)
 
-            when (val report = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyUsage(childCode) }) {
-                is GuardianApi.ApiResult.UsageList -> showUsageList(report.items)
+            when (val report = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyUsage(childCode, 7) }) {
+                is GuardianApi.ApiResult.UsageList -> {
+                    showUsageList(report.items)
+                    startActivity(
+                        Intent(this@ParentMainActivity, ParentScreenTimeActivity::class.java)
+                            .putExtra(ParentScreenTimeActivity.EXTRA_REPORT_PERIOD, ParentScreenTimeActivity.PERIOD_WEEKLY)
+                    )
+                }
                 is GuardianApi.ApiResult.Error -> toast(report.message, true)
                 else -> toast("فشل تحميل التقرير", true)
             }
@@ -429,18 +479,7 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun showUsageList(items: List<com.example.myrana.data.remote.dto.UsageAppItem>) {
-        if (items.isEmpty()) {
-            textUsageTitle.visibility = View.GONE
-            recyclerUsage.visibility = View.GONE
-            textUsageEmpty.visibility = View.VISIBLE
-            toast("لا بيانات استخدام بعد", true)
-            return
-        }
-        textUsageEmpty.visibility = View.GONE
-        textUsageTitle.visibility = View.VISIBLE
-        recyclerUsage.visibility = View.VISIBLE
-        usageAdapter.submit(items)
-        toast("تم عرض ${items.size} تطبيق", false)
+        bindUsageApps(items, quiet = false)
     }
 
     private fun sendEmailCode() {

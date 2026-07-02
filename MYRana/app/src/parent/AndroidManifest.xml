@@ -5,6 +5,7 @@
         <activity
             android:name=".parent.ui.ParentMainActivity"
             android:exported="true"
+            android:theme="@style/Theme.MYRana.Parent"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -15,10 +16,12 @@
         <activity
             android:name=".parent.ui.ParentScreenTimeActivity"
             android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".parent.ui.ParentSettingsActivity"
             android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent"
             android:windowSoftInputMode="adjustResize" />    </application>
 </manifest>

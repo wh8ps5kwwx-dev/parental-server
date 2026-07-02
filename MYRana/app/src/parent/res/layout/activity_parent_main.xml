@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/parent_bg"
     android:fillViewport="true"
     android:padding="16dp">
 
@@ -10,19 +11,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/parent_title"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/textStepIndicator"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:textSize="13sp" />
+        <include layout="@layout/include_parent_header" />
 
         <!-- خطوة 1: بريد ولي الأمر -->
         <LinearLayout
@@ -189,7 +178,7 @@
                 android:id="@+id/textLinkVerifiedInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#1A000000"
+                android:background="@color/parent_surface_muted"
                 android:padding="12dp"
                 android:textIsSelectable="true"
                 android:textSize="14sp" />
@@ -243,7 +232,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:background="#1A4CAF50"
+                android:background="@color/parent_success_bg"
                 android:padding="10dp"
                 android:textSize="13sp" />
 
@@ -252,7 +241,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:background="#1AFF9800"
+                android:background="@color/parent_warning_bg"
                 android:padding="10dp"
                 android:textSize="12sp" />
 
@@ -276,7 +265,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:background="#1A000000"
+                android:background="@color/parent_surface_muted"
                 android:padding="10dp"
                 android:text="@string/parent_alerts_waiting"
                 android:textIsSelectable="true"

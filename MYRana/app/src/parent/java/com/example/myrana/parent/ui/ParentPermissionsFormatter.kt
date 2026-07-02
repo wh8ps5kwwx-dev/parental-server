@@ -29,6 +29,17 @@ object ParentPermissionsFormatter {
         return "$header\n$line"
     }
 
+    private val permKeys = listOf("usage", "accessibility", "notifications", "battery")
+
+    fun grantedCount(permissions: Map<String, Any?>): Int =
+        permKeys.count { permissions[it] == true }
+
+    fun totalCount(permissions: Map<String, Any?>): Int =
+        if (permissions.isEmpty()) permKeys.size else permKeys.size
+
+    fun batteryPermissionOk(permissions: Map<String, Any?>): Boolean =
+        permissions["battery"] == true
+
     private fun label(context: Context, value: Any?): String {
         return if (value == true) {
             context.getString(R.string.parent_perm_ok)

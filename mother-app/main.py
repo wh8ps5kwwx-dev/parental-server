@@ -32,8 +32,13 @@ except ImportError:
     import guardian_api
 
 Window.size = (390, 720)
+Window.clearcolor = (0.97, 0.97, 1, 1)
 
 LabelBase.register(name="Arabic", fn_regular="Arabic.ttf")
+
+# ألوان MY Rana (بنفسجي)
+UI_PRIMARY = (0.43, 0.16, 0.85, 1)
+UI_BG = (0.97, 0.97, 1, 1)
 
 ROLE_CHOOSE = "choose_role"
 ROLES = ("أم", "أب", "ولي أمر")
@@ -76,6 +81,8 @@ class ALabel(Label):
 
 class AButton(Button):
     def __init__(self, text: str = "", **kwargs):
+        kwargs.setdefault("background_color", UI_PRIMARY)
+        kwargs.setdefault("color", (1, 1, 1, 1))
         super().__init__(text=ar(text), font_name="Arabic", **kwargs)
 
 
@@ -104,6 +111,7 @@ class LoginScreen(Screen):
                 text="MY Rana",
                 font_size=28,
                 bold=True,
+                color=UI_PRIMARY,
                 size_hint_y=None,
                 height=60,
             )

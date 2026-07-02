@@ -12,7 +12,8 @@ import androidx.room.RoomDatabase
  * - [BlockedSiteEntity]: المواقع/النطاقات المحظورة.
  * - [BlockedAppEntity]: حزم التطبيقات المحظورة.
  * - [SyncStateEntity]: آخر أوقات المزامنة مع السيرفر.
- * - [PendingOutboxEntity]: استخدام التطبيقات مؤجّل عند انقطاع النت.
+ * - [PendingOutboxEntity]: طابور قديم — يُستورد تلقائياً.
+ * - [UsageSyncBufferEntity]: استخدام محلي معلّق للرفع عند عودة النت.
  * - [DailyAppUsageEntity]: وقت الاستخدام اليومي لكل تطبيق (وقت الشاشة).
  * - [ScreenTimeEventEntity]: أحداث التحذير والإغلاق التلقائي.
  *
@@ -26,8 +27,9 @@ import androidx.room.RoomDatabase
         PendingOutboxEntity::class,
         DailyAppUsageEntity::class,
         ScreenTimeEventEntity::class,
+        UsageSyncBufferEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,6 +48,9 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** استخدام يومي لكل تطبيق (وقت الشاشة). */
     abstract fun dailyAppUsageDao(): DailyAppUsageDao
+
+    /** استخدام محلي معلّق للرفع للسيرفر. */
+    abstract fun usageSyncDao(): UsageSyncDao
 
     /** سجل أحداث وقت الاستخدام. */
     abstract fun screenTimeEventDao(): ScreenTimeEventDao
@@ -68,6 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     NAME
                 )
+                    .addMigrations(MIGRATION_3_4)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }

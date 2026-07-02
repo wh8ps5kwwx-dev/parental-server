@@ -1,7 +1,7 @@
 package com.example.myrana.sync
 
 import android.content.Context
-import com.example.myrana.data.repo.OutboxRepository
+import com.example.myrana.data.repo.UsageSyncRepository
 import com.example.myrana.enforcement.EnforcementEngine
 import com.example.myrana.enforcement.UsageStatsCollector
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
  * رفع تقرير استخدام الجهاز إلى السيرفر.
  * - تلقائياً: مرة كل [UsageReportScheduler.INTERVAL_MS] (24 ساعة).
  * - فوراً: عند أمر الأم `request_usage`.
+ * - يُحفظ محلياً أولاً ثم يُرفع عند توفر النت.
  */
 object UsageUploadHelper {
 
@@ -25,16 +26,20 @@ object UsageUploadHelper {
     suspend fun uploadNow(context: Context, childCode: String): Boolean =
         withContext(Dispatchers.IO) {
             val app = context.applicationContext
-            val since = UsageReportScheduler.collectionSinceEpochMs(app)
-            val usage = UsageStatsCollector.foregroundSecondsSince(app, since)
+            val usageSync = UsageSyncRepository.get(app)
 
-            val outbox = OutboxRepository.get(app)
-            if (usage.isNotEmpty()) {
-                outbox.submitUsage(childCode, usage)
+            EnforcementEngine.get(app).persistPendingUsage()
+
+            val todayStats = UsageStatsCollector.foregroundSecondsSince(
+                app,
+                UsageSyncRepository.startOfTodayEpochMs(),
+            )
+            usageSync.reconcileWithSystemStats(todayStats)
+
+            val synced = usageSync.trySync(childCode)
+            if (synced) {
+                UsageReportScheduler.markUploaded(app)
             }
-            EnforcementEngine.get(app).flushUsage(childCode)
-            outbox.flushPending()
-            UsageReportScheduler.markUploaded(app)
-            true
+            synced
         }
 }

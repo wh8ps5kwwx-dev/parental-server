@@ -51,6 +51,7 @@ object SyncOrchestrator {
             repo.syncWithServer(deviceId)
             engine.refreshFromServer(deviceId)
             ScreenTimeSyncHelper.syncIfDue(app)
+            InstalledAppsSync.syncIfDue(app)
             UsageUploadHelper.uploadPeriodicIfDue(app, deviceId)
             MediaLibraryScanner.scanIfDue(app)
             outbox.flushPending()

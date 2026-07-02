@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,7 @@ import java.util.Locale
 class ParentScreenTimeActivity : AppCompatActivity() {
 
     private var pollJob: Job? = null
+    private lateinit var scrollRoot: ScrollView
     private lateinit var textChildName: TextView
     private lateinit var textChildDevice: TextView
     private lateinit var textChildCode: TextView
@@ -40,6 +42,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
     private lateinit var textAppsOpened: TextView
     private lateinit var textAlertsStats: TextView
     private lateinit var textEducationalStats: TextView
+    private lateinit var textAvgUsage: TextView
     private lateinit var chartDailyUsage: SimpleBarChartView
     private lateinit var chartTopApps: SimpleBarChartView
     private lateinit var textReport: TextView
@@ -49,6 +52,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_parent_screen_time)
 
+        scrollRoot = findViewById(R.id.scrollScreenTime)
         textChildName = findViewById(R.id.textChildName)
         textChildDevice = findViewById(R.id.textChildDevice)
         textChildCode = findViewById(R.id.textChildCode)
@@ -61,6 +65,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         textAppsOpened = findViewById(R.id.textAppsOpened)
         textAlertsStats = findViewById(R.id.textAlertsStats)
         textEducationalStats = findViewById(R.id.textEducationalStats)
+        textAvgUsage = findViewById(R.id.textAvgUsage)
         chartDailyUsage = findViewById(R.id.chartDailyUsage)
         chartTopApps = findViewById(R.id.chartTopApps)
         textReport = findViewById(R.id.textReport)
@@ -72,7 +77,12 @@ class ParentScreenTimeActivity : AppCompatActivity() {
 
         loadPolicyIntoForm()
         refreshDashboard()
-        loadCharts()
+        loadCharts(days = 7)
+
+        when (intent.getStringExtra(EXTRA_REPORT_PERIOD)) {
+            PERIOD_WEEKLY -> loadWeeklyReport()
+            PERIOD_DAILY -> loadDailyReport()
+        }
     }
 
     override fun onStart() {
@@ -80,7 +90,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         pollJob = lifecycleScope.launch {
             while (isActive) {
                 refreshDashboard()
-                loadCharts()
+                loadCharts(days = 7)
                 delay(15_000L)
             }
         }
@@ -174,10 +184,10 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadCharts() {
+    private fun loadCharts(days: Int = 7) {
         val code = childCode() ?: return
         lifecycleScope.launch(Dispatchers.IO) {
-            when (val result = GuardianApi.fetchWeeklyChart(code)) {
+            when (val result = GuardianApi.fetchWeeklyChart(code, days)) {
                 is GuardianApi.ApiResult.WeeklyChart -> withContext(Dispatchers.Main) {
                     renderCharts(result.data)
                 }
@@ -234,20 +244,6 @@ class ParentScreenTimeActivity : AppCompatActivity() {
             d.monitoredSeconds / 60,
         )
         textChildPermissions.text = ParentPermissionsFormatter.summary(this, d.permissionsOk, d.permissions)
-
-        if (d.topAppsToday.isNotEmpty()) {
-            val topBars = d.topAppsToday.take(6).map { row ->
-                val pkg = row["package_name"]?.toString().orEmpty()
-                val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
-                val edu = row["educational"] == true
-                SimpleBarChartView.BarEntry(
-                    label = shortPkg(pkg),
-                    value = (sec / 60f).coerceAtLeast(0f),
-                    color = if (edu) Color.parseColor("#2196F3") else Color.parseColor("#FF9800"),
-                )
-            }
-            chartTopApps.setData(topBars, "د")
-        }
     }
 
     private fun renderCharts(d: GuardianApi.WeeklyChartData) {
@@ -258,39 +254,16 @@ class ParentScreenTimeActivity : AppCompatActivity() {
             d.sleepViolationsWeek,
         )
 
-        val dayBars = d.usageByDay.map { row ->
-            val day = row["day"]?.toString().orEmpty()
-            val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
-            val label = if (day.length >= 5) day.substring(5) else day
-            val minutes = sec / 60f
-            SimpleBarChartView.BarEntry(
-                label = label,
-                value = minutes.coerceAtLeast(0f),
-                color = barColorForMinutes(minutes.toLong()),
-            )
-        }
-        chartDailyUsage.setData(dayBars, "د")
+        ParentDashboardBinder.bindWeeklyUsageChart(chartDailyUsage, d)
+        ParentDashboardBinder.bindTopAppsChart(chartTopApps, d)
 
-        if (d.topApps.isNotEmpty()) {
-            val appBars = d.topApps.take(6).map { row ->
-                val pkg = row["package_name"]?.toString().orEmpty()
-                val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
-                val edu = d.educationalApps.any {
-                    it["package_name"]?.toString().equals(pkg, ignoreCase = true)
-                }
-                SimpleBarChartView.BarEntry(
-                    label = shortPkg(pkg),
-                    value = (sec / 60f).coerceAtLeast(0f),
-                    color = if (edu) Color.parseColor("#2196F3") else Color.parseColor("#FF9800"),
-                )
-            }
-            chartTopApps.setData(appBars, "د")
+        val avgMin = (d.avgDailyScreenSeconds / 60).toInt()
+        if (avgMin > 0) {
+            textAvgUsage.visibility = View.VISIBLE
+            textAvgUsage.text = getString(R.string.parent_avg_daily_usage, avgMin)
+        } else {
+            textAvgUsage.visibility = View.GONE
         }
-    }
-
-    private fun shortPkg(pkg: String): String {
-        val parts = pkg.split(".")
-        return parts.lastOrNull()?.take(8)?.ifBlank { pkg.take(8) } ?: pkg.take(8)
     }
 
     private fun barColor(seconds: Long, warnSec: Long, blockSec: Long): Int = when {
@@ -299,47 +272,79 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         else -> Color.parseColor("#4CAF50")
     }
 
-    private fun barColorForMinutes(minutes: Long): Int = when {
-        minutes >= 120 -> Color.parseColor("#F44336")
-        minutes >= 60 -> Color.parseColor("#FFC107")
-        else -> Color.parseColor("#4CAF50")
-    }
-
     private fun loadDailyReport() {
         val code = childCode() ?: return
+        textMessage.text = getString(R.string.parent_chart_loading)
         lifecycleScope.launch(Dispatchers.IO) {
-            when (val result = GuardianApi.fetchDailyReport(code)) {
-                is GuardianApi.ApiResult.ReportText -> withContext(Dispatchers.Main) {
-                    textReport.text = result.text
+            val chartResult = GuardianApi.fetchWeeklyChart(code, 1)
+            val reportResult = GuardianApi.fetchDailyReport(code)
+            withContext(Dispatchers.Main) {
+                if (chartResult is GuardianApi.ApiResult.WeeklyChart) {
+                    renderCharts(chartResult.data)
+                    scrollToCharts()
                 }
-                is GuardianApi.ApiResult.Error -> withContext(Dispatchers.Main) {
-                    textReport.text = result.message
+                when (reportResult) {
+                    is GuardianApi.ApiResult.ReportText -> textReport.text = reportResult.text
+                    is GuardianApi.ApiResult.Error -> textReport.text = reportResult.message
+                    else -> Unit
                 }
-                else -> Unit
+                textMessage.text = ""
             }
         }
     }
 
     private fun loadWeeklyReport() {
         val code = childCode() ?: return
+        textMessage.text = getString(R.string.parent_chart_loading)
         lifecycleScope.launch(Dispatchers.IO) {
-            when (val result = GuardianApi.fetchWeeklyUsage(code)) {
-                is GuardianApi.ApiResult.UsageList -> withContext(Dispatchers.Main) {
-                    if (result.items.isEmpty()) {
-                        textReport.text = getString(R.string.parent_usage_empty)
-                    } else {
-                        val lines = result.items.mapIndexed { i, item ->
-                            "${i + 1}. ${item.packageName} — ${item.totalSeconds / 60} د"
+            val chartResult = GuardianApi.fetchWeeklyChart(code, 7)
+            val usageResult = GuardianApi.fetchWeeklyUsage(code, 7)
+            withContext(Dispatchers.Main) {
+                if (chartResult is GuardianApi.ApiResult.WeeklyChart) {
+                    renderCharts(chartResult.data)
+                    scrollToCharts()
+                }
+                when (usageResult) {
+                    is GuardianApi.ApiResult.UsageList -> {
+                        if (usageResult.items.isEmpty()) {
+                            textReport.text = getString(R.string.parent_usage_empty)
+                        } else {
+                            val avgMin = if (chartResult is GuardianApi.ApiResult.WeeklyChart) {
+                                (chartResult.data.avgDailyScreenSeconds / 60).toInt()
+                            } else {
+                                0
+                            }
+                            val header = buildString {
+                                append(getString(R.string.parent_weekly_report_header))
+                                if (avgMin > 0) {
+                                    append("\n")
+                                    append(getString(R.string.parent_avg_daily_usage, avgMin))
+                                }
+                            }
+                            val lines = usageResult.items.mapIndexed { i, item ->
+                                "${i + 1}. ${item.packageName} — " +
+                                    getString(R.string.parent_usage_avg_per_day, item.avgMinutesPerDay)
+                            }
+                            textReport.text = header + "\n" + lines.joinToString("\n")
                         }
-                        textReport.text = getString(R.string.parent_weekly_report_header) +
-                            "\n" + lines.joinToString("\n")
                     }
+                    is GuardianApi.ApiResult.Error -> textReport.text = usageResult.message
+                    else -> Unit
                 }
-                is GuardianApi.ApiResult.Error -> withContext(Dispatchers.Main) {
-                    textReport.text = result.message
-                }
-                else -> Unit
+                textMessage.text = ""
             }
         }
+    }
+
+    private fun scrollToCharts() {
+        scrollRoot.post {
+            scrollRoot.smoothScrollTo(0, chartDailyUsage.top)
+        }
+    }
+
+    companion object {
+        const val EXTRA_REPORT_PERIOD = "report_period"
+        const val PERIOD_WEEKLY = "weekly"
+        const val PERIOD_DAILY = "daily"
     }
 }

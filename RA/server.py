@@ -224,6 +224,99 @@ def _json_success(message: str, code: int = 200, **extra):
     return jsonify(payload), code
 
 
+def _usage_period_days(raw, default: int = 7, max_days: int = 30) -> int:
+    try:
+        days = int(raw if raw is not None else default)
+    except (TypeError, ValueError):
+        days = default
+    return max(1, min(days, max_days))
+
+
+def _attach_avg_seconds_per_day(apps, days: int):
+    span = max(1, days)
+    enriched = []
+    for row in apps:
+        item = dict(row)
+        total = int(item.get("total_seconds") or 0)
+        item["avg_seconds_per_day"] = total // span
+        enriched.append(item)
+    return enriched
+
+
+def _avg_daily_screen_seconds(usage_by_day, days: int) -> int:
+    total = sum(int(r.get("total_seconds") or 0) for r in usage_by_day)
+    return total // max(1, days)
+
+
+def _load_app_meta_map(cur, child_code: str, packages) -> dict:
+    pkgs = [str(p).strip().lower() for p in packages if str(p).strip()]
+    if not pkgs:
+        return {}
+    placeholders = ",".join("?" * len(pkgs))
+    cur.execute(
+        f"""
+        SELECT package_name, app_label, icon_b64
+        FROM child_app_meta
+        WHERE child_code = ? AND package_name IN ({placeholders})
+        """,
+        [child_code] + pkgs,
+    )
+    return {
+        str(r["package_name"]).lower(): dict(r)
+        for r in cur.fetchall()
+    }
+
+
+def _enrich_app_rows(cur, child_code: str, rows: list) -> list:
+    meta = _load_app_meta_map(cur, child_code, [r.get("package_name") for r in rows])
+    enriched = []
+    for row in rows:
+        item = dict(row)
+        pkg = str(item.get("package_name") or "").lower()
+        m = meta.get(pkg, {})
+        label = (m.get("app_label") or "").strip()
+        if not label:
+            label = pkg.split(".")[-1] if pkg else "?"
+        item["app_label"] = label
+        icon = (m.get("icon_b64") or "").strip()
+        if icon:
+            item["icon_b64"] = icon
+        enriched.append(item)
+    return enriched
+
+
+def _upsert_child_app_meta(conn, child_code: str, apps: list) -> int:
+    if not apps:
+        return 0
+    cur = conn.cursor()
+    saved = 0
+    ts = now()
+    for app in apps:
+        if not isinstance(app, dict):
+            continue
+        pkg = _norm_pkg(app.get("package") or app.get("package_name") or "")
+        if not pkg:
+            continue
+        label = (app.get("app_label") or app.get("label") or "").strip()
+        icon = (app.get("icon_b64") or app.get("icon") or "").strip()
+        cur.execute(
+            """
+            INSERT INTO child_app_meta (child_code, package_name, app_label, icon_b64, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(child_code, package_name) DO UPDATE SET
+                app_label = excluded.app_label,
+                icon_b64 = CASE
+                    WHEN excluded.icon_b64 != '' THEN excluded.icon_b64
+                    ELSE child_app_meta.icon_b64
+                END,
+                updated_at = excluded.updated_at
+            """,
+            (child_code, pkg, label, icon, ts),
+        )
+        saved += 1
+    return saved
+
+
 def _ensure_guardian(cur, email: str) -> int:
     """إنشاء/جلب parent_id من بريد ولي الأمر."""
     email = (email or "").strip()
@@ -798,6 +891,17 @@ def init_db():
         sent_key TEXT NOT NULL,
         sent_at TEXT,
         PRIMARY KEY (guardian_email, child_code, period, sent_key)
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS child_app_meta (
+        child_code TEXT NOT NULL,
+        package_name TEXT NOT NULL,
+        app_label TEXT,
+        icon_b64 TEXT,
+        updated_at TEXT,
+        PRIMARY KEY (child_code, package_name)
     )
     """)
 
@@ -1683,7 +1787,8 @@ def weekly_report():
     child_code = db_child_code(request.args.get("child_code", ""))
     if not child_code:
         return _json_error("child_code required", 400, error_code="missing_child_code")
-    since = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    days = _usage_period_days(request.args.get("days"), default=7)
+    since = (datetime.now() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
     conn = db()
     cur = conn.cursor()
     cur.execute(
@@ -1693,13 +1798,29 @@ def weekly_report():
         WHERE child_code = ? AND day >= ?
         GROUP BY package_name
         ORDER BY total_seconds DESC
-        LIMIT 30
+        LIMIT 100
         """,
         (child_code, since),
     )
-    apps = [dict(r) for r in cur.fetchall()]
+    apps = _attach_avg_seconds_per_day([dict(r) for r in cur.fetchall()], days)
+    apps = _enrich_app_rows(cur, child_code, apps)
+    cur.execute(
+        """
+        SELECT COALESCE(SUM(total_seconds), 0) AS total
+        FROM usage_daily
+        WHERE child_code = ? AND day >= ?
+        """,
+        (child_code, since),
+    )
+    total_sec = int(cur.fetchone()["total"] or 0)
     conn.close()
-    return jsonify({"child_code": child_code, "since": since, "apps": apps})
+    return jsonify({
+        "child_code": child_code,
+        "since": since,
+        "days": days,
+        "avg_daily_screen_seconds": total_sec // max(1, days),
+        "apps": apps,
+    })
 
 
 # إرسال تقرير من جهاز الطفل
@@ -2291,6 +2412,25 @@ def screen_time_policy():
         return _json_error("خطأ داخلي أثناء حفظ السياسة", 500, error_code="server_error")
 
 
+@app.route("/sync-child-apps", methods=["POST"])
+def sync_child_apps():
+    """رفع قائمة تطبيقات الطفل مع الأسماء والأيقونات لعرضها عند الأم."""
+    try:
+        data = request.get_json(silent=True) or {}
+        child_code = db_child_code(data.get("child_code", ""))
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+        apps = data.get("apps") or []
+        conn = db()
+        saved = _upsert_child_app_meta(conn, child_code, apps)
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "status": "success", "saved": saved})
+    except Exception as exc:
+        logger.exception("sync-child-apps failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء مزامنة التطبيقات", 500, error_code="server_error")
+
+
 @app.route("/child-heartbeat", methods=["POST"])
 def child_heartbeat():
     try:
@@ -2432,18 +2572,22 @@ def child_dashboard():
         """
         SELECT package_name, total_seconds
         FROM usage_daily WHERE child_code = ? AND day = ?
-        ORDER BY total_seconds DESC LIMIT 8
+        ORDER BY total_seconds DESC
         """,
         (child_code, today),
     )
-    top_apps_today = [
-        {
-            "package_name": r["package_name"],
-            "total_seconds": int(r["total_seconds"] or 0),
-            "educational": str(r["package_name"] or "").lower() in unlimited,
-        }
-        for r in cur.fetchall()
-    ]
+    top_apps_today = _enrich_app_rows(
+        cur,
+        child_code,
+        [
+            {
+                "package_name": r["package_name"],
+                "total_seconds": int(r["total_seconds"] or 0),
+                "educational": str(r["package_name"] or "").lower() in unlimited,
+            }
+            for r in cur.fetchall()
+        ],
+    )
 
     educational_seconds = 0
     monitored_seconds = 0
@@ -2608,7 +2752,9 @@ def weekly_chart():
         if not child_code:
             return _json_error("child_code required", 400, error_code="missing_child_code")
 
-        since_day = (datetime.now() - timedelta(days=6)).strftime("%Y-%m-%d")
+        days = _usage_period_days(request.args.get("days"), default=7)
+
+        since_day = (datetime.now() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
         conn = db()
         cur = conn.cursor()
 
@@ -2622,10 +2768,11 @@ def weekly_chart():
             """,
             (child_code, since_day),
         )
-        usage_by_day = [
-            {"day": r["day"], "total_seconds": int(r["total_seconds"] or 0)}
-            for r in cur.fetchall()
-        ]
+        by_day = {r["day"]: int(r["total_seconds"] or 0) for r in cur.fetchall()}
+        usage_by_day = []
+        for i in range(days):
+            d = (datetime.now() - timedelta(days=days - 1 - i)).strftime("%Y-%m-%d")
+            usage_by_day.append({"day": d, "total_seconds": by_day.get(d, 0)})
 
         cur.execute(
             """
@@ -2638,12 +2785,17 @@ def weekly_chart():
             """,
             (child_code, since_day),
         )
-        top_apps = [
-            {"package_name": r["package_name"], "total_seconds": int(r["total_seconds"] or 0)}
-            for r in cur.fetchall()
-        ]
+        top_apps = _attach_avg_seconds_per_day(
+            [
+                {"package_name": r["package_name"], "total_seconds": int(r["total_seconds"] or 0)}
+                for r in cur.fetchall()
+            ],
+            days,
+        )
+        avg_daily_screen_seconds = _avg_daily_screen_seconds(usage_by_day, days)
 
         policy = _screen_time_policy_get(conn, child_code)
+        top_apps = _enrich_app_rows(cur, child_code, top_apps)
         unlimited = {p.lower() for p in (policy.get("unlimited_packages") or [])}
         educational_apps = []
         other_apps = []
@@ -2690,7 +2842,9 @@ def weekly_chart():
             "child_code": normalize_child_code(child_code),
             "child_code_clean": child_code,
             "since_day": since_day,
+            "days": days,
             "usage_by_day": usage_by_day,
+            "avg_daily_screen_seconds": avg_daily_screen_seconds,
             "top_apps": top_apps,
             "educational_apps": educational_apps,
             "other_apps": other_apps,
@@ -2740,11 +2894,11 @@ def daily_report():
         FROM usage_daily
         WHERE child_code = ? AND day = ?
         ORDER BY total_seconds DESC
-        LIMIT 30
+        LIMIT 100
         """,
         (child_code, today),
     )
-    apps = [dict(r) for r in cur.fetchall()]
+    apps = _enrich_app_rows(cur, child_code, [dict(r) for r in cur.fetchall()])
     conn.close()
     return jsonify({"child_code": child_code, "day": today, "apps": apps})
 

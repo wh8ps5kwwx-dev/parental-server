@@ -13,6 +13,7 @@ import com.example.myrana.data.remote.dto.PolicyPushDto
 import com.example.myrana.session.ChildSession
 import com.example.myrana.sync.GuardianMessageNotifier
 import com.example.myrana.sync.UsageUploadHelper
+import com.example.myrana.screentime.ParentResponseWatchdog
 import com.example.myrana.worker.MonitoringScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,6 +58,7 @@ class PolicyRepository private constructor(context: Context) {
         when (cmd.action) {
             "block_app", "freeze_app" -> cmd.value?.let { addBlockedPackage(it) }
             "block_site" -> cmd.value?.let { addBlockedSite(it) }
+            "allow" -> ParentResponseWatchdog.onParentResponded()
             "request_usage" -> {
                 val childCode = ChildSession.childCode(appContext) ?: deviceId
                 uploadUsageNow(childCode)

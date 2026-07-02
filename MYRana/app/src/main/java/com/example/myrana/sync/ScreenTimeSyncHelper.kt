@@ -21,6 +21,7 @@ object ScreenTimeSyncHelper {
                 ScreenTimePolicyStore.save(context, it)
             }
             NetworkModule.postChildHeartbeat(childCode, PermissionStatusReporter.toPayload(context))
+            InstalledAppsSync.syncIfDue(context)
             uploadPendingEvents(context, childCode)
         } catch (_: Exception) {
         }

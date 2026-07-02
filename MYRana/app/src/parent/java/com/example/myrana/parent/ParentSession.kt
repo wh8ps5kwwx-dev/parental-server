@@ -143,6 +143,16 @@ object ParentSession {
         clearPendingLink(context)
     }
 
+    /** السيرفر لا يعرف الطفل — مسح الربط المحلي. */
+    fun markLinkStale(context: Context) {
+        prefs(context).edit()
+            .putBoolean(KEY_LINKED, false)
+            .remove(KEY_CHILD_CODE)
+            .remove(KEY_CHILD_NAME)
+            .apply()
+        clearPendingLink(context)
+    }
+
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

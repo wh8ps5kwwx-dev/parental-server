@@ -66,8 +66,6 @@ object LinkStateGuard {
                 RegisterChildRequest(
                     childCode = codeForRegister,
                     childEmail = email,
-                    guardianEmail = email,
-                    parentEmail = email,
                     deviceName = deviceName,
                     androidVersion = androidVersion,
                     androidDeviceId = Settings.Secure.getString(

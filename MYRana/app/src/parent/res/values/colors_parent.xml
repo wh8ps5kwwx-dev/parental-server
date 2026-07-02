@@ -24,4 +24,5 @@
     <color name="parent_nav_inactive">#9CA3AF</color>
     <color name="parent_stat_blue">#3B82F6</color>
     <color name="parent_stat_orange">#F97316</color>
+    <color name="parent_surface_muted">#1A1E1B4B</color>
 </resources>

@@ -244,6 +244,9 @@ object GuardianApi {
                     policy = policy,
                     permissionsOk = json["permissions_ok"] == true,
                     permissions = (json["permissions"] as? Map<String, Any?>) ?: emptyMap(),
+                    batteryPct = (json["battery_pct"] as? Number)?.toInt()
+                        ?: (json["battery_level"] as? Number)?.toInt()
+                        ?: -1,
                 )
             )
         } catch (e: Exception) {
@@ -285,13 +288,18 @@ object GuardianApi {
         }
     }
 
-    /** بيانات الرسوم البيانية — استخدام يومي + أفضل التطبيقات. */
-    fun fetchWeeklyChart(childCode: String): ApiResult {
+    /** بيانات الرسوم البيانية — استخدام يومي + أفضل التطبيقات (7 أو 30 يوماً). */
+    fun fetchWeeklyChart(childCode: String, days: Int = 7): ApiResult {
+        return fetchUsageChart(childCode, days)
+    }
+
+    fun fetchUsageChart(childCode: String, days: Int = 7): ApiResult {
         return try {
             val code = ChildCodeNormalizer.forApi(childCode)
+            val span = days.coerceIn(1, 30)
             val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
             val url = java.net.URL(
-                "$base/weekly-chart?child_code=${URLEncoder.encode(code, "UTF-8")}"
+                "$base/weekly-chart?child_code=${URLEncoder.encode(code, "UTF-8")}&days=$span"
             )
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.requestMethod = "GET"
@@ -321,6 +329,8 @@ object GuardianApi {
                     alertsToday = (json["alerts_today"] as? Number)?.toInt() ?: 0,
                     alertsWeek = (json["alerts_week"] as? Number)?.toInt() ?: 0,
                     sleepViolationsWeek = (json["sleep_violations_week"] as? Number)?.toInt() ?: 0,
+                    days = (json["days"] as? Number)?.toInt()?.coerceIn(1, 30) ?: span,
+                    avgDailyScreenSeconds = (json["avg_daily_screen_seconds"] as? Number)?.toLong() ?: 0L,
                 )
             )
         } catch (e: Exception) {
@@ -328,10 +338,10 @@ object GuardianApi {
         }
     }
 
-    /** قائمة استخدام التطبيقات (آخر 7 أيام على السيرفر). */
-    fun fetchWeeklyUsage(childCode: String): ApiResult {
+    /** قائمة استخدام التطبيقات (7 أو 30 يوماً على السيرفر). */
+    fun fetchWeeklyUsage(childCode: String, days: Int = 7): ApiResult {
         return try {
-            ApiResult.UsageList(NetworkModule.fetchWeeklyUsageList(childCode))
+            ApiResult.UsageList(NetworkModule.fetchWeeklyUsageList(childCode, days))
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "خطأ شبكة")
         }
@@ -652,6 +662,7 @@ object GuardianApi {
         val policy: ScreenTimePolicy,
         val permissionsOk: Boolean = false,
         val permissions: Map<String, Any?> = emptyMap(),
+        val batteryPct: Int = -1,
     )
 
     data class WeeklyChartData(
@@ -661,5 +672,7 @@ object GuardianApi {
         val alertsToday: Int,
         val alertsWeek: Int,
         val sleepViolationsWeek: Int,
+        val days: Int = 7,
+        val avgDailyScreenSeconds: Long = 0L,
     )
 }

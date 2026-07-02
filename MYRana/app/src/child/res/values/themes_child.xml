@@ -11,8 +11,8 @@
         <item name="android:windowBackground">@color/child_bg</item>
         <item name="android:textColorPrimary">@color/child_text_primary</item>
         <item name="android:textColorSecondary">@color/child_text_secondary</item>
-        <item name="android:fontFamily">sans-serif</item>
-        <item name="fontFamily">sans-serif</item>
+        <item name="android:fontFamily">@font/cairo</item>
+        <item name="fontFamily">@font/cairo</item>
         <item name="materialButtonStyle">@style/ChildButton.Primary</item>
         <item name="borderlessButtonStyle">@style/ChildButton.Text</item>
         <item name="editTextStyle">@style/ChildEditText</item>

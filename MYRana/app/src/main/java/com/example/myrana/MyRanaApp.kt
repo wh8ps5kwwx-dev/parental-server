@@ -3,6 +3,7 @@ package com.example.myrana
 import android.app.Application
 import com.example.myrana.data.local.AppDatabase
 import com.example.myrana.data.repo.OutboxRepository
+import com.example.myrana.data.repo.UsageSyncRepository
 import com.example.myrana.network.NetworkMonitor
 import com.example.myrana.device.DeviceIdentity
 import com.example.myrana.permissions.ChildProjectRuntime
@@ -48,6 +49,9 @@ class MyRanaApp : Application() {
         ChildProjectRuntime.activateMonitoring(this)
         registerNetworkFlush()
         appScope.launch {
+            val code = ChildSession.childCode(this@MyRanaApp)
+                ?: DeviceIdentity.childDeviceId(this@MyRanaApp)
+            UsageSyncRepository.get(this@MyRanaApp).trySync(code)
             OutboxRepository.get(this@MyRanaApp).flushPending()
         }
     }
@@ -59,6 +63,7 @@ class MyRanaApp : Application() {
                 val code = ChildSession.childCode(this@MyRanaApp)
                     ?: DeviceIdentity.childDeviceId(this@MyRanaApp)
                 UsageUploadHelper.uploadPeriodicIfDue(this@MyRanaApp, code)
+                UsageSyncRepository.get(this@MyRanaApp).trySync(code)
                 OutboxRepository.get(this@MyRanaApp).flushPending()
             }
         }

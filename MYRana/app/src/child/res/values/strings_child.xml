@@ -2,4 +2,6 @@
 <resources>
     <string name="child_header_title">🧠 أكاديمية العباقرة</string>
     <string name="child_header_subtitle">ربط الجهاز وبدء التعلّم بأمان</string>
+    <string name="register_hint_parent_email">بريد ولي الأمر (Gmail)</string>
+    <string name="btn_check_parent_link">تحقق من الربط</string>
 </resources>

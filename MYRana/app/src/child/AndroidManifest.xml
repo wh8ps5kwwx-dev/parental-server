@@ -5,7 +5,8 @@
         <activity
             android:name=".ui.PermissionsLauncherActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.MYRana.Child">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -15,7 +16,8 @@
         <activity
             android:name=".ui.MonitoringStatusActivity"
             android:exported="false"
-            android:launchMode="singleTask" />
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.MYRana.Child" />
 
         <activity
             android:name=".ui.academy.AcademyMenuActivity"
@@ -52,11 +54,13 @@
         <activity
             android:name=".ui.ChildRegistrationActivity"
             android:exported="false"
+            android:theme="@style/Theme.MYRana.Child"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".ui.ChildPermissionsActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Child" />
 
         <activity
             android:name=".ui.BlockWarningActivity"

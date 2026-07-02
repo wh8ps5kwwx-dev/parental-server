@@ -49,4 +49,14 @@
         android:layout_marginStart="8dp"
         android:textSize="14sp"
         android:textStyle="bold" />
+
+    <ImageButton
+        android:id="@+id/btnFreezeApp"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/parent_btn_freeze_app"
+        android:src="@android:drawable/ic_lock_lock"
+        android:tint="@color/parent_primary" />
 </LinearLayout>

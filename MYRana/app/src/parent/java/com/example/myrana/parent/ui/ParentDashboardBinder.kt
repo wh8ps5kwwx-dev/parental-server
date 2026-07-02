@@ -188,6 +188,13 @@ object ParentDashboardBinder {
 
         chart.setData(bars, "د")
 
+        val avgMin = (chartData.avgDailyScreenSeconds / 60f).coerceAtLeast(0f)
+        if (avgMin > 0f) {
+            chart.setReferenceLine(avgMin, "معدل ${avgMin.toInt()}د")
+        } else {
+            chart.setReferenceLine(null)
+        }
+
     }
 
 
@@ -200,6 +207,8 @@ object ParentDashboardBinder {
 
             chart.setData(emptyList(), "")
 
+            chart.setReferenceLine(null)
+
             return
 
         }
@@ -208,7 +217,7 @@ object ParentDashboardBinder {
 
             val pkg = row["package_name"]?.toString().orEmpty()
 
-            val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
+            val minutes = appAvgMinutes(row, chartData.days)
 
             val edu = chartData.educationalApps.any {
 
@@ -220,7 +229,7 @@ object ParentDashboardBinder {
 
                 label = shortPkg(pkg),
 
-                value = (sec / 60f).coerceAtLeast(0f),
+                value = minutes,
 
                 color = if (edu) Color.parseColor("#2196F3") else Color.parseColor("#FF9800"),
 
@@ -228,7 +237,21 @@ object ParentDashboardBinder {
 
         }
 
-        chart.setData(appBars, "د")
+        chart.setData(appBars, "د/ي")
+
+        chart.setReferenceLine(null)
+
+    }
+
+
+
+    fun appAvgMinutes(row: Map<String, Any?>, days: Int): Float {
+
+        val avgSec = (row["avg_seconds_per_day"] as? Number)?.toLong()
+
+        val sec = avgSec ?: (((row["total_seconds"] as? Number)?.toLong() ?: 0L) / days.coerceAtLeast(1))
+
+        return (sec / 60f).coerceAtLeast(0f)
 
     }
 

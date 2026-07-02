@@ -133,16 +133,28 @@ object NetworkModule {
         return list.mapNotNull { it?.toString()?.trim()?.lowercase() }.filter { it.isNotEmpty() }.toSet()
     }
 
-    /** رفع استخدام — يُفضَّل OutboxRepository.submitUsage. */
+    /** رفع استخدام — يُفضَّل UsageSyncRepository. */
     fun uploadUsageSync(childCode: String, secondsByPackage: Map<String, Long>): Boolean {
         if (secondsByPackage.isEmpty()) return true
-        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val day = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
             .format(java.util.Date())
         val entries = secondsByPackage.map { (pkg, sec) ->
+            Triple(day, pkg, sec)
+        }
+        return uploadUsageEntriesSync(childCode, entries)
+    }
+
+    /** رفع دفعة استخدام — كل صف بيومه (للمزامنة بعد انقطاع النت). */
+    fun uploadUsageEntriesSync(
+        childCode: String,
+        entries: List<Triple<String, String, Long>>,
+    ): Boolean {
+        if (entries.isEmpty()) return true
+        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
+        val payloadEntries = entries.map { (day, pkg, sec) ->
             mapOf("package" to pkg, "day" to day, "seconds" to sec)
         }
-        val payload = mapOf("child_code" to childCode, "entries" to entries)
+        val payload = mapOf("child_code" to childCode, "entries" to payloadEntries)
         val url = base.newBuilder().addPathSegments("upload-usage").build()
         val body = gson.toJson(payload).toRequestBody("application/json".toMediaType())
         val httpRequest = Request.Builder()
@@ -161,12 +173,14 @@ object NetworkModule {
         uploadUsageSync(childCode, secondsByPackage)
     }
 
-    /** تقرير استخدام أسبوعي — قائمة مرتبة من الأكثر استخداماً. */
-    fun fetchWeeklyUsageList(childCode: String): List<UsageAppItem> {
+    /** تقرير استخدام — قائمة مرتبة من الأكثر استخداماً (مع معدل يومي). */
+    fun fetchWeeklyUsageList(childCode: String, days: Int = 7): List<UsageAppItem> {
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return emptyList()
+        val span = days.coerceIn(1, 30)
         val url = base.newBuilder()
             .addPathSegments("weekly-report")
             .addQueryParameter("child_code", childCode)
+            .addQueryParameter("days", span.toString())
             .build()
         val request = Request.Builder()
             .url(url)
@@ -184,7 +198,17 @@ object NetworkModule {
             val pkg = row["package_name"]?.toString()?.trim().orEmpty()
             if (pkg.isEmpty()) return@mapNotNull null
             val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
-            UsageAppItem(packageName = pkg, totalSeconds = sec)
+            val avg = (row["avg_seconds_per_day"] as? Number)?.toLong()
+                ?: (sec / span.coerceAtLeast(1))
+            val label = row["app_label"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            val icon = row["icon_b64"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            UsageAppItem(
+                packageName = pkg,
+                totalSeconds = sec,
+                avgSecondsPerDay = avg,
+                appLabel = label,
+                iconBase64 = icon,
+            )
         }
     }
 
@@ -303,6 +327,26 @@ object NetworkModule {
         val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
         val url = base.newBuilder().addPathSegments("screen-time-policy").build()
         val payload = mapOf("child_code" to code, "policy" to policy)
+        val body = gson.toJson(payload).toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url(url)
+            .header("X-API-KEY", BuildConfig.API_KEY)
+            .post(body)
+            .build()
+        return try {
+            client().newCall(request).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** رفع قائمة تطبيقات الطفل (اسم + أيقونة) للأم. */
+    fun postSyncChildApps(childCode: String, apps: List<Map<String, String?>>): Boolean {
+        val code = ChildCodeNormalizer.forApi(childCode)
+        if (code.isBlank() || apps.isEmpty()) return true
+        val base = BuildConfig.SERVER_ROOT_URL.toHttpUrlOrNull() ?: return false
+        val url = base.newBuilder().addPathSegments("sync-child-apps").build()
+        val payload = mapOf("child_code" to code, "apps" to apps)
         val body = gson.toJson(payload).toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url(url)
