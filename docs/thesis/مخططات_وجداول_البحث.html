@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>مخططات وجداول — نظام الرقابة الأبوية MY Rana</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; margin: 24px; background: #f8f9fa; color: #1a1a1a; }
+    h1 { text-align: center; color: #1a477a; border-bottom: 2px solid #1a477a; padding-bottom: 12px; }
+    h2 { color: #1a477a; margin-top: 32px; }
+    .caption { font-weight: bold; margin: 8px 0 4px; color: #333; }
+    .note { font-size: 13px; color: #555; margin-bottom: 16px; }
+    .box { background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 16px; margin: 16px 0; page-break-inside: avoid; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+    th { background: #1a477a; color: #fff; padding: 10px; text-align: right; }
+    td { border: 1px solid #ddd; padding: 8px 10px; }
+    tr:nth-child(even) { background: #f0f4f8; }
+    .mermaid { text-align: center; }
+    @media print { body { background: #fff; } .box { border: 1px solid #999; } }
+  </style>
+</head>
+<body>
+
+<h1>مخططات وجداول — مشروع الرقابة الأبوية (MY Rana)</h1>
+<p class="note">افتحي هذا الملف في Chrome → لقطة شاشة لكل مخطط → ألصقي في Word تحت عنوان الشكل. الجداول يمكن نسخها مباشرة.</p>
+
+<!-- شكل 4.1 -->
+<div class="box">
+  <p class="caption">شكل 4.1 — التصميم المعماري للنظام (System Architecture)</p>
+  <pre class="mermaid">
+flowchart TB
+  subgraph Child["جوال الطفل — أكاديمية العباقرة"]
+    A1[واجهة لعبة/أكاديمية]
+    A2[ParentSyncService]
+    A3[Accessibility + Usage]
+    A4[Room محلي]
+    A1 --- A2
+    A2 --- A3
+    A2 --- A4
+  end
+  subgraph Server["السيرفر السحابي — Flask على Render"]
+    B1[REST API]
+    B2[(SQLite)]
+    B3[سياسات الحظر]
+    B1 --- B2
+    B1 --- B3
+  end
+  subgraph Parent["جوال ولي الأمر — MY Rana"]
+    C1[لوحة التحكم]
+    C2[تقارير وتنبيهات]
+    C1 --- C2
+  end
+  subgraph Email["Resend → Gmail"]
+    D1[OTP تحقق]
+    D2[كود CHILD]
+    D3[OTP ربط]
+  end
+  A2 <-->|HTTPS + API Key| B1
+  C1 <-->|HTTPS + API Key| B1
+  B1 --> D1
+  B1 --> D2
+  B1 --> D3
+  </pre>
+</div>
+
+<!-- جدول 4.1 معمارية -->
+<div class="box">
+  <p class="caption">جدول 4.1 — طبقات النظام المعماري</p>
+  <table>
+    <tr><th>الطبقة</th><th>المكوّن</th><th>التقنية</th><th>الوظيفة</th></tr>
+    <tr><td>العرض — طفل</td><td>أكاديمية العباقرة</td><td>Kotlin / child flavor</td><td>واجهة مموّهة + مراقبة خلفية</td></tr>
+    <tr><td>العرض — ولي الأمر</td><td>MY Rana</td><td>Kotlin / parent flavor</td><td>لوحة تحكم وتقارير</td></tr>
+    <tr><td>الأعمال</td><td>server.py</td><td>Python Flask</td><td>API، ربط، سياسات، تنبيهات</td></tr>
+    <tr><td>البيانات</td><td>SQLite + Room</td><td>سيرفر + جهاز الطفل</td><td>تخزين ومزامنة</td></tr>
+    <tr><td>خارجي</td><td>Resend</td><td>Gmail API</td><td>ربط آمن ثلاثي المراحل</td></tr>
+  </table>
+</div>
+
+<!-- شكل 4.4 Sequence -->
+<div class="box">
+  <p class="caption">شكل 4.4 — مخطط تسلسل ربط Gmail (Sequence Diagram)</p>
+  <pre class="mermaid">
+sequenceDiagram
+  participant P as تطبيق ولي الأمر
+  participant S as السيرفر Flask
+  participant G as Gmail
+  participant C as تطبيق الطفل
+  P->>S: POST /send-email-code
+  S->>G: رسالة 1 — OTP تحقق
+  G-->>P: 6 أرقام
+  P->>S: تحقق OTP
+  C->>S: POST /register-child-device
+  S->>G: رسالة 2 — CHILD-XXX
+  G-->>P: كود CHILD
+  P->>S: POST /send-link-code
+  S->>G: رسالة 3 — OTP ربط
+  G-->>P: 6 أرقام
+  P->>S: POST /link-child
+  S-->>C: linked=true (polling)
+  C->>C: صلاحيات ثم الأكاديمية
+  </pre>
+</div>
+
+<!-- شكل 3.2 Use Case -->
+<div class="box">
+  <p class="caption">شكل 3.2 — مخطط حالات الاستخدام (Use Case)</p>
+  <pre class="mermaid">
+flowchart LR
+  subgraph Actors
+    MOTHER((ولي الأمر))
+    CHILD((الطفل))
+    SYS((النظام))
+  end
+  subgraph Cases["حالات الاستخدام"]
+    UC1[تحقق Gmail]
+    UC2[تسجيل جهاز الطفل]
+    UC3[ربط الطفل]
+    UC4[عرض لوحة المؤشرات]
+    UC5[حظر تطبيق/موقع]
+    UC6[تنبيه محتوى خطير]
+    UC7[تقرير يومي/أسبوعي]
+    UC8[إعدادات الحدود ووقت النوم]
+  end
+  MOTHER --> UC1
+  MOTHER --> UC3
+  MOTHER --> UC4
+  MOTHER --> UC5
+  MOTHER --> UC7
+  MOTHER --> UC8
+  CHILD --> UC2
+  SYS --> UC6
+  UC2 --> UC3
+  </pre>
+</div>
+
+<!-- جدول 3.1 Use cases -->
+<div class="box">
+  <p class="caption">جدول 3.1 — وصف حالات الاستخدام</p>
+  <table>
+    <tr><th>المعرف</th><th>الحالة</th><th>الفاعل</th><th>المدخلات</th><th>المخرجات</th></tr>
+    <tr><td>UC-01</td><td>تحقق Gmail</td><td>ولي الأمر</td><td>بريد + OTP</td><td>جلسة موثقة</td></tr>
+    <tr><td>UC-02</td><td>تسجيل الطفل</td><td>الطفل</td><td>بريد الأم</td><td>CHILD بالبريد</td></tr>
+    <tr><td>UC-03</td><td>ربط الطفل</td><td>ولي الأمر</td><td>CHILD + OTP</td><td>linked=1</td></tr>
+    <tr><td>UC-04</td><td>لوحة المؤشرات</td><td>ولي الأمر</td><td>child_code</td><td>وقت، تطبيقات، اتصال</td></tr>
+    <tr><td>UC-05</td><td>حظر</td><td>ولي الأمر</td><td>package/host</td><td>سياسة محدثة</td></tr>
+    <tr><td>UC-06</td><td>تنبيه خطر</td><td>النظام</td><td>نص/بحث</td><td>alert للأم</td></tr>
+    <tr><td>UC-07</td><td>تقارير</td><td>ولي الأمر</td><td>تاريخ</td><td>يومي/أسبوعي</td></tr>
+    <tr><td>UC-08</td><td>حدود ونوم</td><td>ولي الأمر</td><td>دقائق/وقت</td><td>تطبيق على الطفل</td></tr>
+  </table>
+</div>
+
+<!-- شكل 3.3 DFD Context -->
+<div class="box">
+  <p class="caption">شكل 3.3 — مخطط السياق DFD (Context Diagram)</p>
+  <pre class="mermaid">
+flowchart TB
+  MOTHER[ولي الأمر]
+  CHILD[الطفل]
+  GMAIL[Gmail]
+  SYS((نظام MY Rana))
+  MOTHER -->|أوامر حظر وإعدادات| SYS
+  SYS -->|تقارير وتنبيهات| MOTHER
+  CHILD -->|استخدام الجهاز ونصوص| SYS
+  SYS -->|واجهة لعبة| CHILD
+  SYS <-->|OTP و CHILD| GMAIL
+  MOTHER <-->|قراءة الرموز| GMAIL
+  </pre>
+</div>
+
+<!-- شكل 3.7 ERD -->
+<div class="box">
+  <p class="caption">شكل 3.7 — نموذج الكيانات ERD</p>
+  <pre class="mermaid">
+erDiagram
+  CHILDREN ||--o{ ALERTS : generates
+  CHILDREN ||--|| DEVICE_POLICIES : has
+  CHILDREN {
+    string child_code PK
+    string name
+    string parent_email
+    int linked
+    int last_seen_ms
+  }
+  DEVICE_POLICIES {
+    string device_id PK
+    text blocked_packages
+    text blocked_hosts
+    text video_keywords
+  }
+  ALERTS {
+    int id PK
+    string child_code FK
+    text message
+    datetime created_at
+  }
+  GUARDIAN_SETTINGS {
+    string parent_email PK
+    int retention_days
+    bool alert_sound_enabled
+  }
+  AUDIT_LOG {
+    int id PK
+    string event
+    text details
+    datetime timestamp
+  }
+  </pre>
+</div>
+
+<!-- جدول ERD -->
+<div class="box">
+  <p class="caption">جدول 3.2 — قاموس البيانات (عناصر رئيسية)</p>
+  <table>
+    <tr><th>العنصر</th><th>النوع</th><th>الجدول</th><th>الوصف</th></tr>
+    <tr><td>child_code</td><td>TEXT PK</td><td>children</td><td>معرف الطفل CHILD-XXX</td></tr>
+    <tr><td>parent_email</td><td>TEXT</td><td>children</td><td>Gmail ولي الأمر</td></tr>
+    <tr><td>linked</td><td>INT</td><td>children</td><td>0=غير مربوط، 1=مربوط</td></tr>
+    <tr><td>blocked_packages</td><td>JSON/TEXT</td><td>device_policies</td><td>تطبيقات محظورة</td></tr>
+    <tr><td>blocked_hosts</td><td>JSON/TEXT</td><td>device_policies</td><td>مواقع محظورة</td></tr>
+    <tr><td>message</td><td>TEXT</td><td>alerts</td><td>نص التنبيه</td></tr>
+    <tr><td>retention_days</td><td>INT</td><td>guardian_settings</td><td>حذف تلقائي 7–90</td></tr>
+  </table>
+</div>
+
+<!-- جدول مقارنة -->
+<div class="box">
+  <p class="caption">جدول 1.1 — مقارنة النظام التقليدي بالنظام المقترح</p>
+  <table>
+    <tr><th>المعيار</th><th>النظام التقليدي</th><th>النظام المقترح MY Rana</th></tr>
+    <tr><td>واجهة الطفل</td><td>تطبيق رقابة واضح</td><td>أكاديمية العباقرة (مموّهة)</td></tr>
+    <tr><td>الربط</td><td>حساب Google فقط</td><td>Gmail — 3 رسائل OTP</td></tr>
+    <tr><td>كلمات خطرة</td><td>محدود / إنجليزي</td><td>100+ عربي/إنجليزي</td></tr>
+    <tr><td>سجل تدقيق</td><td>نادر</td><td>Audit Log</td></tr>
+    <tr><td>التقارير</td><td>أساسية</td><td>يومي + أسبوعي + رسوم</td></tr>
+    <tr><td>التقنية</td><td>مغلق المصدر</td><td>Kotlin + Flask مفتوح</td></tr>
+  </table>
+</div>
+
+<!-- جدول اختبار -->
+<div class="box">
+  <p class="caption">جدول 5.2 — حالات الاختبار</p>
+  <table>
+    <tr><th>ID</th><th>السيناريو</th><th>المتوقع</th><th>الفعلي</th><th>الحالة</th></tr>
+    <tr><td>TC-01</td><td>send-email-code</td><td>OTP بالبريد</td><td>نجح</td><td>Pass</td></tr>
+    <tr><td>TC-02</td><td>register-child</td><td>CHILD بالبريد</td><td>CHILD-88278A25</td><td>Pass</td></tr>
+    <tr><td>TC-03</td><td>link-child (الخطوة 3)</td><td>linked=1</td><td>DNS: Unable to resolve host</td><td>Fail*</td></tr>
+    <tr><td>TC-04</td><td>لوحة المؤشرات</td><td>بيانات usage</td><td>معلق حتى TC-03</td><td>Pending</td></tr>
+    <tr><td>TC-05</td><td>كلمة خطرة</td><td>تنبيه خلال 15ث</td><td>معلق حتى TC-03</td><td>Pending</td></tr>
+    <tr><td>TC-06</td><td>blocklist</td><td>101+ package</td><td>نجح API</td><td>Pass</td></tr>
+    <tr><td>TC-07</td><td>weekly-report</td><td>HTTP 200</td><td>نجح API</td><td>Pass</td></tr>
+    <tr><td>TC-08</td><td>timeout Render</td><td>إيقاظ السيرفر</td><td>Chrome /health أولاً</td><td>Workaround</td></tr>
+    <tr><td>TC-09</td><td>DNS جوال ولي الأمر</td><td>حل onrender.com</td><td>فشل Wi‑Fi؛ أعدي على 4G</td><td>Retest</td></tr>
+  </table>
+  <p class="caption">*TC-03: الكود CHILD-88278A25 ورمز 991110 صحيحان؛ المشكلة شبكة/DNS وليست في التطبيق.</p>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+</script>
+</body>
+</html>

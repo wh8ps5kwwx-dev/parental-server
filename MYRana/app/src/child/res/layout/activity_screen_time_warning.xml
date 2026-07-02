@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/child_bg"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_child_card"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <View
+            android:id="@+id/indicatorDot"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_warning_dot" />
+
+        <TextView
+            android:id="@+id/textWarningTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:textAppearance="@style/ChildText.Section"
+            android:textColor="@color/child_warning"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/textWarningMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:textAppearance="@style/ChildText.Body"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btnWarningOk"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/screen_time_btn_ok" />
+    </LinearLayout>
+</FrameLayout>

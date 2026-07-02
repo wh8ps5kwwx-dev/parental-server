@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ADB: عرض الأجهزة (USB + محاكي)",
+      "type": "shell",
+      "command": "adb devices -l",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: بناء Child Debug",
+      "type": "shell",
+      "command": ".\\gradlew.bat assembleChildDebug --no-daemon",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: بناء Parent Debug",
+      "type": "shell",
+      "command": ".\\gradlew.bat assembleParentDebug --no-daemon",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: تثبيت على محاكيين",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install-to-emulators.ps1",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: تشغيل المحاكيين (Child + Parent)",
+      "type": "shell",
+      "command": "python E:\\parent_monitor_project\\run_android.py start",
+      "problemMatcher": []
+    },
+    {
+      "label": "Android: تشغيل + تثبيت + فتح (اختبار كامل)",
+      "type": "shell",
+      "command": "python E:\\parent_monitor_project\\run_android.py test --start-emulators",
+      "problemMatcher": []
+    },
+    {
+      "label": "Python: تشغيل المحاكيين فقط",
+      "type": "shell",
+      "command": "python E:\\parent_monitor_project\\run_android.py start",
+      "problemMatcher": []
+    },
+    {
+      "label": "Python: محاكيان Android + تثبيت + فتح",
+      "type": "shell",
+      "command": "python E:\\parent_monitor_project\\run_android.py test --start-emulators",
+      "problemMatcher": []
+    },
+    {
+      "label": "Python: حالة الأجهزة (USB)",
+      "type": "shell",
+      "command": "python E:\\parent_monitor_project\\run_android.py status",
+      "problemMatcher": []
+    }
+  ]
+}

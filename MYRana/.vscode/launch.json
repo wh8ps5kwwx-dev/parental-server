@@ -1,0 +1,67 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Android: تشغيل المحاكيين",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        "python E:\\parent_monitor_project\\run_android.py start"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Android: اختبار كامل (محاكيان + تثبيت + فتح)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        "python E:\\parent_monitor_project\\run_android.py test --start-emulators"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Android: تثبيت Child على المحاكي",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        "& { $p='${workspaceFolder}/scripts/emulators.local.properties'; $s='emulator-5554'; if (Test-Path $p) { (Get-Content $p) | ForEach-Object { if ($_ -match 'child\\.serial\\s*=\\s*(.+)') { $s=$Matches[1].Trim() } } }; $env:ANDROID_SERIAL=$s; Set-Location '${workspaceFolder}'; .\\gradlew.bat installChildDebug --no-daemon }"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Android: تثبيت Parent على المحاكي",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command",
+        "& { $p='${workspaceFolder}/scripts/emulators.local.properties'; $s='emulator-5556'; if (Test-Path $p) { (Get-Content $p) | ForEach-Object { if ($_ -match 'parent\\.serial\\s*=\\s*(.+)') { $s=$Matches[1].Trim() } } }; $env:ANDROID_SERIAL=$s; Set-Location '${workspaceFolder}'; .\\gradlew.bat installParentDebug --no-daemon }"
+      ],
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Android: تثبيت الطفل + الأم (محاكيان)",
+      "configurations": [
+        "Android: تثبيت Child على المحاكي",
+        "Android: تثبيت Parent على المحاكي"
+      ],
+      "stopAll": true
+    }
+  ]
+}
