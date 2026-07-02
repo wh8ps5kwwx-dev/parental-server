@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════════
+  Visual Studio Code + Python + محاكيان
+═══════════════════════════════════════════════════════
+
+1) افتحي:  MYRana-Full.code-workspace  (مجلدان: Android + Python)
+
+2) شغّلي محاكيين من Device Manager ثم:
+     adb devices
+
+3) انسخي:
+     scripts\emulators.local.properties.example
+   إلى:
+     scripts\emulators.local.properties
+   وعدّلي:
+     child.serial=emulator-5554
+     parent.serial=emulator-5556
+
+4) من VS Code (مجلد Android):
+   • Terminal → Run Task → Android: تثبيت على محاكيين
+   • أو Run and Debug → Android: تثبيت الطفل + الأم
+
+5) من VS Code (مجلد Python E:\parent_monitor_project):
+   • Run and Debug → Python: تطبيق الأم (mother-app)
+   • Run and Debug → Python: تطبيق الطفل Kivy (child-app)
+   • مركّب: Python: الأم + الطفل (نافذتان على الحاسوب)
+
+ملاحظة:
+  • Kotlin (MY Rana - طفل / ولي الأمر) → يعمل داخل محاكي Android
+  • Python Kivy → نافذة على Windows (ليس داخل المحاكي)
+  • نفس السيرفر: https://parental-server-4mms.onrender.com
+
+متطلبات Python (مرة واحدة):
+  pip install -r E:\parent_monitor_project\mother-app\requirements.txt
+  pip install -r E:\parent_monitor_project\child-app\requirements.txt
+  pip install debugpy
+
+═══════════════════════════════════════════════════════
+  Android Studio — محاكيان
+═══════════════════════════════════════════════════════
+
+المشروع الواحد يبني تطبيقين:
+
+  • MY Rana - طفل       →  com.example.myrana.child
+  • MY Rana - ولي الأمر →  com.example.myrana.parent
+
+  Python = تشغيل المحاكيين + تثبيت (من الحاسوب)
+  محاكي 1 Android = طفل (صلاحيات + مراقبة)
+  محاكي 2 Android = ولي أمر (واجهة Kotlin)
+
+  cd E:\parent_monitor_project
+  python run_android.py test --start-emulators
+
+───────────────────────────────────────────────────────
+0) Python + محاكي صلاحيات (الطريقة الجديدة)
+───────────────────────────────────────────────────────
+  1) فعّلي USB debugging أو شغّلي محاكيين
+  2) adb devices
+  3) عدّلي E:\parent_monitor_project\devices.local.json
+     (child.serial / parent.serial — أو اتركيهما فارغين مع جهازين)
+  4) PowerShell:
+       cd E:\parent_monitor_project
+       python run_android.py all
+     أو: run_emulators.bat
+
+  Python: تثبيت وفتح التطبيق فقط
+  Kotlin: صلاحيات + ربط الطفل/ولي الأمر داخل Android
+
+───────────────────────────────────────────────────────
+1) إنشاء محاكيين
+───────────────────────────────────────────────────────
+  Device Manager → Create Device (مثلاً Pixel 4) مرتين:
+    - Emulator_Child
+    - Emulator_Parent
+
+───────────────────────────────────────────────────────
+2) تشغيل من Android Studio
+───────────────────────────────────────────────────────
+  Run ▼  اختر:
+
+    • Child (طفل)         → المحاكي الأول
+    • Parent (ولي الأمر)  → المحاكي الثاني
+
+  أو PowerShell:
+    .\scripts\install-to-emulators.ps1
+
+───────────────────────────────────────────────────────
+3) ربط التجربة
+───────────────────────────────────────────────────────
+  محاكي الطفل: بريد + رمز → لعبة (احفظ child_code)
+  محاكي الأم:  بريد + رمز → ربط الطفل → حظر
+
+  السيرفر: E:\parent_monitor_project\server.py على Render
+
+───────────────────────────────────────────────────────
+4) Build Variant
+───────────────────────────────────────────────────────
+  childDebug  |  parentDebug
+
+═══════════════════════════════════════════════════════

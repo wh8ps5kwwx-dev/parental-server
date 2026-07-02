@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/parent_title"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textStepIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textSize="13sp" />
+
+        <!-- خطوة 1: بريد ولي الأمر -->
+        <LinearLayout
+            android:id="@+id/stepLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/inputGuardianEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/parent_hint_email"
+                android:inputType="textEmailAddress" />
+
+            <Spinner
+                android:id="@+id/spinnerGuardianRole"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+
+            <Button
+                android:id="@+id/btnSendEmailCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_send_code" />
+        </LinearLayout>
+
+        <!-- خطوة 2: رمز البريد -->
+        <LinearLayout
+            android:id="@+id/stepVerify"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/inputEmailCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/parent_hint_email_code"
+                android:inputType="number"
+                android:maxLength="6" />
+
+            <Button
+                android:id="@+id/btnVerifyEmail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_verify" />
+        </LinearLayout>
+
+        <!-- خطوة 3: إضافة الطفل (الاسم) -->
+        <LinearLayout
+            android:id="@+id/stepAddChild"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_add_child_subtitle"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/inputAddChildName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/parent_hint_child_name" />
+
+            <EditText
+                android:id="@+id/inputAddChildAge"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/parent_hint_child_age"
+                android:inputType="number"
+                android:maxLength="2" />
+
+            <Button
+                android:id="@+id/btnContinueToLink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_continue_to_link" />
+        </LinearLayout>
+
+        <!-- خطوة 4: ربط جهاز الطفل -->
+        <LinearLayout
+            android:id="@+id/stepLink"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_link_subtitle"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/inputChildCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/parent_hint_child_code"
+                android:textIsSelectable="true" />
+
+            <Button
+                android:id="@+id/btnPasteChildCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_paste_child_code" />
+
+            <Button
+                android:id="@+id/btnAutoLink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_auto_link"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/inputDeviceVerify"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/parent_hint_verify_code"
+                android:inputType="number"
+                android:maxLength="6" />
+
+            <Button
+                android:id="@+id/btnSendLinkCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_send_link_code" />
+
+            <Button
+                android:id="@+id/btnVerifyDevice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_verify_device" />
+        </LinearLayout>
+
+        <!-- خطوة 4ب: تأكيد الربط -->
+        <LinearLayout
+            android:id="@+id/stepLinkConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textLinkVerifiedInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#1A000000"
+                android:padding="12dp"
+                android:textIsSelectable="true"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/textPendingChildName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnLinkChild"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_link" />
+        </LinearLayout>
+
+        <!-- خطوة 5: التحكم -->
+        <LinearLayout
+            android:id="@+id/stepControl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textLinkedChild"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_select_active_child"
+                android:textSize="13sp" />
+
+            <Spinner
+                android:id="@+id/spinnerChildren"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/textDashboardMini"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#1A4CAF50"
+                android:padding="10dp"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/textPermissionsMini"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#1AFF9800"
+                android:padding="10dp"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btnAddAnotherChild"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_add_another_child" />
+
+            <TextView
+                android:id="@+id/textAlertsHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_search_alert_hint"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/textAlertsPreview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#1A000000"
+                android:padding="10dp"
+                android:text="@string/parent_alerts_waiting"
+                android:textIsSelectable="true"
+                android:textSize="13sp"
+                android:visibility="visible" />
+
+            <EditText
+                android:id="@+id/inputTarget"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/parent_hint_target" />
+
+            <Button
+                android:id="@+id/btnSendMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_send_message" />
+
+            <Button
+                android:id="@+id/btnBlockSite"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_block_site" />
+
+            <Button
+                android:id="@+id/btnBlockApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_block_app" />
+
+            <Button
+                android:id="@+id/btnFreezeApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_freeze_app" />
+
+            <Button
+                android:id="@+id/btnAllow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_allow" />
+
+            <EditText
+                android:id="@+id/inputScheduleStart"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/parent_hint_schedule_start"
+                android:inputType="time" />
+
+            <EditText
+                android:id="@+id/inputScheduleEnd"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/parent_hint_schedule_end"
+                android:inputType="time" />
+
+            <Button
+                android:id="@+id/btnScheduleFreeze"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_schedule_freeze" />
+
+            <Button
+                android:id="@+id/btnApplyDefaultBlocklist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_btn_apply_blocklist" />
+
+            <Button
+                android:id="@+id/btnViewAlerts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_view_alerts" />
+
+            <Button
+                android:id="@+id/btnOpenSettings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_open_settings" />
+
+            <Button
+                android:id="@+id/btnOpenScreenTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_screen_time" />
+
+            <Button
+                android:id="@+id/btnRequestUsageReport"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_request_usage" />
+
+            <TextView
+                android:id="@+id/textUsageReportTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_usage_report_title"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/textUsageEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_usage_empty"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerUsage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/textParentMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textSize="14sp" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,5 @@
+# لوحة تحكم الوالدين (Kivy + SQLite + REST)
+# عدّل عنوان الخادم في config.py ليطابق تطبيق أندرويد (SERVER_BASE_URL).
+
+kivy>=2.2.0
+requests>=2.31.0

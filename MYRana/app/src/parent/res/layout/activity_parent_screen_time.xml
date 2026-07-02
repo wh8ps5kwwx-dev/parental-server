@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/parent_screen_time_title"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <!-- شريط الطفل -->
+        <LinearLayout
+            android:id="@+id/cardChildStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="#1A4CAF50"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <View
+                android:id="@+id/dotOnline"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_gravity="center_vertical"
+                android:background="#9E9E9E" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textChildName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textChildDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/textChildCode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/textLastUpdate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/textChildPermissions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/parent_dashboard_title"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/labelTodayTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/parent_bar_today_time" />
+
+        <ProgressBar
+            android:id="@+id/barTodayTime"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+
+        <TextView
+            android:id="@+id/textTodayTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/labelAppsOpened"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/parent_bar_apps_opened" />
+
+        <ProgressBar
+            android:id="@+id/barAppsOpened"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+
+        <TextView
+            android:id="@+id/textAppsOpened"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/textAlertsStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/textEducationalStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/parent_chart_daily_usage"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <com.example.myrana.parent.ui.SimpleBarChartView
+            android:id="@+id/chartDailyUsage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/parent_chart_top_apps"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <com.example.myrana.parent.ui.SimpleBarChartView
+            android:id="@+id/chartTopApps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/parent_screen_time_settings"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/inputWarnMinutes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/parent_hint_warn_minutes"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/inputStrongWarnMinutes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_strong_warn"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/inputBlockMinutes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_block_minutes"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/inputMaxApps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_max_apps"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/inputSleepStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_sleep_start"
+            android:inputType="time" />
+
+        <EditText
+            android:id="@+id/inputSleepEnd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_sleep_end"
+            android:inputType="time" />
+
+        <EditText
+            android:id="@+id/inputMonitoredApps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_monitored_apps"
+            android:inputType="textMultiLine"
+            android:minLines="2" />
+
+        <EditText
+            android:id="@+id/inputUnlimitedApps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/parent_hint_unlimited_apps"
+            android:inputType="textMultiLine"
+            android:minLines="2" />
+
+        <Button
+            android:id="@+id/btnSavePolicy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/parent_btn_save_screen_time" />
+
+        <Button
+            android:id="@+id/btnDailyReport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/parent_btn_daily_report" />
+
+        <Button
+            android:id="@+id/btnWeeklyReport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/parent_btn_weekly_report" />
+
+        <TextView
+            android:id="@+id/textReport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="#1A000000"
+            android:padding="10dp"
+            android:textIsSelectable="true"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/textScreenTimeMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textSize="14sp" />
+    </LinearLayout>
+</ScrollView>

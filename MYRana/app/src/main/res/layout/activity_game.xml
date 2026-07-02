@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_game_gradient"
+    tools:context=".ui.GameActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/game_title"
+            android:textColor="@android:color/white"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/game_subtitle"
+            android:textColor="#CCFFFFFF"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/textScore"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_game_chip"
+                android:gravity="center"
+                android:padding="10dp"
+                android:text="@string/game_score_zero"
+                android:textColor="@android:color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/textStreak"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_game_chip"
+                android:gravity="center"
+                android:padding="10dp"
+                android:text="@string/game_streak_zero"
+                android:textColor="#FFFFD54F"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/textLives"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_game_chip"
+                android:gravity="center"
+                android:padding="10dp"
+                android:text="@string/game_lives_default"
+                android:textColor="@android:color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/progressTimer"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="14dp"
+            android:max="100"
+            android:progress="100"
+            android:progressTint="#FF80DEEA"
+            android:progressBackgroundTint="#33FFFFFF" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_game_card"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textLevel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/game_level"
+                    android:textColor="#E0FFFFFF"
+                    android:textSize="16sp" />
+
+                <View
+                    android:id="@+id/viewColorSwatch"
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    android:layout_marginTop="16dp"
+                    android:background="@drawable/bg_color_swatch" />
+
+                <TextView
+                    android:id="@+id/textQuestion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="@string/game_press_start"
+                    android:textColor="@android:color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textFeedback"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:textColor="#FFFFAB40"
+                    android:textSize="18sp"
+                    android:visibility="gone"
+                    tools:text="رائع!"
+                    tools:visibility="visible" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <GridLayout
+            android:id="@+id/gridColors"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:columnCount="2"
+            android:rowCount="2"
+            android:useDefaultMargins="true"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRed"
+                style="@style/Widget.MYRana.GameColorButton"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_columnWeight="1"
+                android:layout_gravity="fill"
+                app:backgroundTint="#E53935"
+                android:text="@string/color_red" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBlue"
+                style="@style/Widget.MYRana.GameColorButton"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_columnWeight="1"
+                android:layout_gravity="fill"
+                app:backgroundTint="#1E88E5"
+                android:text="@string/color_blue" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGreen"
+                style="@style/Widget.MYRana.GameColorButton"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_columnWeight="1"
+                android:layout_gravity="fill"
+                app:backgroundTint="#43A047"
+                android:text="@string/color_green" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnYellow"
+                style="@style/Widget.MYRana.GameColorButton"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_columnWeight="1"
+                android:layout_gravity="fill"
+                app:backgroundTint="#FDD835"
+                android:textColor="#212121"
+                android:text="@string/color_yellow" />
+        </GridLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/game_start"
+            android:textSize="18sp"
+            app:cornerRadius="28dp"
+            app:backgroundTint="#FFFF6F00" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/overlayStart"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC000000"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎨"
+                android:textSize="64sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/game_welcome"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/game_rules"
+                android:textColor="#CCFFFFFF"
+                android:textSize="15sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlayOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
+                android:text="@string/game_play_now"
+                android:textSize="18sp"
+                app:cornerRadius="28dp"
+                app:backgroundTint="#FF00E676" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/overlayGameOver"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#DD000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🏆"
+                android:textSize="56sp" />
+
+            <TextView
+                android:id="@+id/textGameOverTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/game_over"
+                android:textColor="@android:color/white"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/textFinalScore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textColor="#FFFFD54F"
+                android:textSize="20sp"
+                tools:text="النقاط: 120" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPlayAgain"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="20dp"
+                android:text="@string/game_play_again"
+                app:cornerRadius="28dp"
+                app:backgroundTint="#FF00E676" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

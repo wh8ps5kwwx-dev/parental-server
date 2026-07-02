@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_game_gradient"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/academy_title"
+            android:textColor="@android:color/white"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textAcademyStats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textColor="#EEFFFFFF"
+            android:textSize="15sp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:columnCount="2"
+            android:useDefaultMargins="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMath"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:text="@string/academy_math" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScience"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:text="@string/academy_science" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogic"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:text="@string/academy_logic" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCity"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:text="@string/academy_city" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRewards"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:text="@string/academy_rewards" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRefresh"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:text="@string/academy_refresh" />
+        </GridLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/academy_background_hint"
+            android:textColor="#BBFFFFFF"
+            android:textSize="13sp" />
+    </LinearLayout>
+</ScrollView>
