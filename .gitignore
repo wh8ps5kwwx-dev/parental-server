@@ -1,0 +1,35 @@
+.env
+*.db
+__pycache__/
+*.pyc
+devices.local.json
+parent_control.db
+
+# Android / Gradle
+.gradle/
+MYRana/.gradle/
+MYRana/build/
+MYRana/app/build/
+MYRana/local.properties
+MYRana/.idea/
+
+# Kivy / Python build
+*.egg-info/
+dist/
+build/
+.bin/
+
+# OS / IDE
+*.lnk
+.DS_Store
+Thumbs.db
+.vscode/
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Archives (rebuilt locally)
+mother-app/myrana_mother_phone.zip
+mother-app/phone_bundle/
+
+# Unrelated VM/GNS3 coursework (not part of MYRana)
+Network Security managament/

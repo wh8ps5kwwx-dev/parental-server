@@ -1,2 +1,4 @@
 kivy
 requests
+arabic-reshaper
+python-bidi
