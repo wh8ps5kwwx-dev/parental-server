@@ -44,7 +44,11 @@ class AcademyMenuActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_academy_menu)
         ChildProjectRuntime.activateMonitoring(this)
-        ChildProjectRuntime.activateAcademyEngine(this)
+        try {
+            ChildProjectRuntime.activateAcademyEngine(this)
+        } catch (e: Exception) {
+            android.util.Log.e("AcademyMenu", "Python engine failed: ${e.message}")
+        }
         bindMenu()
         refreshStats()
         AcademyReporter.sendReport(this, "academy_opened", "فتح أكاديمية العباقرة")
@@ -92,7 +96,10 @@ class AcademyMenuActivity : AppCompatActivity() {
     }
 
     private fun refreshStats() {
-        findViewById<TextView>(R.id.textAcademyStats).text =
+        findViewById<TextView>(R.id.textAcademyStats).text = try {
             AcademyProgressStore.statsLine(this)
+        } catch (e: Exception) {
+            getString(R.string.academy_stats_fallback)
+        }
     }
 }

@@ -128,6 +128,7 @@
     <string name="academy_wrong">إجابة خاطئة ❌ الصحيح: %1$s</string>
     <string name="academy_level_up">رائع! وصلتِ للمستوى %1$d 🎉</string>
     <string name="academy_city_empty">المدينة فارغة الآن 🏜️</string>
+    <string name="academy_stats_fallback">🏆 المستوى: 1 — ابدأي أول تحدي</string>
 
     <string name="game_title">أكاديمية العباقرة</string>
     <string name="game_subtitle">تعلّم وطابق الألوان بسرعة!</string>

@@ -36,9 +36,13 @@ class MyRanaApp : Application() {
         super.onCreate()
         AppDatabase.getInstance(this)
         if (!isChildApp()) return
-        if (ChildProjectRuntime.isMonitoringOperational(this)) {
-            ChildProjectRuntime.activateMonitoring(this)
-            registerNetworkFlush()
+        try {
+            if (ChildProjectRuntime.isMonitoringOperational(this)) {
+                ChildProjectRuntime.activateMonitoring(this)
+                registerNetworkFlush()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MyRanaApp", "Monitoring start failed: ${e.message}")
         }
     }
 

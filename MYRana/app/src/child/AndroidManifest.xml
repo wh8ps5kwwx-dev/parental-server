@@ -6,6 +6,7 @@
             android:name=".ui.PermissionsLauncherActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:noHistory="true"
             android:theme="@style/Theme.MYRana.Child">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
