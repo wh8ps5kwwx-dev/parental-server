@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import com.example.myrana.enforcement.MonitoredAppRegistry
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.session.ChildSession
 import com.example.myrana.ui.ScreenTimeLimitActivity
@@ -39,6 +40,7 @@ class ScreenTimeEnforcer(private val context: Context) {
     }
 
     fun enforceTimeLimit(packageName: String, totalSeconds: Long, policy: ScreenTimePolicy) {
+        if (MonitoredAppRegistry.isNeverBlockPackage(packageName)) return
         val now = System.currentTimeMillis()
         val last = lastEnforcedAt[packageName] ?: 0L
         if (now - last < ENFORCE_COOLDOWN_MS) return
@@ -70,6 +72,7 @@ class ScreenTimeEnforcer(private val context: Context) {
     }
 
     fun enforceMaxAppsOpen(packageName: String, policy: ScreenTimePolicy) {
+        if (MonitoredAppRegistry.isNeverBlockPackage(packageName)) return
         val now = System.currentTimeMillis()
         val key = "maxapps:$packageName"
         val last = lastEnforcedAt[key] ?: 0L
@@ -101,6 +104,7 @@ class ScreenTimeEnforcer(private val context: Context) {
     }
 
     fun enforceSleepBlock(packageName: String) {
+        if (MonitoredAppRegistry.isNeverBlockPackage(packageName)) return
         val now = System.currentTimeMillis()
         val key = "sleep:$packageName"
         val last = lastEnforcedAt[key] ?: 0L

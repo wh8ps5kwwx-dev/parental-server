@@ -1,5 +1,6 @@
 package com.example.myrana.screentime
 
+import com.example.myrana.enforcement.MonitoredAppRegistry
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -26,6 +27,9 @@ data class ScreenTimePolicy(
     fun blockSeconds(): Long = blockMinutes.coerceAtLeast(strongWarnMinutes + 1) * 60L
 
     fun isMonitored(packageName: String): Boolean {
+        if (MonitoredAppRegistry.isNeverBlockPackage(packageName)) {
+            return false
+        }
         val pkg = packageName.lowercase()
         if (pkg.startsWith("com.example.myrana")) return false
         if (unlimitedPackages.any { it.equals(pkg, ignoreCase = true) }) return false

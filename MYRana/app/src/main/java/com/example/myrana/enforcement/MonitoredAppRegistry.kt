@@ -6,18 +6,33 @@ package com.example.myrana.enforcement
  */
 object MonitoredAppRegistry {
 
-    /** لا يُحظر أبداً — مثبّت التطبيقات وإعدادات النظام. */
+    /** لا يُحظر أبداً — مثبّت التطبيقات وإعدادات النظام ومدير الملفات. */
     fun isNeverBlockPackage(packageName: String): Boolean {
         val pkg = packageName.lowercase().trim()
         if (pkg.isBlank()) return false
+        if (pkg == "android") return true
         if (pkg.startsWith("com.example.myrana")) return true
         if (systemExcludePrefixes.any { pkg.startsWith(it) }) return true
+        if (neverBlockExact.contains(pkg)) return true
         if (pkg.contains("packageinstaller")) return true
         if (pkg.contains("documentsui")) return true
+        if (pkg.contains("intentresolver")) return true
+        if (pkg.contains("filemanager") || pkg.contains("fileexplorer") || pkg.contains("myfiles")) return true
         if (pkg == "com.android.vending" || pkg == "com.sec.android.app.samsungapps") return true
+        if (pkg.contains("permissioncontroller")) return true
         if (pkg.contains("installer") && pkg.startsWith("com.")) return true
         return false
     }
+
+    private val neverBlockExact: Set<String> = setOf(
+        "com.google.android.apps.nbu.files",
+        "com.google.android.documentsui",
+        "com.android.providers.downloads.ui",
+        "com.sec.android.app.myfiles",
+        "com.mi.android.globalfileexplorer",
+        "com.coloros.filemanager",
+        "com.huawei.android.internal.app",
+    )
 
     val messagingPackages: Set<String> = setOf(
         "com.whatsapp",

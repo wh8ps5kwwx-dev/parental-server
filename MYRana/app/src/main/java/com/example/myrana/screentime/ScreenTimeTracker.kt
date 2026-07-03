@@ -1,6 +1,7 @@
 package com.example.myrana.screentime
 
 import android.content.Context
+import com.example.myrana.enforcement.MonitoredAppRegistry
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -40,7 +41,11 @@ class ScreenTimeTracker private constructor(context: Context) {
 
         if (fg != null && fg != lastForeground && policy.maxOpenApps > 0) {
             val key = fg.lowercase()
-            if (!fg.startsWith("com.example.myrana") && policy.isMonitored(fg) && !appsOpenedToday.contains(key)) {
+            if (!MonitoredAppRegistry.isNeverBlockPackage(fg) &&
+                !fg.startsWith("com.example.myrana") &&
+                policy.isMonitored(fg) &&
+                !appsOpenedToday.contains(key)
+            ) {
                 if (appsOpenedToday.size >= policy.maxOpenApps) {
                     enforcer.enforceMaxAppsOpen(fg, policy)
                     lastForeground = null
