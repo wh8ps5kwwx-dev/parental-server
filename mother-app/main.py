@@ -1,4 +1,4 @@
-"""MY Rana — تطبيق الأم (Pydroid 3). نفس تدفق تطبيق Android: بريد → طفل → ربط → تحكم."""
+"""حماية الأطفال — تطبيق الأم (Pydroid 3). نفس تدفق تطبيق Android: بريد → طفل → ربط → تحكم."""
 from __future__ import annotations
 
 import re
@@ -108,7 +108,7 @@ class LoginScreen(Screen):
 
         layout.add_widget(
             Label(
-                text="MY Rana",
+                text="حماية الأطفال",
                 font_size=28,
                 bold=True,
                 color=UI_PRIMARY,

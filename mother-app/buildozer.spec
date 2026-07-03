@@ -1,5 +1,5 @@
 [app]
-title = MYRana Mother
+title = حماية الأطفال
 package.name = myrana_mother
 package.domain = org.myrana
 source.dir = .

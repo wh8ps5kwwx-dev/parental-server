@@ -4,8 +4,8 @@
 
 | الجهاز | الرابط |
 |--------|--------|
-| **جوال الطفل** — أكاديمية العباقرة | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-child-debug.apk |
-| **جوال الأم** — MY Rana | https://media.githubusercontent.com/media/wh8ps5kwwx-dev/parental-server/main/releases/app-parent-debug.apk |
+| **جوال الطفل** — أكاديمية العباقرة | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-child-debug.apk |
+| **جوال الأم** — حماية الأطفال | https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-parent-debug.apk |
 
 ### خطوات التثبيت
 1. افتحي الرابط في **Chrome** على الجوال

@@ -54,7 +54,7 @@ parental-server/
 ├── server.py              # Flask API (Render entry point)
 ├── requirements.txt
 ├── Procfile
-├── releases/              # APK downloads (GitHub raw links)
+├── MYRana/releases/       # APK downloads (latest — use these links)
 │   ├── app-child-debug.apk
 │   └── app-parent-debug.apk
 ├── MYRana/                # Android project (child + parent flavors)
@@ -90,8 +90,8 @@ python server.py
 
 | App | Link |
 |-----|------|
-| **Child** | [app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk) |
-| **Parent** | [app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk) |
+| **Child** | [app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-child-debug.apk) |
+| **Parent** | [app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-parent-debug.apk) |
 
 > Use `github.com/.../raw/...` links — **not** `media.githubusercontent.com`.
 

@@ -8,8 +8,8 @@
 
 | الجهاز | الرابط |
 |--------|--------|
-| **جوال الطفل** | [تحميل app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk) |
-| **جوال الأم** | [تحميل app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk) |
+| **جوال الطفل** | [تحميل app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-child-debug.apk) |
+| **جوال الأم** | [تحميل app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-parent-debug.apk) |
 
 > اسمحي بتثبيت من **مصادر غير معروفة** في إعدادات الجوال.
 
@@ -39,6 +39,6 @@
 ## بناء محلي
 
 ```powershell
-cd c:\Users\rannn\AndroidStudioProjects\MYRana
+cd E:\parent_monitor_project\MYRana
 .\gradlew assembleChildDebug assembleParentDebug
 ```

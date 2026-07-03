@@ -117,9 +117,9 @@
     <string name="parent_permissions_status">الاستخدام %1$s | الوصول %2$s | الإشعارات %3$s | البطارية %4$s</string>
 
     <!-- رأس التطبيق واللوحة الجديدة -->
-    <string name="parent_header_title">MY Rana</string>
+    <string name="parent_header_title">حماية الأطفال</string>
     <string name="parent_header_subtitle">رقابة أبوية ذكية — تحكّمي بأمان طفلك</string>
-    <string name="parent_app_name">MY Rana</string>
+    <string name="parent_app_name">حماية الأطفال</string>
     <string name="parent_app_role">تطبيق ولي الأمر</string>
     <string name="parent_app_version_label">الإصدار %1$s</string>
     <string name="parent_link_page_title">ربط جهاز الطفل</string>

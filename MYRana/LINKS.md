@@ -6,8 +6,8 @@
 
 | الجهاز | اضغطي للتحميل |
 |--------|----------------|
-| **جوال الطفل** — أكاديمية العباقرة | [app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk) |
-| **جوال الأم** — MY Rana ولي الأمر | [app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk) |
+| **جوال الطفل** — أكاديمية العباقرة | [app-child-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-child-debug.apk) |
+| **جوال الأم** — حماية الأطفال | [app-parent-debug.apk](https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-parent-debug.apk) |
 
 > بعد التحميل: فعّلي **مصادر غير معروفة** → ثبّتي APK.
 
@@ -34,5 +34,5 @@
 
 ## محلياً (نسخة احتياطية)
 
-- طفل: `c:\Users\rannn\AndroidStudioProjects\MYRana\releases\myrana-child-debug.apk`
-- أم: `c:\Users\rannn\AndroidStudioProjects\MYRana\releases\myrana-parent-debug.apk`
+- طفل: `MYRana\app\build\outputs\apk\child\debug\app-child-debug.apk`
+- أم: `MYRana\app\build\outputs\apk\parent\debug\app-parent-debug.apk`

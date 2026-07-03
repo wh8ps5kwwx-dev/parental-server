@@ -1,23 +1,37 @@
-# رفع APK إلى GitHub من القرص E: (المستودع: E:\parental-server-deploy)
+# رفع APK إلى GitHub — من مجلد المشروع الحالي
 $ErrorActionPreference = "Stop"
-$src = "C:\Users\rannn\AndroidStudioProjects\MYRana\releases"
-$repo = "E:\parental-server-deploy"
+$root = Split-Path $PSScriptRoot -Parent
+$myrana = Join-Path $root "MYRana"
+$childSrc = Join-Path $myrana "app\build\outputs\apk\child\debug\app-child-debug.apk"
+$parentSrc = Join-Path $myrana "app\build\outputs\apk\parent\debug\app-parent-debug.apk"
+$releases = Join-Path $myrana "releases"
 
-foreach ($f in @("myrana-child-debug.apk", "myrana-parent-debug.apk")) {
-    if (-not (Test-Path "$src\$f")) {
-        Write-Host "بناء APK أولاً: cd MYRana; .\gradlew assembleChildDebug assembleParentDebug"
+foreach ($f in @($childSrc, $parentSrc)) {
+    if (-not (Test-Path $f)) {
+        Write-Host "بناء APK أولاً:"
+        Write-Host "  cd MYRana"
+        Write-Host "  .\gradlew assembleChildDebug assembleParentDebug"
         exit 1
     }
 }
 
-New-Item -ItemType Directory -Force -Path "$repo\releases" | Out-Null
-Copy-Item "$src\myrana-child-debug.apk" "$repo\releases\app-child-debug.apk" -Force
-Copy-Item "$src\myrana-parent-debug.apk" "$repo\releases\app-parent-debug.apk" -Force
+New-Item -ItemType Directory -Force -Path $releases | Out-Null
+Copy-Item $childSrc (Join-Path $releases "app-child-debug.apk") -Force
+Copy-Item $parentSrc (Join-Path $releases "app-parent-debug.apk") -Force
 
-Set-Location $repo
-git add releases/app-child-debug.apk releases/app-parent-debug.apk .gitignore .gitattributes README.md MYRana/README.md MYRana/LINKS.md "MYRana/تشغيل_جوالين.md"
-git commit -m "Restore APK download links in releases without LFS" 2>$null
-git push origin main
-Write-Host "تم. جرّبي:"
-Write-Host "https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-child-debug.apk"
-Write-Host "https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/releases/app-parent-debug.apk"
+Set-Location $root
+git add MYRana/releases/app-child-debug.apk MYRana/releases/app-parent-debug.apk `
+    MYRana/LINKS.md MYRana/README.md "MYRana/تشغيل_جوالين.md" README.md ANDROID_README.md MYRana/push-apk-to-github.ps1
+
+$msg = "Update APK releases and download links to MYRana/releases (latest build)"
+git commit -m $msg 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "لا تغييرات جديدة للرفع أو فشل الـ commit."
+} else {
+    git push origin main
+}
+
+Write-Host ""
+Write-Host "روابط التحميل المحدّثة:"
+Write-Host "https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-child-debug.apk"
+Write-Host "https://github.com/wh8ps5kwwx-dev/parental-server/raw/main/MYRana/releases/app-parent-debug.apk"
