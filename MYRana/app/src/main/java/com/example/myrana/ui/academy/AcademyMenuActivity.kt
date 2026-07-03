@@ -9,6 +9,7 @@ import com.example.myrana.R
 import com.example.myrana.academy.AcademyProgressStore
 import com.example.myrana.academy.AcademyReporter
 import com.example.myrana.academy.ChallengeType
+import com.example.myrana.permissions.ChildPermissionEvaluator
 import com.example.myrana.permissions.ChildPermissionsGate
 import com.example.myrana.permissions.ChildProjectRuntime
 import com.example.myrana.session.ChildSession
@@ -29,11 +30,12 @@ class AcademyMenuActivity : AppCompatActivity() {
             finish()
             return
         }
-        if (!ChildPermissionsGate.isPermissionsFlowComplete(this)) {
+        if (!ChildPermissionEvaluator.canEnterGame(this)) {
             ChildUiRouter.openPermissions(this)
             finish()
             return
         }
+        ChildPermissionsGate.markPermissionsFlowComplete(this)
 
         onBackPressedDispatcher.addCallback(
             this,

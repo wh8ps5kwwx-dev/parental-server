@@ -2,7 +2,7 @@ package com.example.myrana.ui
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.example.myrana.permissions.ChildPermissionsGate
+import com.example.myrana.permissions.ChildPermissionEvaluator
 import com.example.myrana.session.ChildSession
 
 /**
@@ -15,7 +15,7 @@ class MonitoringStatusActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         when {
             !ChildSession.isSetupComplete(this) -> ChildUiRouter.openRegistration(this)
-            !ChildPermissionsGate.isPermissionsFlowComplete(this) -> ChildUiRouter.openPermissions(this)
+            !ChildPermissionEvaluator.canEnterGame(this) -> ChildUiRouter.openPermissions(this)
             else -> ChildUiRouter.openAcademicGame(this)
         }
         finish()

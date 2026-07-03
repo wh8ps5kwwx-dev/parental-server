@@ -12,6 +12,8 @@ import android.widget.ProgressBar
 
 import android.widget.TextView
 
+import androidx.core.content.ContextCompat
+
 import com.example.myrana.R
 
 import com.example.myrana.data.remote.GuardianApi
@@ -62,7 +64,9 @@ object ParentDashboardBinder {
 
             setTextColor(
 
-                activity.getColor(
+                ContextCompat.getColor(
+
+                    activity,
 
                     if (online) R.color.parent_online else R.color.parent_offline,
 

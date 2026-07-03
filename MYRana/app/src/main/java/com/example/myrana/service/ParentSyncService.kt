@@ -52,7 +52,12 @@ class ParentSyncService : Service() {
         if (intent?.action == ACTION_STOP) {
             syncJob?.cancel()
             enforceJob?.cancel()
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
             stopSelf()
             return START_NOT_STICKY
         }

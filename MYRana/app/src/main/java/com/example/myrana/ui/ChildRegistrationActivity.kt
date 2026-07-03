@@ -13,12 +13,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.myrana.R
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.data.remote.dto.RegisterChildRequest
 import com.example.myrana.device.DeviceIdentity
-import com.example.myrana.permissions.ChildPermissionsGate
+import com.example.myrana.permissions.ChildPermissionEvaluator
 import com.example.myrana.session.ChildSession
 import com.example.myrana.util.ChildCodeNormalizer
 import kotlinx.coroutines.Dispatchers
@@ -206,16 +207,12 @@ class ChildRegistrationActivity : AppCompatActivity() {
     }
 
     private fun finishSetupAndOpenGame() {
-        startActivity(
-            ChildPermissionsActivity.intent(this).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-        )
+        startActivity(ChildUiRouter.gameIntent(this))
         finish()
     }
 
     private fun goToPermissionsOrGame() {
-        if (ChildPermissionsGate.isPermissionsFlowComplete(this)) {
+        if (ChildPermissionEvaluator.canEnterGame(this)) {
             ChildUiRouter.openAcademicGame(this)
         } else {
             ChildUiRouter.openPermissions(this)
@@ -226,7 +223,10 @@ class ChildRegistrationActivity : AppCompatActivity() {
     private fun showMessage(msg: String, isError: Boolean) {
         textMessage.text = msg
         textMessage.setTextColor(
-            getColor(if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark)
+            ContextCompat.getColor(
+                this,
+                if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark,
+            ),
         )
     }
 }

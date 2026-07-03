@@ -47,7 +47,6 @@ class PermissionsLauncherActivity : AppCompatActivity() {
 
     private fun route() {
         ChildUiRouter.routeFromLauncher(this)
-        finish()
     }
 
     companion object {

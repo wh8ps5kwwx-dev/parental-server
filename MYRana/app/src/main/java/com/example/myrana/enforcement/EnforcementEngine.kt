@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.data.repo.PolicyRepository
 import com.example.myrana.data.repo.UsageSyncRepository
@@ -111,7 +112,7 @@ class EnforcementEngine private constructor(context: Context) {
     }
 
     private fun shouldBlock(packageName: String): Boolean {
-        if (isOwnPackage(packageName)) return false
+        if (MonitoredAppRegistry.isNeverBlockPackage(packageName)) return false
         val pkg = packageName.lowercase()
         return pkg in blockedPackages || pkg in scheduleBlocked
     }
@@ -146,7 +147,12 @@ class EnforcementEngine private constructor(context: Context) {
         val childCode = ChildSession.childCode(appContext) ?: return
         val label = try {
             val pm = appContext.packageManager
-            val info = pm.getApplicationInfo(packageName, 0)
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getApplicationInfo(packageName, 0)
+            }
             pm.getApplicationLabel(info).toString()
         } catch (_: PackageManager.NameNotFoundException) {
             packageName

@@ -2,6 +2,7 @@ package com.example.myrana.network
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.os.Build
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -10,10 +11,15 @@ object NetworkMonitor {
 
     fun isOnline(context: Context): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        }
+        @Suppress("DEPRECATION")
+        val info = cm.activeNetworkInfo
+        return info?.isConnected == true
     }
 
     fun registerOnAvailable(context: Context, onAvailable: () -> Unit): () -> Unit {

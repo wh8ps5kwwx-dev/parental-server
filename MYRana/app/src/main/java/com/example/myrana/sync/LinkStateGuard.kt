@@ -48,9 +48,6 @@ object LinkStateGuard {
     }
 
     private suspend fun reregister(context: Context, displayCode: String): Boolean {
-        val email = ChildSession.childEmail(context)?.trim().orEmpty()
-        if (email.isEmpty()) return false
-
         val serverCheck = ServerConnectionHelper.checkConnectivity(context)
         if (!serverCheck.ok) return false
 
@@ -65,7 +62,7 @@ object LinkStateGuard {
             val response = NetworkModule.registerChildDevice(
                 RegisterChildRequest(
                     childCode = codeForRegister,
-                    childEmail = email,
+                    childEmail = ChildSession.childEmail(context)?.trim().orEmpty(),
                     deviceName = deviceName,
                     androidVersion = androidVersion,
                     androidDeviceId = Settings.Secure.getString(

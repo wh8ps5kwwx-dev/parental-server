@@ -1,5 +1,6 @@
 package com.example.myrana.ui
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import com.example.myrana.permissions.ChildPermissionEvaluator
@@ -21,7 +22,7 @@ object ChildUiRouter {
     fun routeFromLauncher(context: Context) {
         when {
             !ChildSession.isSetupComplete(context) -> openRegistration(context)
-            !ChildPermissionsGate.isPermissionsFlowComplete(context) -> openPermissions(context)
+            !ChildPermissionEvaluator.canEnterGame(context) -> openPermissions(context)
             else -> openAcademicGame(context)
         }
     }
@@ -36,24 +37,22 @@ object ChildUiRouter {
         context.startActivity(gameIntent(context))
     }
 
-    fun openRegistration(context: Context) {
-        context.startActivity(
-            Intent(context, ChildRegistrationActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    private fun routeIntent(context: Context, target: Class<*>): Intent =
+        Intent(context, target).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (context !is Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-        )
+        }
+
+    fun openRegistration(context: Context) {
+        context.startActivity(routeIntent(context, ChildRegistrationActivity::class.java))
     }
 
     fun openPermissions(context: Context) {
-        context.startActivity(
-            ChildPermissionsActivity.intent(context).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-        )
+        context.startActivity(routeIntent(context, ChildPermissionsActivity::class.java))
     }
 
     fun gameIntent(context: Context): Intent =
-        Intent(context, AcademyMenuActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
+        routeIntent(context, AcademyMenuActivity::class.java)
 }

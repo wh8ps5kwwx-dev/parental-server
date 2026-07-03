@@ -37,8 +37,9 @@ class ContentFilterAccessibilityService : AccessibilityService() {
             event.eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED
         ) {
             val texts = mutableListOf<String>()
-            event.text?.forEach { part ->
-                part?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let { texts.add(it) }
+            val eventText = event.text
+            for (i in 0 until eventText.size) {
+                    eventText[i]?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let { texts.add(it) }
             }
             val source = event.source
             if (source != null) {

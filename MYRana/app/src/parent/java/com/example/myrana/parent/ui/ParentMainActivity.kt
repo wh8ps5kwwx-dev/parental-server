@@ -15,6 +15,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.util.PatternsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -412,6 +413,7 @@ class ParentMainActivity : AppCompatActivity() {
                 }
                 if (rows.isEmpty()) return
                 linkedChildrenRows = rows.map { it.first to it.second }
+                val linkedCount: Int = linkedChildrenRows.size
                 val labels = rows.map { (code, name, status) ->
                     getString(R.string.parent_child_spinner_item, name, code, status)
                 }
@@ -434,7 +436,7 @@ class ParentMainActivity : AppCompatActivity() {
                 }
                 spinnerChildren.setSelection(selectIndex)
                 childSpinnerIgnoreSelection = false
-                textLinkedChild.text = getString(R.string.parent_linked_children_summary, rows.size)
+                textLinkedChild.text = getString(R.string.parent_linked_children_summary, linkedCount)
             }
             else -> {}
         }
@@ -872,7 +874,10 @@ class ParentMainActivity : AppCompatActivity() {
     private fun toast(msg: String, isError: Boolean) {
         textMessage.text = msg
         textMessage.setTextColor(
-            getColor(if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark)
+            ContextCompat.getColor(
+                this,
+                if (isError) android.R.color.holo_red_dark else android.R.color.holo_green_dark,
+            ),
         )
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }

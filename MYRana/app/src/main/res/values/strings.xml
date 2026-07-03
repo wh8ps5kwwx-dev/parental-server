@@ -168,7 +168,7 @@
     <string name="screen_time_warn_yellow_title">تنبيه: اقتربت من الحد</string>
     <string name="screen_time_warn_yellow_msg">استخدمت %1$d دقيقة. الحد الأقصى %2$d دقيقة. تم إبلاغ ولي الأمر — إذا لم يرد خلال 5 دقائق يُجمَّد التطبيق.</string>
     <string name="screen_time_warn_red_title">تحذير قوي!</string>
-    <string name="screen_time_warn_red_msg">استخدمت %1$d دقيقة. إذا لم ترد الأم خلال 3 دقائق يُجمَّد التطبيق تلقائياً.</string>
+    <string name="screen_time_warn_red_msg">استخدمت %1$d دقيقة من أصل %2$d. إذا لم ترد الأم خلال 3 دقائق يُجمَّد التطبيق تلقائياً.</string>
     <string name="screen_time_limit_title">تم إغلاق التطبيق</string>
     <string name="screen_time_limit_msg">تجاوزت الحد المسموح (%1$d دقيقة) في %2$s. خذ استراحة!</string>
     <string name="screen_time_sleep_title">وقت النوم</string>

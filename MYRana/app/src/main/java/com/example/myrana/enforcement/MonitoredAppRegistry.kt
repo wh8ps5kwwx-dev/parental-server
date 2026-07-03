@@ -6,6 +6,19 @@ package com.example.myrana.enforcement
  */
 object MonitoredAppRegistry {
 
+    /** لا يُحظر أبداً — مثبّت التطبيقات وإعدادات النظام. */
+    fun isNeverBlockPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase().trim()
+        if (pkg.isBlank()) return false
+        if (pkg.startsWith("com.example.myrana")) return true
+        if (systemExcludePrefixes.any { pkg.startsWith(it) }) return true
+        if (pkg.contains("packageinstaller")) return true
+        if (pkg.contains("documentsui")) return true
+        if (pkg == "com.android.vending" || pkg == "com.sec.android.app.samsungapps") return true
+        if (pkg.contains("installer") && pkg.startsWith("com.")) return true
+        return false
+    }
+
     val messagingPackages: Set<String> = setOf(
         "com.whatsapp",
         "com.whatsapp.w4b",

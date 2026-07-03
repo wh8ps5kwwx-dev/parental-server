@@ -220,17 +220,18 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         )
         textTodayTime.text = getString(R.string.parent_today_time_value, todayMin)
 
-        val maxApps = d.policy.maxOpenApps.coerceAtLeast(1)
-        val appsPct = ((d.appsOpened * 100) / (maxApps + 4)).coerceIn(0, 100)
+        val maxApps: Int = d.policy.maxOpenApps.coerceAtLeast(1)
+        val appsOpenedCount: Int = d.appsOpened
+        val appsPct = ((appsOpenedCount * 100) / (maxApps + 4)).coerceIn(0, 100)
         barAppsOpened.progress = appsPct
         barAppsOpened.progressTintList = android.content.res.ColorStateList.valueOf(
             when {
-                d.appsOpened > maxApps + 2 -> Color.parseColor("#F44336")
-                d.appsOpened > maxApps -> Color.parseColor("#FFC107")
+                appsOpenedCount > maxApps + 2 -> Color.parseColor("#F44336")
+                appsOpenedCount > maxApps -> Color.parseColor("#FFC107")
                 else -> Color.parseColor("#4CAF50")
             }
         )
-        textAppsOpened.text = getString(R.string.parent_apps_opened_value, d.appsOpened, maxApps)
+        textAppsOpened.text = getString(R.string.parent_apps_opened_value, appsOpenedCount, maxApps)
 
         textAlertsStats.text = getString(
             R.string.parent_alerts_stats,
@@ -322,8 +323,9 @@ class ParentScreenTimeActivity : AppCompatActivity() {
                                 }
                             }
                             val lines = usageResult.items.mapIndexed { i, item ->
+                                val avgPerDay: Int = item.avgMinutesPerDay.toInt()
                                 "${i + 1}. ${item.packageName} — " +
-                                    getString(R.string.parent_usage_avg_per_day, item.avgMinutesPerDay)
+                                    getString(R.string.parent_usage_avg_per_day, avgPerDay)
                             }
                             textReport.text = header + "\n" + lines.joinToString("\n")
                         }

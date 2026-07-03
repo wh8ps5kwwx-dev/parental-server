@@ -56,7 +56,8 @@ class ChildPermissionsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (ChildPermissionsGate.isPermissionsFlowComplete(this)) {
+        if (ChildPermissionEvaluator.canEnterGame(this)) {
+            ChildPermissionsGate.markPermissionsFlowComplete(this)
             ChildUiRouter.openAcademicGame(this)
             finish()
             return
