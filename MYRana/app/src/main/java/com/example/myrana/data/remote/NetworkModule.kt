@@ -94,15 +94,25 @@ object NetworkModule {
         return try {
             client().newCall(request).execute().use { response ->
                 if (response.code == 404) return ChildRegistrationState.NOT_ON_SERVER
+                if (response.code == 401) return ChildRegistrationState.ERROR
                 val text = response.body?.string().orEmpty()
                 if (!response.isSuccessful) return ChildRegistrationState.ERROR
                 val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any?>>() {}.type
                 val json: Map<String, Any?> = gson.fromJson(text, mapType)
-                if (json["linked"] == true) ChildRegistrationState.LINKED
+                if (parseLinkedFlag(json)) ChildRegistrationState.LINKED
                 else ChildRegistrationState.WAITING
             }
         } catch (_: Exception) {
             ChildRegistrationState.ERROR
+        }
+    }
+
+    private fun parseLinkedFlag(json: Map<String, Any?>): Boolean {
+        return when (val linked = json["linked"]) {
+            is Boolean -> linked
+            is Number -> linked.toInt() != 0
+            is String -> linked == "1" || linked.equals("true", ignoreCase = true)
+            else -> false
         }
     }
 

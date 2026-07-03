@@ -22,6 +22,7 @@ import com.example.myrana.device.DeviceIdentity
 import com.example.myrana.permissions.ChildPermissionEvaluator
 import com.example.myrana.session.ChildSession
 import com.example.myrana.util.ChildCodeNormalizer
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -45,6 +46,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
     private lateinit var textChildCodeValue: TextView
     private lateinit var btnCopyChildCode: Button
     private var currentChildCode: String = ""
+    private var linkPollJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -153,6 +155,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                 )
                 DeviceIdentity.setChildDeviceId(this@ChildRegistrationActivity, serverChildCode)
                 showWaitingForLink(serverChildCode)
+                startLinkPolling(serverChildCode)
                 onSuccess?.invoke()
             } catch (e: Exception) {
                 showMessage(getString(R.string.error_network, e.message ?: ""), true)
@@ -184,10 +187,13 @@ class ChildRegistrationActivity : AppCompatActivity() {
     }
 
     private fun startLinkPolling(childCode: String) {
-        lifecycleScope.launch {
+        val normalized = ChildCodeNormalizer.normalize(childCode)
+        if (normalized.isBlank()) return
+        linkPollJob?.cancel()
+        linkPollJob = lifecycleScope.launch {
             while (isActive) {
                 val state = withContext(Dispatchers.IO) {
-                    NetworkModule.queryChildRegistrationState(childCode)
+                    NetworkModule.queryChildRegistrationState(normalized)
                 }
                 when (state) {
                     NetworkModule.ChildRegistrationState.LINKED -> {
@@ -197,13 +203,22 @@ class ChildRegistrationActivity : AppCompatActivity() {
                     }
                     NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
                         showMessage(getString(R.string.register_reregistering), false)
-                        registerOnServer(childCode, showWaitUi = true)
+                        registerOnServer(normalized, showWaitUi = true)
+                        delay(5_000L)
+                    }
+                    NetworkModule.ChildRegistrationState.ERROR -> {
+                        showMessage(getString(R.string.error_network, ""), true)
                         delay(5_000L)
                     }
                     else -> delay(3_000L)
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        linkPollJob?.cancel()
+        super.onDestroy()
     }
 
     private fun finishSetupAndOpenGame() {

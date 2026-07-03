@@ -320,7 +320,8 @@ class ParentMainActivity : AppCompatActivity() {
     }
 
     private fun onLinkSuccess(childCode: String, name: String) {
-        ParentSession.saveLinkedChild(this, childCode, name)
+        val linked = ChildCodeNormalizer.normalize(childCode)
+        ParentSession.saveLinkedChild(this, linked, name)
         showControl()
         startAlertPolling()
         toast(getString(R.string.parent_link_success_monitoring), false)
