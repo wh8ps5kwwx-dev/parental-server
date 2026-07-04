@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.myrana.BuildConfig
 import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
+import com.example.myrana.parent.ParentAlertNotifier
 import com.example.myrana.parent.ParentSession
 import com.example.myrana.util.ChildCodeNormalizer
 import kotlinx.coroutines.Dispatchers
@@ -314,8 +315,8 @@ class ParentMainActivity : AppCompatActivity() {
         if (!ParentSession.isChildLinked(this)) return
         alertPollingJob = lifecycleScope.launch {
             while (isActive) {
-                delay(15_000L)
                 refreshAlertsQuietly()
+                delay(10_000L)
             }
         }
     }
@@ -335,6 +336,7 @@ class ParentMainActivity : AppCompatActivity() {
                     val preview = result.lines.take(8).joinToString("\n\n")
                     textAlertsPreview.text =
                         "${getString(R.string.parent_alerts_preview_title)}\n\n$preview"
+                    ParentAlertNotifier.notifyIfNew(this@ParentMainActivity, result.lines)
                     true
                 }
             }

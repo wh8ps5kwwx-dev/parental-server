@@ -69,11 +69,22 @@ object AccessibilityHelper {
             .apply()
     }
 
-    fun isMonitoredPackage(packageName: String): Boolean {
+    /** متصفح / YouTube — فحص الحظر (مواقع وفيديو) عند تغيّر الشاشة. */
+    fun isContentScanPackage(packageName: String): Boolean {
         val pkg = packageName.lowercase()
         if (pkg in BROWSER_PACKAGES) return true
         return pkg == YOUTUBE_PACKAGE
     }
+
+    /** متصفح / تطبيق بحث / YouTube — شريط العنوان أو البحث. */
+    fun isBrowserOrSearchPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        if (pkg in BROWSER_PACKAGES || pkg in SEARCH_APP_PACKAGES) return true
+        return pkg == YOUTUBE_PACKAGE
+    }
+
+    @Deprecated("Use isContentScanPackage", ReplaceWith("isContentScanPackage(packageName)"))
+    fun isMonitoredPackage(packageName: String): Boolean = isContentScanPackage(packageName)
 
     const val YOUTUBE_PACKAGE = "com.google.android.youtube"
 
@@ -82,7 +93,7 @@ object AccessibilityHelper {
     private const val EXTRA_ACCESSIBILITY_SERVICE_COMPONENT_NAME =
         "android.settings.extra.ACCESSIBILITY_SERVICE_COMPONENT_NAME"
 
-    private val BROWSER_PACKAGES = setOf(
+    val BROWSER_PACKAGES: Set<String> = setOf(
         "com.android.chrome",
         "com.chrome.beta",
         "com.chrome.dev",
@@ -96,5 +107,19 @@ object AccessibilityHelper {
         "com.opera.mini.native",
         "com.kiwibrowser.browser",
         "org.torproject.torbrowser",
+        "com.naver.whale",
+        "com.vivo.browser",
+        "com.huawei.browser",
+        "com.mi.globalbrowser",
+        "com.UCMobile.intl",
+        "com.UCMobile",
+    )
+
+    private val SEARCH_APP_PACKAGES: Set<String> = setOf(
+        "com.google.android.googlequicksearchbox",
+        "com.google.android.apps.searchlite",
+        "com.android.quicksearchbox",
+        "com.bing.android",
+        "com.yahoo.mobile.client.android.search",
     )
 }

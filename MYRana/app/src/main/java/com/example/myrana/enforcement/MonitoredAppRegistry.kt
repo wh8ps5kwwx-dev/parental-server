@@ -81,21 +81,7 @@ object MonitoredAppRegistry {
     fun isBrowserPackage(packageName: String): Boolean =
         packageName.lowercase() in browserPackages()
 
-    fun browserPackages(): Set<String> = setOf(
-        "com.android.chrome",
-        "com.chrome.beta",
-        "com.chrome.dev",
-        "com.brave.browser",
-        "com.aloha.browser",
-        "com.duckduckgo.mobile.android",
-        "org.mozilla.firefox",
-        "com.microsoft.emmx",
-        "com.sec.android.app.sbrowser",
-        "com.opera.browser",
-        "com.opera.mini.native",
-        "com.kiwibrowser.browser",
-        "org.torproject.torbrowser",
-    )
+    fun browserPackages(): Set<String> = AccessibilityHelper.BROWSER_PACKAGES
 
     fun appCategoryLabel(packageName: String): String = when {
         isMessagingApp(packageName) -> "مراسلة"

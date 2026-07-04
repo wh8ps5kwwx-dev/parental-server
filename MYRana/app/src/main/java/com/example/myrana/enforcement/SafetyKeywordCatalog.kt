@@ -1,7 +1,7 @@
 package com.example.myrana.enforcement
 
 /**
- * كلمات مراقبة البحث — تنبيه ولي الأمر عند ظهورها في المتصفح أو YouTube.
+ * كلمات مراقبة البحث — تنبيه ولي الأمر عند ظهورها في شريط البحث (متصفح، Google، YouTube، إلخ).
  * الفئات عامة للحماية الرقمية (مشروع التخرج).
  */
 object SafetyKeywordCatalog {

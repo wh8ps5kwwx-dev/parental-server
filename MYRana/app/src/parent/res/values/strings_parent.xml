@@ -54,10 +54,13 @@
     <string name="parent_installed_apps_empty">لا توجد قائمة بعد. تأكدي أن جهاز الطفل متصل ثم أعيدي المحاولة.</string>
     <string name="parent_btn_apply_blocklist">تطبيق قائمة الحظر الكاملة</string>
     <string name="parent_btn_view_alerts">عرض تنبيهات البحث والحظر</string>
-    <string name="parent_search_alert_hint">تنبيهات البحث تُحدَّث تلقائياً كل 15 ثانية عند بحث الطفل في Chrome</string>
-    <string name="parent_alerts_waiting">لا تنبيهات بعد — على جوال الطفل: فعّلي الوصول ثم ابحثي في Chrome عن كلمة مثل «قمار»</string>
+    <string name="parent_search_alert_hint">تنبيهات البحث الخطير تصل للأم تلقائياً (كل 10 ثوانٍ) عند كتابة الطفل في المتصفح أو Google أو أي شريط بحث</string>
+    <string name="parent_alert_notification_title">⚠️ تنبيه — نشاط خطير</string>
+    <string name="parent_alert_channel_name">تنبيهات الأمان</string>
+    <string name="parent_alert_channel_desc">تنبيهات البحث الخطير ومحاولات الحظر</string>
+    <string name="parent_alerts_waiting">لا تنبيهات بعد — على جوال الطفل: فعّلي الوصول ثم ابحثي في Chrome أو Google عن كلمة مثل «قمار»</string>
     <string name="parent_alerts_preview_title">آخر التنبيهات:</string>
-    <string name="parent_link_success_monitoring">تم الربط ✓ فعّلي «خدمة الوصول» على جوال الطفل ثم جرّبي البحث في Chrome</string>
+    <string name="parent_link_success_monitoring">تم الربط ✓ فعّلي «خدمة الوصول» على جوال الطفل ثم جرّبي البحث في المتصفح</string>
     <string name="parent_code_copied_hint">تم وضع الرمز في الحقل — يمكنك تعديله أو نسخه</string>
     <string name="parent_btn_paste_child_code">لصق كود الطفل</string>
     <string name="parent_paste_empty">الحافظة فارغة — انسخي الكود من جوال الطفل أولاً</string>

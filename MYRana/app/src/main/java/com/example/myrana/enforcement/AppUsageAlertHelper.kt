@@ -3,7 +3,7 @@ package com.example.myrana.enforcement
 import android.content.Context
 import android.content.pm.PackageManager
 import com.example.myrana.data.remote.NetworkModule
-import com.example.myrana.session.ChildSession
+import com.example.myrana.identity.ChildIdentity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,7 +34,8 @@ object AppUsageAlertHelper {
         val now = System.currentTimeMillis()
         if (now - lastAt < COOLDOWN_MS) return
 
-        val childCode = ChildSession.childCode(app) ?: return
+        val childCode = ChildIdentity.apiCode(app)
+        if (childCode.isBlank()) return
         val label = appLabel(app, pkg)
         val category = MonitoredAppRegistry.appCategoryLabel(pkg)
         val message = when {

@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import com.example.myrana.enforcement.MonitoredAppRegistry
+import com.example.myrana.identity.ChildIdentity
 import com.example.myrana.data.remote.NetworkModule
-import com.example.myrana.session.ChildSession
 import com.example.myrana.ui.ScreenTimeLimitActivity
 import com.example.myrana.ui.ScreenTimeWarningActivity
 import kotlinx.coroutines.CoroutineScope
@@ -165,7 +165,8 @@ class ScreenTimeEnforcer(private val context: Context) {
     }
 
     private fun notifyParent(message: String) {
-        val childCode = ChildSession.childCode(appContext) ?: return
+        val childCode = ChildIdentity.apiCode(appContext)
+        if (childCode.isBlank()) return
         scope.launch {
             NetworkModule.postAlertSync(childCode, message)
         }

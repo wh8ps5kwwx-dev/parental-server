@@ -8,6 +8,7 @@ import android.os.Build
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.data.repo.PolicyRepository
 import com.example.myrana.data.repo.UsageSyncRepository
+import com.example.myrana.identity.ChildIdentity
 import com.example.myrana.session.ChildSession
 import com.example.myrana.screentime.ScreenTimeTracker
 import com.example.myrana.ui.BlockWarningActivity
@@ -144,7 +145,8 @@ class EnforcementEngine private constructor(context: Context) {
     }
 
     private fun notifyParentBlocked(packageName: String) {
-        val childCode = ChildSession.childCode(appContext) ?: return
+        val childCode = ChildIdentity.apiCode(appContext)
+        if (childCode.isBlank()) return
         val label = try {
             val pm = appContext.packageManager
             val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

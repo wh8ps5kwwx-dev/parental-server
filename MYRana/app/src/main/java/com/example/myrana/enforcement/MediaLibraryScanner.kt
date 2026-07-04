@@ -8,7 +8,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.permissions.StorageAccessHelper
-import com.example.myrana.session.ChildSession
+import com.example.myrana.identity.ChildIdentity
 
 /**
  * فحص ملفات الصور/الفيديو/الصوت المحفوظة على الجهاز:
@@ -29,7 +29,8 @@ object MediaLibraryScanner {
     fun scanIfDue(context: Context) {
         val app = context.applicationContext
         if (!StorageAccessHelper.hasMediaReadAccess(app)) return
-        val childCode = ChildSession.childCode(app) ?: return
+        val childCode = ChildIdentity.apiCode(app)
+        if (childCode.isBlank()) return
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val last = prefs.getLong(KEY_LAST_SCAN_MS, 0L)
         val now = System.currentTimeMillis()
