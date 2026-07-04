@@ -1221,6 +1221,7 @@ def protect():
 def home():
     return jsonify({
         "status": "running",
+        "deploy_version": "2026-07-04-turso",
         "message": "Parental Control Server is running",
         "storage": _storage_status(),
         "smtp_ready": email_configured(),
