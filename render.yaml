@@ -1,0 +1,23 @@
+# Render Blueprint — نفس مستودع GitHub: wh8ps5kwwx-dev/parental-server
+# Dashboard → New → Blueprint → ربط الريبو → Apply
+services:
+  - type: web
+    name: parental-server
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: DATA_DIR
+        value: /var/data
