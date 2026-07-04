@@ -67,6 +67,10 @@ class ParentMainActivity : AppCompatActivity() {
     private lateinit var textUsageEmpty: TextView
     private lateinit var recyclerUsage: RecyclerView
     private lateinit var usageAdapter: UsageReportAdapter
+    private lateinit var textInstalledAppsTitle: TextView
+    private lateinit var textInstalledAppsEmpty: TextView
+    private lateinit var recyclerInstalledApps: RecyclerView
+    private lateinit var installedAppAdapter: InstalledAppAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +97,9 @@ class ParentMainActivity : AppCompatActivity() {
         textUsageTitle = findViewById(R.id.textUsageReportTitle)
         textUsageEmpty = findViewById(R.id.textUsageEmpty)
         recyclerUsage = findViewById(R.id.recyclerUsage)
+        textInstalledAppsTitle = findViewById(R.id.textInstalledAppsTitle)
+        textInstalledAppsEmpty = findViewById(R.id.textInstalledAppsEmpty)
+        recyclerInstalledApps = findViewById(R.id.recyclerInstalledApps)
 
         usageAdapter = UsageReportAdapter(packageManager) { item ->
             findViewById<EditText>(R.id.inputTarget).setText(item.packageName)
@@ -100,6 +107,13 @@ class ParentMainActivity : AppCompatActivity() {
         }
         recyclerUsage.layoutManager = LinearLayoutManager(this)
         recyclerUsage.adapter = usageAdapter
+
+        installedAppAdapter = InstalledAppAdapter(packageManager) { item ->
+            findViewById<EditText>(R.id.inputTarget).setText(item.packageName)
+            sendCommand("block_app", item.packageName)
+        }
+        recyclerInstalledApps.layoutManager = LinearLayoutManager(this)
+        recyclerInstalledApps.adapter = installedAppAdapter
 
         setupRoleSpinner()
         spinnerChildren.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -144,6 +158,7 @@ class ParentMainActivity : AppCompatActivity() {
             startActivity(Intent(this, ParentScreenTimeActivity::class.java))
         }
         findViewById<Button>(R.id.btnRequestUsageReport).setOnClickListener { requestUsageReport() }
+        findViewById<Button>(R.id.btnViewInstalledApps).setOnClickListener { viewInstalledApps() }
         findViewById<Button>(R.id.btnApplyDefaultBlocklist).setOnClickListener { applyDefaultBlocklist() }
         findViewById<Button>(R.id.btnViewAlerts).setOnClickListener { viewAlerts() }
         findViewById<Button>(R.id.btnSendMessage).setOnClickListener { sendGuardianMessage() }
@@ -503,6 +518,64 @@ class ParentMainActivity : AppCompatActivity() {
 
     private fun showUsageList(items: List<com.example.myrana.data.remote.dto.UsageAppItem>) {
         bindUsageApps(items, quiet = false)
+    }
+
+    private fun viewInstalledApps() {
+        val childCode = ParentSession.childCode(this)
+        val email = ParentSession.guardianEmail(this)
+        if (childCode.isNullOrBlank() || email.isNullOrBlank()) {
+            toast("اربط الطفل أولاً", true)
+            return
+        }
+
+        findViewById<Button>(R.id.btnViewInstalledApps).isEnabled = false
+        toast(getString(R.string.parent_installed_apps_loading), false)
+
+        lifecycleScope.launch {
+            val requestResult = withContext(Dispatchers.IO) {
+                GuardianApi.requestInstalledAppsSync(childCode, email)
+            }
+            if (requestResult is GuardianApi.ApiResult.Error) {
+                toast(requestResult.message, true)
+                findViewById<Button>(R.id.btnViewInstalledApps).isEnabled = true
+                return@launch
+            }
+
+            delay(5_000L)
+
+            when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchInstalledApps(childCode) }) {
+                is GuardianApi.ApiResult.InstalledApps -> bindInstalledApps(result.items, result.count)
+                is GuardianApi.ApiResult.Error -> {
+                    textInstalledAppsTitle.visibility = View.GONE
+                    recyclerInstalledApps.visibility = View.GONE
+                    textInstalledAppsEmpty.visibility = View.VISIBLE
+                    textInstalledAppsEmpty.text = result.message
+                    toast(result.message, true)
+                }
+                else -> {
+                    textInstalledAppsEmpty.visibility = View.VISIBLE
+                    toast("فشل جلب قائمة التطبيقات", true)
+                }
+            }
+            findViewById<Button>(R.id.btnViewInstalledApps).isEnabled = true
+        }
+    }
+
+    private fun bindInstalledApps(items: List<GuardianApi.InstalledAppItem>, count: Int) {
+        if (items.isEmpty()) {
+            textInstalledAppsTitle.visibility = View.GONE
+            recyclerInstalledApps.visibility = View.GONE
+            textInstalledAppsEmpty.visibility = View.VISIBLE
+            textInstalledAppsEmpty.text = getString(R.string.parent_installed_apps_empty)
+            toast(getString(R.string.parent_installed_apps_empty), true)
+            return
+        }
+        textInstalledAppsEmpty.visibility = View.GONE
+        textInstalledAppsTitle.visibility = View.VISIBLE
+        textInstalledAppsTitle.text = getString(R.string.parent_installed_apps_title, count)
+        recyclerInstalledApps.visibility = View.VISIBLE
+        installedAppAdapter.submit(items)
+        toast("تم عرض $count تطبيق مثبت", false)
     }
 
     private fun sendEmailCode() {

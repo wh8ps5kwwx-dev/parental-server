@@ -48,6 +48,10 @@
     <string name="parent_hint_schedule_end">نهاية التجميد (مثال 18:00)</string>
     <string name="parent_btn_schedule_freeze">جدولة تجميد التطبيق</string>
     <string name="parent_btn_request_usage">طلب تقرير استخدام الجهاز</string>
+    <string name="parent_btn_view_installed_apps">عرض التطبيقات المثبتة</string>
+    <string name="parent_installed_apps_title">التطبيقات المثبتة على جهاز الطفل (%1$d)</string>
+    <string name="parent_installed_apps_loading">جاري جلب قائمة التطبيقات من جهاز الطفل…</string>
+    <string name="parent_installed_apps_empty">لا توجد قائمة بعد. تأكدي أن جهاز الطفل متصل ثم أعيدي المحاولة.</string>
     <string name="parent_btn_apply_blocklist">تطبيق قائمة الحظر الكاملة</string>
     <string name="parent_btn_view_alerts">عرض تنبيهات البحث والحظر</string>
     <string name="parent_search_alert_hint">تنبيهات البحث تُحدَّث تلقائياً كل 15 ثانية عند بحث الطفل في Chrome</string>

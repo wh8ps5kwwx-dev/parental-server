@@ -23,16 +23,23 @@ object InstalledAppsSync {
         val last = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getLong(KEY_LAST_MS, 0L)
         if (last > 0L && System.currentTimeMillis() - last < INTERVAL_MS) return@withContext
+        syncNow(app)
+    }
+
+    /** رفع فوري عند طلب الأم — يتجاوز فترة الـ 6 ساعات. */
+    suspend fun syncNow(context: Context): Boolean = withContext(Dispatchers.IO) {
+        val app = context.applicationContext
         val childCode = ChildSession.childCode(app) ?: DeviceIdentity.childDeviceId(app)
-        if (childCode.isBlank()) return@withContext
+        if (childCode.isBlank()) return@withContext false
         val apps = collectInstalledApps(app)
-        if (apps.isEmpty()) return@withContext
+        if (apps.isEmpty()) return@withContext false
         val ok = NetworkModule.postSyncChildApps(childCode, apps)
         if (ok) {
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putLong(KEY_LAST_MS, System.currentTimeMillis())
                 .apply()
         }
+        ok
     }
 
     private fun collectInstalledApps(context: Context): List<Map<String, String?>> {

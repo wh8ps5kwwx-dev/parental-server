@@ -393,6 +393,37 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/parent_btn_request_usage" />
 
+            <Button
+                android:id="@+id/btnViewInstalledApps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_btn_view_installed_apps" />
+
+            <TextView
+                android:id="@+id/textInstalledAppsTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/textInstalledAppsEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_installed_apps_empty"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerInstalledApps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/textUsageReportTitle"
                 android:layout_width="match_parent"

@@ -195,6 +195,53 @@ object GuardianApi {
         return sendCommand("request_usage", "", childCode, guardianEmail)
     }
 
+    /** طلب مزامنة قائمة التطبيقات المثبتة من جهاز الطفل. */
+    fun requestInstalledAppsSync(childCode: String, guardianEmail: String): ApiResult {
+        return sendCommand("sync_installed_apps", "", childCode, guardianEmail)
+    }
+
+    /** جلب قائمة التطبيقات المثبتة على جهاز الطفل (من السيرفر). */
+    fun fetchInstalledApps(childCode: String): ApiResult {
+        return try {
+            val code = ChildCodeNormalizer.forApi(childCode)
+            val base = com.example.myrana.BuildConfig.SERVER_ROOT_URL
+            val url = java.net.URL(
+                "$base/child-installed-apps?child_code=${URLEncoder.encode(code, "UTF-8")}",
+            )
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("X-API-KEY", com.example.myrana.BuildConfig.API_KEY)
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 20_000
+            val body = conn.inputStream.bufferedReader().readText()
+            if (conn.responseCode != 200) {
+                return ApiResult.Error(conn.responseMessage ?: "خطأ")
+            }
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(body, mapType)
+            if (json["success"] != true) {
+                return ApiResult.Error(json["message"]?.toString() ?: "فشل جلب التطبيقات")
+            }
+            @Suppress("UNCHECKED_CAST")
+            val rows = (json["apps"] as? List<Map<String, Any?>>).orEmpty()
+            val items = rows.mapNotNull { row ->
+                val pkg = row["package_name"]?.toString()?.trim().orEmpty()
+                if (pkg.isEmpty()) return@mapNotNull null
+                InstalledAppItem(
+                    packageName = pkg,
+                    appLabel = row["app_label"]?.toString()?.trim().orEmpty().ifBlank {
+                        pkg.substringAfterLast('.')
+                    },
+                    iconBase64 = row["icon_b64"]?.toString()?.trim()?.ifBlank { null },
+                )
+            }
+            val count = (json["count"] as? Number)?.toInt() ?: items.size
+            ApiResult.InstalledApps(items, count)
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
     fun fetchScreenTimePolicy(childCode: String): ApiResult {
         return try {
             val policy = NetworkModule.fetchScreenTimePolicy(childCode)
@@ -641,6 +688,7 @@ object GuardianApi {
         data class ScreenTimePolicyLoaded(val policy: ScreenTimePolicy) : ApiResult()
         data class ChildDashboard(val data: ChildDashboardData) : ApiResult()
         data class WeeklyChart(val data: WeeklyChartData) : ApiResult()
+        data class InstalledApps(val items: List<InstalledAppItem>, val count: Int) : ApiResult()
         data class ReportText(val text: String) : ApiResult()
         data class GuardianSettingsLoaded(val settings: Map<String, Any?>) : ApiResult()
         data class AuditLog(val lines: List<String>) : ApiResult()
@@ -674,5 +722,11 @@ object GuardianApi {
         val sleepViolationsWeek: Int,
         val days: Int = 7,
         val avgDailyScreenSeconds: Long = 0L,
+    )
+
+    data class InstalledAppItem(
+        val packageName: String,
+        val appLabel: String,
+        val iconBase64: String? = null,
     )
 }

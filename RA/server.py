@@ -2431,6 +2431,51 @@ def sync_child_apps():
         return _json_error("خطأ داخلي أثناء مزامنة التطبيقات", 500, error_code="server_error")
 
 
+@app.route("/child-installed-apps", methods=["GET"])
+def child_installed_apps():
+    """قائمة التطبيقات المثبتة على جهاز الطفل (اسم + أيقونة)."""
+    try:
+        child_code = db_child_code(request.args.get("child_code", ""))
+        if not child_code:
+            return _json_error("child_code required", 400, error_code="missing_child_code")
+        conn = db()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT package_name, app_label, icon_b64, updated_at
+            FROM child_app_meta
+            WHERE child_code = ?
+            ORDER BY COALESCE(NULLIF(app_label, ''), package_name) ASC
+            """,
+            (child_code,),
+        )
+        apps = []
+        for row in cur.fetchall():
+            pkg = str(row["package_name"] or "").strip()
+            if not pkg:
+                continue
+            apps.append(
+                {
+                    "package_name": pkg,
+                    "app_label": (row["app_label"] or "").strip() or pkg.split(".")[-1],
+                    "icon_b64": (row["icon_b64"] or "").strip() or None,
+                    "updated_at": row["updated_at"],
+                }
+            )
+        conn.close()
+        return jsonify(
+            {
+                "success": True,
+                "status": "success",
+                "count": len(apps),
+                "apps": apps,
+            }
+        )
+    except Exception as exc:
+        logger.exception("child-installed-apps failed: %s", exc)
+        return _json_error("خطأ داخلي أثناء جلب التطبيقات", 500, error_code="server_error")
+
+
 @app.route("/child-heartbeat", methods=["POST"])
 def child_heartbeat():
     try:

@@ -12,6 +12,7 @@ import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.data.remote.dto.PolicyPushDto
 import com.example.myrana.session.ChildSession
 import com.example.myrana.sync.GuardianMessageNotifier
+import com.example.myrana.sync.InstalledAppsSync
 import com.example.myrana.sync.UsageUploadHelper
 import com.example.myrana.screentime.ParentResponseWatchdog
 import com.example.myrana.worker.MonitoringScheduler
@@ -63,6 +64,7 @@ class PolicyRepository private constructor(context: Context) {
                 val childCode = ChildSession.childCode(appContext) ?: deviceId
                 uploadUsageNow(childCode)
             }
+            "sync_installed_apps" -> InstalledAppsSync.syncNow(appContext)
             "guardian_message" -> cmd.value?.let { GuardianMessageNotifier.show(appContext, it) }
         }
     }
