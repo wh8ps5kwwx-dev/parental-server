@@ -25,6 +25,7 @@ import traceback
 import urllib.error
 import urllib.request
 from email.message import EmailMessage
+from typing import Tuple
 
 # سجلات ربط الطفل — تظهر في log السيرفر (Render → Logs)
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +39,11 @@ DEVICE_OTP_EXPIRY_MINUTES = int(os.environ.get("DEVICE_OTP_EXPIRY_MINUTES", "60"
 # إنشاء تطبيق Flask
 app = Flask(__name__)
 
-# قاعدة البيانات — على Render أضيفي قرصاً دائماً عند /var/data (Environment: DATA_DIR=/var/data)
+# قاعدة البيانات — Render المجاني يمسح الملفات عند إعادة التشغيل.
+# الحل: أضيفي على Render:
+#   TURSO_DATABASE_URL=libsql://....turso.io
+#   TURSO_AUTH_TOKEN=...
+# أو قرصاً دائماً: DATA_DIR=/var/data
 def _resolve_db_path() -> str:
     data_dir = os.environ.get("DATA_DIR", "").strip()
     if not data_dir and os.path.isdir("/var/data") and os.access("/var/data", os.W_OK):
@@ -56,7 +61,30 @@ def _resolve_db_path() -> str:
     return "parent_control.db"
 
 
+def _turso_credentials() -> Tuple[str, str]:
+    url = (
+        os.environ.get("TURSO_DATABASE_URL", "").strip()
+        or os.environ.get("LIBSQL_URL", "").strip()
+    )
+    token = (
+        os.environ.get("TURSO_AUTH_TOKEN", "").strip()
+        or os.environ.get("LIBSQL_AUTH_TOKEN", "").strip()
+    )
+    return url, token
+
+
+def _db_mode() -> str:
+    url, token = _turso_credentials()
+    if url and token:
+        return "turso"
+    path = _resolve_db_path()
+    if path.startswith("/var/data"):
+        return "local_persistent"
+    return "local_ephemeral"
+
+
 DB = _resolve_db_path()
+DB_MODE = _db_mode()
 
 # مفتاح حماية الطلبات بين التطبيق والسيرفر
 API_KEY = os.environ.get("API_KEY", "graduation-secret-key")
@@ -590,9 +618,68 @@ def _link_child_transaction(cur, conn, data: dict):
 
 # دالة الاتصال بقاعدة البيانات
 def db():
-    conn = sqlite3.connect(DB)
+    turso_url, turso_token = _turso_credentials()
+    if turso_url and turso_token:
+        try:
+            import libsql
+        except ImportError as exc:
+            raise RuntimeError(
+                "Turso configured but libsql not installed — add libsql to requirements.txt"
+            ) from exc
+        conn = libsql.connect(database=turso_url, auth_token=turso_token)
+    else:
+        conn = sqlite3.connect(DB, timeout=30.0, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _storage_status() -> dict:
+    """حالة التخزين — للتشخيص من GET /"""
+    url, _ = _turso_credentials()
+    info = {
+        "mode": DB_MODE,
+        "persistent": DB_MODE in ("turso", "local_persistent"),
+        "db_path": DB if DB_MODE != "turso" else url,
+        "warning": None,
+    }
+    if DB_MODE == "local_ephemeral":
+        info["warning"] = (
+            "البيانات تُمسح عند إعادة تشغيل Render — أضيفي TURSO_DATABASE_URL "
+            "و TURSO_AUTH_TOKEN أو DATA_DIR=/var/data مع قرص دائم"
+        )
+    try:
+        conn = db()
+        cur = conn.cursor()
+        for table, key in (
+            ("child_devices", "child_devices"),
+            ("children", "linked_children"),
+            ("guardians", "guardians"),
+            ("alerts", "alerts"),
+        ):
+            try:
+                cur.execute(f"SELECT COUNT(*) AS c FROM {table}")
+                info[key] = int(cur.fetchone()["c"])
+            except sqlite3.OperationalError:
+                info[key] = 0
+        conn.close()
+    except Exception as exc:
+        info["error"] = str(exc)[:200]
+    return info
+
+
+def _log_db_startup():
+    status = _storage_status()
+    logger.info(
+        "DB startup mode=%s persistent=%s path=%s child_devices=%s",
+        status.get("mode"),
+        status.get("persistent"),
+        status.get("db_path"),
+        status.get("child_devices", "?"),
+    )
+    if status.get("warning"):
+        logger.warning(status["warning"])
 
 def smtp_configured():
     """هل بيانات SMTP مضبوطة؟ بدونها لا يُرسل بريد حقيقي."""
@@ -1135,6 +1222,7 @@ def home():
     return jsonify({
         "status": "running",
         "message": "Parental Control Server is running",
+        "storage": _storage_status(),
         "smtp_ready": email_configured(),
         "email_via": "resend" if RESEND_API_KEY else ("smtp" if smtp_configured() else "none"),
         "smtp_user_set": bool(SMTP_USER),
@@ -2967,6 +3055,7 @@ def unhandled_exception(error):
 
 # إنشاء الجداول عند تشغيل السيرفر
 init_db()
+_log_db_startup()
 _start_email_cron_thread()
 
 # تشغيل محلي فقط، أما Render يستخدم gunicorn
