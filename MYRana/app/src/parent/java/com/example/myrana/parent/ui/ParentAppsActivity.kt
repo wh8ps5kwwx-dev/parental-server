@@ -10,10 +10,7 @@ import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
 import com.example.myrana.parent.ParentSession
 import com.google.android.material.button.MaterialButton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ParentAppsActivity : ParentShellActivity() {
 
@@ -34,6 +31,7 @@ class ParentAppsActivity : ParentShellActivity() {
             adapter = installedAppAdapter
         }
         findViewById<MaterialButton>(R.id.btnLoadInstalledApps).setOnClickListener { loadInstalledApps() }
+        loadInstalledApps()
     }
 
     private fun loadInstalledApps() {
@@ -47,25 +45,15 @@ class ParentAppsActivity : ParentShellActivity() {
         btn.isEnabled = false
         Toast.makeText(this, getString(R.string.parent_installed_apps_loading), Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
-            val requestResult = withContext(Dispatchers.IO) {
-                GuardianApi.requestInstalledAppsSync(childCode, email)
-            }
-            if (requestResult is GuardianApi.ApiResult.Error) {
-                Toast.makeText(this@ParentAppsActivity, requestResult.message, Toast.LENGTH_SHORT).show()
-                btn.isEnabled = true
-                return@launch
-            }
-            delay(5_000L)
-            when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchInstalledApps(childCode) }) {
-                is GuardianApi.ApiResult.InstalledApps -> bindInstalledApps(result.items, result.count)
-                is GuardianApi.ApiResult.Error -> {
+            when (val result = InstalledAppsLoader.load(this@ParentAppsActivity)) {
+                is InstalledAppsLoader.Result.Success -> bindInstalledApps(result.items, result.count)
+                is InstalledAppsLoader.Result.Error -> {
                     findViewById<TextView>(R.id.textInstalledAppsEmpty).apply {
                         visibility = View.VISIBLE
                         text = result.message
                     }
                     Toast.makeText(this@ParentAppsActivity, result.message, Toast.LENGTH_SHORT).show()
                 }
-                else -> Toast.makeText(this@ParentAppsActivity, "فشل جلب قائمة التطبيقات", Toast.LENGTH_SHORT).show()
             }
             btn.isEnabled = true
         }

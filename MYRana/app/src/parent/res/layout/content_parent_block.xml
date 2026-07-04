@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
@@ -20,54 +21,248 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <com.google.android.material.textfield.TextInputLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/parent_hint_target"
-                app:boxBackgroundColor="@color/parent_surface_muted"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp">
+                android:text="@string/parent_freeze_pick_app"
+                android:textColor="@color/parent_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/inputTarget"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="text" />
-            </com.google.android.material.textfield.TextInputLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/parent_freeze_pick_app_hint"
+                android:textColor="@color/parent_text_secondary"
+                android:textSize="13sp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnBlockSite"
+            <TextView
+                android:id="@+id/textFreezeAppsLoading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="@string/parent_btn_block_site"
-                android:textAllCaps="false"
-                app:backgroundTint="@color/parent_primary"
-                app:cornerRadius="14dp" />
+                android:gravity="center"
+                android:text="@string/parent_installed_apps_loading"
+                android:textColor="@color/parent_text_secondary"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/textFreezeAppsEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/parent_installed_apps_empty"
+                android:textColor="@color/parent_text_secondary"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerFreezeApps"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:layout_marginTop="8dp"
+                android:clipToPadding="false"
+                android:paddingBottom="4dp"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnBlockApp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:id="@+id/btnReloadFreezeApps"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="4dp"
+                android:text="@string/parent_freeze_reload_apps"
+                android:textAllCaps="false" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardSelectedApp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/parent_card"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/parent_primary"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp">
+
+            <ImageView
+                android:id="@+id/imgSelectedAppIcon"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="@null"
+                tools:src="@android:drawable/sym_def_app_icon" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_selected_app"
+                    android:textColor="@color/parent_text_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/textSelectedAppName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/parent_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    tools:text="YouTube" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFreezeDuration"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/parent_card"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="2dp"
+        app:strokeColor="@color/parent_card_stroke"
+        app:strokeWidth="1dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/parent_freeze_pick_duration"
+                android:textColor="@color/parent_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupFreezeDuration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="6dp"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFreeze15"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_15m"
+                    app:chipBackgroundColor="@color/parent_surface_muted" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFreeze30"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_30m"
+                    app:chipBackgroundColor="@color/parent_surface_muted" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFreeze60"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_1h"
+                    app:chipBackgroundColor="@color/parent_surface_muted" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFreeze120"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_2h"
+                    app:chipBackgroundColor="@color/parent_surface_muted" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFreezeUntilCancel"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_until_cancel"
+                    app:chipBackgroundColor="@color/parent_surface_muted" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFreezeCustom"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/parent_freeze_custom"
+                    app:chipBackgroundColor="@color/parent_surface_muted" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <LinearLayout
+                android:id="@+id/layoutCustomSchedule"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_block_app"
-                android:textAllCaps="false"
-                app:cornerRadius="14dp"
-                app:strokeColor="@color/parent_primary" />
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/parent_hint_schedule_start">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/inputScheduleStart"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="time" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/parent_hint_schedule_end">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/inputScheduleEnd"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="time" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFreezeApp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:id="@+id/btnApplyFreeze"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_freeze_app"
+                android:layout_marginTop="14dp"
+                android:text="@string/parent_freeze_apply"
                 android:textAllCaps="false"
-                app:cornerRadius="14dp"
-                app:strokeColor="@color/parent_danger" />
+                app:backgroundTint="@color/parent_danger"
+                app:cornerRadius="16dp"
+                app:icon="@android:drawable/ic_lock_lock"
+                app:iconGravity="textStart"
+                app:iconTint="@color/white" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAllow"
@@ -77,7 +272,7 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/parent_btn_allow"
                 android:textAllCaps="false"
-                app:cornerRadius="14dp"
+                app:cornerRadius="16dp"
                 app:strokeColor="@color/parent_secondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
@@ -101,57 +296,72 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/parent_hub_schedule_title"
+                android:text="@string/parent_freeze_advanced"
                 android:textColor="@color/parent_text_primary"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="@string/parent_hint_schedule_start">
+                android:hint="@string/parent_hint_target"
+                app:boxBackgroundColor="@color/parent_surface_muted"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/inputScheduleStart"
+                    android:id="@+id/inputTarget"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="time" />
+                    android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/parent_hint_schedule_end">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/inputScheduleEnd"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="time" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnScheduleFreeze"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/parent_btn_schedule_freeze"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBlockSite"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/parent_btn_block_site"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/parent_primary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBlockApp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/parent_btn_block_app_short"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/parent_primary" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApplyDefaultBlocklist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/parent_btn_apply_blocklist"
                 android:textAllCaps="false"
-                app:backgroundTint="@color/parent_stat_orange"
+                app:backgroundTint="@color/parent_primary_dark"
                 app:cornerRadius="14dp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnApplyDefaultBlocklist"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/parent_btn_apply_blocklist"
-        android:textAllCaps="false"
-        app:backgroundTint="@color/parent_primary_dark"
-        app:cornerRadius="16dp" />
 
     <TextView
         android:id="@+id/textBlockMessage"
