@@ -930,6 +930,8 @@ def init_db():
     )
     """)
 
+    _ensure_children_columns(cur)
+
     # جدول أوامر التحكم
     cur.execute("""
     CREATE TABLE IF NOT EXISTS commands (
@@ -1098,6 +1100,18 @@ def _norm_pkg(package: str) -> str:
     from blocklists.package_resolver import resolve_app_package
 
     return resolve_app_package(package)
+
+
+def _ensure_children_columns(cur) -> None:
+    """ترقية جدول children القديم — يمنع 500 عند الربط (child_email / linked_at)."""
+    cur.execute("PRAGMA table_info(children)")
+    cols = {row[1] for row in cur.fetchall()}
+    if not cols:
+        return
+    if "child_email" not in cols:
+        cur.execute("ALTER TABLE children ADD COLUMN child_email TEXT")
+    if "linked_at" not in cols:
+        cur.execute("ALTER TABLE children ADD COLUMN linked_at TEXT")
 
 
 def _ensure_policy_columns(cur) -> None:
@@ -1305,7 +1319,7 @@ def protect():
 def home():
     return jsonify({
         "status": "running",
-        "deploy_version": "2026-07-04-restore-link",
+        "deploy_version": "2026-07-04-link-fix",
         "message": "Parental Control Server is running",
         "storage": _storage_status(),
         "smtp_ready": email_configured(),
