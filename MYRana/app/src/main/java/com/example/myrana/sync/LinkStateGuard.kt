@@ -59,6 +59,7 @@ object LinkStateGuard {
         val androidVersion = "Android ${Build.VERSION.RELEASE}"
 
         return try {
+            val savedVerify = ChildSession.deviceVerifyCode(context).orEmpty()
             val response = NetworkModule.registerChildDevice(
                 RegisterChildRequest(
                     childCode = codeForRegister,
@@ -69,12 +70,18 @@ object LinkStateGuard {
                         context.contentResolver,
                         Settings.Secure.ANDROID_ID,
                     ).orEmpty(),
+                    deviceVerifyCode = savedVerify,
                 ),
             )
             val serverDisplay = response.childCode?.trim().orEmpty()
             val bound = serverDisplay.ifBlank { ChildCodeNormalizer.normalize("CHILD-$codeForRegister") }
             ChildIdentity.bind(context, bound)
             ChildSession.updateChildCode(context, bound)
+            response.deviceVerifyCode?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                ChildSession.saveDeviceVerifyCode(context, it)
+            } ?: savedVerify.takeIf { it.isNotEmpty() }?.let {
+                ChildSession.saveDeviceVerifyCode(context, it)
+            }
             true
         } catch (_: Exception) {
             false

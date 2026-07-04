@@ -25,9 +25,7 @@ import kotlinx.coroutines.withContext
  * ترتيب [syncWithServer]:
  * 1. تطبيق أمر الأم الأخير من `/get-command`.
  * 2. رفع الصفوف ذات `pending_upload`.
- * 3. سحب السياسة الكاملة واستبدال الجداول المحلية.
- *
- * المصدر الموثوق بعد المزامنة: **الخادم** (قرارات الأم عبر السيرفر).
+ * 3. سحب السياسة من السيرفر ودمجها مع المحلي (لا يُمسح الحظر عند فقدان بيانات Render).
  */
 class PolicyRepository private constructor(context: Context) {
 
@@ -59,7 +57,10 @@ class PolicyRepository private constructor(context: Context) {
         when (cmd.action) {
             "block_app", "freeze_app" -> cmd.value?.let { addBlockedPackage(it) }
             "block_site" -> cmd.value?.let { addBlockedSite(it) }
-            "allow" -> ParentResponseWatchdog.onParentResponded()
+            "allow" -> {
+                ParentResponseWatchdog.onParentResponded()
+                clearLocalPolicy()
+            }
             "request_usage" -> {
                 val childCode = ChildSession.childCode(appContext) ?: deviceId
                 uploadUsageNow(childCode)
@@ -146,25 +147,56 @@ class PolicyRepository private constructor(context: Context) {
         }
     }
 
+    /** يفرّغ الحظر المحلي — عند أمر «سماح» من الأم. */
+    private suspend fun clearLocalPolicy() = withContext(Dispatchers.IO) {
+        db.withTransaction {
+            db.blockedSiteDao().deleteAll()
+            db.blockedAppDao().deleteAll()
+        }
+        PolicyFilterCache.clearDevicePolicy()
+    }
+
     /**
-     * يجلب السياسة من السيرفر ويستبدل الجداول المحلية بالكامل.
-     * أي إضافة محلية قديمة تُستبدل بنسخة الخادم (متوقع بعد ربط الأم).
+     * يدمج سياسة السيرفر مع المحلي — لا يمسح الحظر عند فقدان بيانات Render.
      */
     private suspend fun pullAndApply(deviceId: String) {
         val envelope = api.fetchPolicy(deviceId)
         val now = System.currentTimeMillis()
-        val sites = envelope.blockedHosts.orEmpty().map { host ->
+        val localSites = db.blockedSiteDao().listAll()
+        val localApps = db.blockedAppDao().listAll()
+
+        val serverSitePatterns = envelope.blockedHosts.orEmpty()
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+        val serverAppPatterns = envelope.blockedPackages.orEmpty()
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        val mergedSitePatterns = LinkedHashSet<String>().apply {
+            addAll(serverSitePatterns)
+            localSites.forEach { add(it.hostPattern) }
+        }
+        val mergedAppPatterns = LinkedHashSet<String>().apply {
+            addAll(serverAppPatterns)
+            localApps.forEach { add(it.packageName) }
+        }
+
+        val sites = mergedSitePatterns.map { host ->
+            val local = localSites.find { it.hostPattern == host }
             BlockedSiteEntity(
-                hostPattern = host.trim().lowercase(),
-                createdAtEpochMs = now,
-                pendingUpload = false
+                hostPattern = host,
+                createdAtEpochMs = local?.createdAtEpochMs ?: now,
+                pendingUpload = local?.pendingUpload == true && host !in serverSitePatterns,
             )
         }
-        val apps = envelope.blockedPackages.orEmpty().map { pkg ->
+        val apps = mergedAppPatterns.map { pkg ->
+            val local = localApps.find { it.packageName == pkg }
             BlockedAppEntity(
-                packageName = pkg.trim().lowercase(),
-                createdAtEpochMs = now,
-                pendingUpload = false
+                packageName = pkg,
+                createdAtEpochMs = local?.createdAtEpochMs ?: now,
+                pendingUpload = local?.pendingUpload == true && pkg !in serverAppPatterns,
             )
         }
         val prev = db.syncStateDao().get()
@@ -189,7 +221,6 @@ class PolicyRepository private constructor(context: Context) {
         val kw = envelope.videoKeywords.orEmpty()
         PolicyFilterCache.update(sites.map { it.hostPattern }, kw)
         PolicyFilterCache.persistKeywords(appContext, kw)
-        // إعادة دمج catalog.json بعد سياسة السيرفر (لا تُستبدل كلمات الملف)
         BlocklistCatalogLoader.loadCachedIntoFilter(appContext)
     }
 

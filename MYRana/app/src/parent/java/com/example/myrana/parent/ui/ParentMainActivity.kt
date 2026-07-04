@@ -24,6 +24,8 @@ import com.example.myrana.BuildConfig
 import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
 import com.example.myrana.parent.ParentAlertNotifier
+import com.example.myrana.parent.ParentLinkSync
+import com.example.myrana.parent.ParentReportCache
 import com.example.myrana.parent.ParentSession
 import com.example.myrana.util.ChildCodeNormalizer
 import kotlinx.coroutines.Dispatchers
@@ -171,6 +173,13 @@ class ParentMainActivity : AppCompatActivity() {
         super.onResume()
         if (ParentSession.isChildLinked(this)) {
             lifecycleScope.launch {
+                when (withContext(Dispatchers.IO) { ParentLinkSync.refreshFromServer(this@ParentMainActivity) }) {
+                    ParentLinkSync.Result.RESTORED ->
+                        toast("تم استعادة الربط تلقائياً بعد إعادة تشغيل السيرفر", false)
+                    ParentLinkSync.Result.STALE_CLEARED ->
+                        toast("انقطع الربط — أعيدي «ربط تلقائي» من جديد", true)
+                    else -> Unit
+                }
                 refreshAlertsQuietly()
                 refreshLinkedChildrenSummary()
                 refreshDashboardMini()
@@ -344,9 +353,12 @@ class ParentMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onLinkSuccess(childCode: String, name: String) {
+    private fun onLinkSuccess(childCode: String, name: String, restoreToken: String? = null) {
         val linked = ChildCodeNormalizer.normalize(childCode)
         ParentSession.saveLinkedChild(this, linked, name)
+        restoreToken?.takeIf { it.isNotBlank() }?.let {
+            ParentSession.saveRestoreToken(this, linked, it)
+        }
         showControl()
         startAlertPolling()
         toast(getString(R.string.parent_link_success_monitoring), false)
@@ -364,9 +376,14 @@ class ParentMainActivity : AppCompatActivity() {
         val code = ParentSession.childCode(this@ParentMainActivity) ?: return
         when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyChart(code, 7) }) {
             is GuardianApi.ApiResult.WeeklyChart -> withContext(Dispatchers.Main) {
+                ParentReportCache.saveWeeklyChart(this@ParentMainActivity, code, result.data)
                 ParentDashboardBinder.bindMainCharts(this@ParentMainActivity, result.data)
             }
-            else -> Unit
+            else -> withContext(Dispatchers.Main) {
+                ParentReportCache.loadWeeklyChart(this@ParentMainActivity, code)?.let { cached ->
+                    ParentDashboardBinder.bindMainCharts(this@ParentMainActivity, cached)
+                }
+            }
         }
     }
 
@@ -776,7 +793,7 @@ class ParentMainActivity : AppCompatActivity() {
         ) {
             is GuardianApi.ApiResult.LinkSuccess -> {
                 val linked = result.childCode?.takeIf { it.isNotBlank() } ?: childCode
-                onLinkSuccess(linked, name)
+                onLinkSuccess(linked, name, result.restoreToken)
                 toast(
                     result.message.ifBlank { getString(R.string.parent_auto_link_success) },
                     false,

@@ -139,6 +139,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                             deviceName = deviceName,
                             androidVersion = androidVersion,
                             androidDeviceId = androidDeviceId,
+                            deviceVerifyCode = ChildSession.deviceVerifyCode(this@ChildRegistrationActivity).orEmpty(),
                         ),
                     )
                 }
@@ -157,6 +158,9 @@ class ChildRegistrationActivity : AppCompatActivity() {
                     serverChildCode,
                     "",
                 )
+                response.deviceVerifyCode?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    ChildSession.saveDeviceVerifyCode(this@ChildRegistrationActivity, it)
+                }
                 DeviceIdentity.setChildDeviceId(this@ChildRegistrationActivity, serverChildCode)
                 ChildIdentity.bind(this@ChildRegistrationActivity, serverChildCode)
                 showWaitingForLink(serverChildCode)

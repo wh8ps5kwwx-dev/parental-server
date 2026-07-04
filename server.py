@@ -24,6 +24,8 @@ import threading
 import traceback
 import urllib.error
 import urllib.request
+import hmac
+import hashlib
 from email.message import EmailMessage
 from typing import Tuple
 
@@ -439,6 +441,86 @@ def _log_link_context(step: str, parent_email: str, child_code: str, verify_code
     )
 
 
+def _make_restore_token(parent_email: str, child_code: str) -> str:
+    """رمز استعادة الربط — يُحفظ على جوال الأم بعد أول ربط ناجح."""
+    email = (parent_email or "").strip().lower()
+    code = db_child_code(child_code) or clean_child_code(child_code)
+    if not email or not code:
+        return ""
+    key = (API_KEY or "graduation-secret-key").encode("utf-8")
+    msg = f"restore|{email}|{code}".encode("utf-8")
+    return hmac.new(key, msg, hashlib.sha256).hexdigest()
+
+
+def _restore_link_transaction(cur, conn, data: dict):
+    """إعادة ربط الأم بالطفل بعد فقدان بيانات Render — بدون Turso."""
+    parent_email = _extract_parent_email(data)
+    raw_child = str(data.get("child_code") or data.get("childCode") or "").strip()
+    child_code = db_child_code(raw_child) or clean_child_code(raw_child)
+    token = (data.get("restore_token") or "").strip()
+    name = (data.get("name") or data.get("child_name") or "طفل").strip() or "طفل"
+    try:
+        age = int(data.get("age") or 10)
+    except (TypeError, ValueError):
+        age = 10
+    guardian_role = (data.get("guardian_role") or "ولي أمر").strip() or "ولي أمر"
+
+    if not parent_email or not child_code or not token:
+        return _json_error(
+            "parent_email و child_code و restore_token مطلوبان",
+            400,
+            error_code="missing_fields",
+        )
+
+    expected = _make_restore_token(parent_email, child_code)
+    if not expected or not hmac.compare_digest(expected, token):
+        return _json_error(
+            "رمز استعادة الربط غير صالح",
+            403,
+            error_code="invalid_restore_token",
+        )
+
+    device_row = find_child_device(cur, raw_child, log_on_miss=False)
+    if not device_row:
+        return _child_not_found_response(
+            raw_child,
+            "من جوال الطفل: افتحي التطبيق ليُعاد التسجيل ثم أعيدي المحاولة",
+        )
+
+    device_db_key = device_row["child_code"]
+    child_email = (device_row["child_email"] or parent_email).strip()
+    device = (device_row["device_name"] or "Android").strip()
+    android_version = (device_row["android_version"] or "Android").strip()
+
+    cur.execute(
+        """
+        INSERT OR REPLACE INTO children
+        (name, age, child_email, device, android_version, child_code, guardian_email, guardian_role, linked_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (name, age, child_email, device, android_version, child_code, parent_email, guardian_role, now()),
+    )
+    cur.execute(
+        "UPDATE child_devices SET linked = 1, device_verified = 1 WHERE child_code = ?",
+        (device_db_key,),
+    )
+    try:
+        apply_default_blocklist(conn, child_code, merge=True)
+    except Exception as block_err:
+        logger.warning("apply_default_blocklist after restore-link failed: %s", block_err)
+
+    _ensure_guardian(cur, parent_email)
+    conn.commit()
+    logger.info("[restore-link] OK parent=%s child=%r", parent_email, child_code)
+    return _json_success(
+        "تم استعادة الربط بعد إعادة تشغيل السيرفر",
+        child_code=normalize_child_code(child_code),
+        child_code_clean=child_code,
+        child_name=name,
+        restore_token=expected,
+    )
+
+
 def _link_child_transaction(cur, conn, data: dict):
     """
     ربط الطفل — يعتمد على:
@@ -533,6 +615,7 @@ def _link_child_transaction(cur, conn, data: dict):
                 child_id=int(existing["id"]),
                 child_code=normalize_child_code(child_code),
                 child_code_clean=child_code,
+                restore_token=_make_restore_token(parent_email, child_code),
             )
         return _fail(
             "الجهاز مربوط بحساب أم آخر",
@@ -613,6 +696,7 @@ def _link_child_transaction(cur, conn, data: dict):
         child_code=normalize_child_code(child_code),
         child_code_clean=child_code,
         child_name=name,
+        restore_token=_make_restore_token(parent_email, child_code),
     )
 
 
@@ -1221,7 +1305,7 @@ def protect():
 def home():
     return jsonify({
         "status": "running",
-        "deploy_version": "2026-07-04-turso",
+        "deploy_version": "2026-07-04-restore-link",
         "message": "Parental Control Server is running",
         "storage": _storage_status(),
         "smtp_ready": email_configured(),
@@ -1428,8 +1512,16 @@ def register_child_device():
                 (child_email, device_name, android_version, existing["child_code"]),
             )
             stored = existing["child_code"]
+            verify_out = str(existing["device_verify_code"] or "").strip() or None
         else:
-            device_code = str(random.randint(100000, 999999))
+            client_verify = str(
+                data.get("device_verify_code") or data.get("deviceVerifyCode") or ""
+            ).strip()
+            if client_verify.isdigit() and len(client_verify) == 6:
+                device_code = client_verify
+            else:
+                device_code = str(random.randint(100000, 999999))
+            verify_out = device_code
             # FIX: normalize child_code — يُخزَّن بدون بادئة: 1DF71288
             cur.execute(
                 """
@@ -1447,6 +1539,7 @@ def register_child_device():
             "Child device registered — waiting for parent link",
             child_code=normalize_child_code(stored),
             child_code_clean=clean_child_code(stored),
+            device_verify_code=verify_out,
         )
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)
@@ -1654,6 +1747,31 @@ def add_child():
             500,
             error_code="server_error",
         )
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+# استعادة الربط بعد إعادة تشغيل Render — بدون Turso (رمز من أول ربط ناجح)
+@app.route("/restore-link", methods=["POST"])
+def restore_link():
+    conn = None
+    try:
+        data = request.get_json(silent=True) or {}
+        conn = db()
+        cur = conn.cursor()
+        return _restore_link_transaction(cur, conn, data)
+    except Exception as exc:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.exception("restore-link failed: %s", exc)
+        return _json_error("خطأ أثناء استعادة الربط", 500, error_code="server_error")
     finally:
         if conn:
             try:

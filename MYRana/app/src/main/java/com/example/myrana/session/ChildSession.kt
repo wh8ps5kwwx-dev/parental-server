@@ -16,6 +16,7 @@ object ChildSession {
     private const val KEY_CHILD_CODE = "child_code"
     /** يُحذف بعد الإعداد؛ يُستخدم فقط أثناء خطوة التحقق. */
     private const val KEY_VERIFY_CODE = "verify_code"
+    private const val KEY_DEVICE_VERIFY_CODE = "device_verify_code"
 
     /** هل أنهى الطفل التسجيل والتحقق؟ */
     fun isSetupComplete(context: Context): Boolean =
@@ -30,6 +31,16 @@ object ChildSession {
     /** الرمز المتوقع الذي أرسله السيرفر (للمقارنة محلياً قبل الإعداد). */
     fun expectedVerifyCode(context: Context): String? =
         prefs(context).getString(KEY_VERIFY_CODE, null)
+
+    /** رمز ربط الجهاز — يُحفظ بعد التسجيل لإعادة التسجيل على Render. */
+    fun deviceVerifyCode(context: Context): String? =
+        prefs(context).getString(KEY_DEVICE_VERIFY_CODE, null)
+
+    fun saveDeviceVerifyCode(context: Context, code: String) {
+        val trimmed = code.trim()
+        if (trimmed.isEmpty()) return
+        prefs(context).edit().putString(KEY_DEVICE_VERIFY_CODE, trimmed).apply()
+    }
 
     /**
      * يُستدعى بعد نجاح `/register-child-device` وقبل إدخال الرمز.

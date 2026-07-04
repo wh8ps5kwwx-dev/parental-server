@@ -10,6 +10,14 @@ object PolicyFilterCache {
     private const val PREFS = "myrana_policy_filter"
     private const val KEY_KEYWORDS = "video_keywords"
 
+    /** مواقع من catalog.json (مدمج أو من السيرفر). */
+    @Volatile
+    private var catalogBlockedHosts: Set<String> = emptySet()
+
+    /** مواقع/تطبيقات من سياسة الجهاز (أوامر الأم + Room). */
+    @Volatile
+    private var deviceBlockedHosts: Set<String> = emptySet()
+
     @Volatile
     private var blockedHosts: Set<String> = emptySet()
 
@@ -29,24 +37,38 @@ object PolicyFilterCache {
         // لا شيء — الكلمات المدمجة في SafetyKeywordCatalog
     }
 
-    /** دمج catalog.json (مواقع + كلمات) في الفلاتر. */
+    /** دمج catalog.json (مواقع + كلمات) في الفلاتر — لا يُمسح بمزامنة السياسة. */
     fun applyCatalogFilter(sites: Collection<String>, keywords: Collection<String>) {
         val siteSet = sites.map { normalizeHost(it) }.filter { it.isNotEmpty() }.toSet()
         if (siteSet.isNotEmpty()) {
-            blockedHosts = blockedHosts + siteSet
+            catalogBlockedHosts = siteSet
         }
         catalogKeywords = keywords.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+        rebuildBlockedHosts()
         rebuildKeywordSets()
     }
 
     fun update(hosts: Collection<String>, keywords: Collection<String>) {
-        blockedHosts = hosts.map { normalizeHost(it) }.filter { it.isNotEmpty() }.toSet()
+        deviceBlockedHosts = hosts.map { normalizeHost(it) }.filter { it.isNotEmpty() }.toSet()
         serverKeywords = keywords.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+        rebuildBlockedHosts()
         rebuildKeywordSets()
     }
 
     fun updateHosts(hosts: Collection<String>) {
-        blockedHosts = hosts.map { normalizeHost(it) }.filter { it.isNotEmpty() }.toSet()
+        deviceBlockedHosts = hosts.map { normalizeHost(it) }.filter { it.isNotEmpty() }.toSet()
+        rebuildBlockedHosts()
+    }
+
+    fun clearDevicePolicy() {
+        deviceBlockedHosts = emptySet()
+        serverKeywords = emptySet()
+        rebuildBlockedHosts()
+        rebuildKeywordSets()
+    }
+
+    private fun rebuildBlockedHosts() {
+        blockedHosts = deviceBlockedHosts + catalogBlockedHosts
     }
 
     fun persistKeywords(context: Context, keywords: Collection<String>) {

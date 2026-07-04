@@ -12,14 +12,9 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.myrana.R
-import com.example.myrana.data.repo.OutboxRepository
-import com.example.myrana.data.repo.PolicyRepository
-import com.example.myrana.sync.BackgroundMonitoring
-import com.example.myrana.sync.ScreenTimeSyncHelper
-import com.example.myrana.sync.UsageUploadHelper
-import com.example.myrana.device.DeviceIdentity
 import com.example.myrana.enforcement.EnforcementEngine
 import com.example.myrana.permissions.ChildProjectRuntime
+import com.example.myrana.sync.BackgroundMonitoring
 import com.example.myrana.session.ChildSession
 import com.example.myrana.ui.academy.AcademyMenuActivity
 import kotlinx.coroutines.CoroutineScope
@@ -61,21 +56,11 @@ class ParentSyncService : Service() {
         BackgroundMonitoring.prepareCaches(applicationContext)
 
         val engine = EnforcementEngine.get(applicationContext)
-        val childCode = ChildSession.childCode(applicationContext)
-            ?: DeviceIdentity.childDeviceId(applicationContext)
-
         if (syncJob?.isActive != true) {
             syncJob = scope.launch(Dispatchers.IO) {
-                val repo = PolicyRepository.get(applicationContext)
-                val outbox = OutboxRepository.get(applicationContext)
-                val deviceId = DeviceIdentity.childDeviceId(applicationContext)
                 while (isActive) {
                     try {
-                        repo.syncWithServer(deviceId)
-                        engine.refreshFromServer(deviceId)
-                        UsageUploadHelper.uploadPeriodicIfDue(applicationContext, childCode)
-                        ScreenTimeSyncHelper.syncIfDue(applicationContext)
-                        outbox.flushPending()
+                        com.example.myrana.sync.SyncOrchestrator.runChildCycle(applicationContext)
                     } catch (_: Exception) {
                     }
                     delay(SYNC_INTERVAL_MS)

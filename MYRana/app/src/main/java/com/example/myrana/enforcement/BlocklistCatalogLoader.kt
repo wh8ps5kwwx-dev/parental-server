@@ -3,6 +3,8 @@ package com.example.myrana.enforcement
 import android.content.Context
 import android.util.Log
 import com.example.myrana.data.remote.NetworkModule
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,15 +29,54 @@ object BlocklistCatalogLoader {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private const val KEY_BUNDLED_LOADED = "bundled_catalog_loaded"
+    private const val ASSET_PATH = "blocklists/catalog.json"
+    private val gson = Gson()
+
     data class Catalog(
         val sites: List<String>,
         val keywords: List<String>,
     )
 
-    /** تحميل من الذاكرة المحلية ثم محاولة تحديث من السيرفر. */
+    /** تحميل من assets ثم الذاكرة المحلية ثم محاولة تحديث من السيرفر. */
     fun prepare(context: Context) {
+        ensureBundledCatalog(context)
         loadCachedIntoFilter(context)
         syncFromServerIfStale(context)
+    }
+
+    /** قائمة الحظر الافتراضية مدمجة في APK — تعمل بدون Turso أو اتصال دائم. */
+    private fun ensureBundledCatalog(context: Context) {
+        val app = context.applicationContext
+        val prefs = prefs(app)
+        if (prefs.getBoolean(KEY_BUNDLED_LOADED, false)) return
+        try {
+            app.assets.open(ASSET_PATH).bufferedReader().use { reader ->
+                parseCatalogJson(reader.readText())?.let { catalog ->
+                    saveAndApply(app, catalog)
+                    prefs.edit().putBoolean(KEY_BUNDLED_LOADED, true).apply()
+                    Log.i(TAG, "bundled catalog loaded from assets")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "bundled catalog missing or invalid: ${e.message}")
+        }
+    }
+
+    private fun parseCatalogJson(text: String): Catalog? {
+        if (text.isBlank()) return null
+        return try {
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val root: Map<String, Any?> = gson.fromJson(text, mapType)
+            @Suppress("UNCHECKED_CAST")
+            val cat = root["catalog"] as? Map<String, Any?> ?: root
+            val sites = (cat["sites"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+            val keywords = (cat["video_keywords"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+            Catalog(sites, keywords)
+        } catch (e: Exception) {
+            Log.w(TAG, "parse catalog failed: ${e.message}")
+            null
+        }
     }
 
     fun loadCachedIntoFilter(context: Context) {

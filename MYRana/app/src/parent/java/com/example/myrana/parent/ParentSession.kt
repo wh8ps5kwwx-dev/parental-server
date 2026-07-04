@@ -23,6 +23,7 @@ object ParentSession {
     private const val KEY_DEVICE_VERIFIED = "device_link_verified"
     private const val KEY_PENDING_CHILD_NAME = "pending_child_name"
     private const val KEY_PENDING_CHILD_AGE = "pending_child_age"
+    private const val KEY_RESTORE_TOKEN_PREFIX = "restore_token_"
 
     fun guardianEmail(context: Context): String? =
         prefs(context).getString(KEY_EMAIL, null)
@@ -113,6 +114,21 @@ object ParentSession {
             .remove(KEY_PENDING_CHILD_AGE)
             .apply()
         clearPendingLink(context)
+    }
+
+    fun saveRestoreToken(context: Context, childCode: String, token: String) {
+        val code = childCode.trim()
+        val trimmed = token.trim()
+        if (code.isEmpty() || trimmed.isEmpty()) return
+        prefs(context).edit()
+            .putString(KEY_RESTORE_TOKEN_PREFIX + code.uppercase(), trimmed)
+            .apply()
+    }
+
+    fun restoreToken(context: Context, childCode: String): String? {
+        val code = childCode.trim().uppercase()
+        if (code.isEmpty()) return null
+        return prefs(context).getString(KEY_RESTORE_TOKEN_PREFIX + code, null)
     }
 
     fun savePendingChildProfile(context: Context, name: String, age: Int) {

@@ -13,6 +13,8 @@ data class RegisterChildRequest(
     @SerializedName("android_version") val androidVersion: String,
     /** معرّف الجهاز الحقيقي من أندرويد (ليس واجهة وهمية). */
     @SerializedName("android_device_id") val androidDeviceId: String = "",
+    /** يُعاد عند إعادة التسجيل بعد فقدان بيانات السيرفر — للحفاظ على رمز الربط. */
+    @SerializedName("device_verify_code") val deviceVerifyCode: String = "",
 )
 
 /**

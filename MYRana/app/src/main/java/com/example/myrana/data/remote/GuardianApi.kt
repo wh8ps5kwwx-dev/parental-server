@@ -131,8 +131,31 @@ object GuardianApi {
         }
     }
 
+    /** استعادة الربط بعد إعادة تشغيل Render — بدون Turso. */
+    fun restoreLink(
+        guardianEmail: String,
+        childCode: String,
+        restoreToken: String,
+        name: String,
+        age: Int,
+        guardianRole: String,
+    ): ApiResult {
+        return post(
+            "restore-link",
+            mapOf(
+                "parent_email" to guardianEmail.trim(),
+                "guardian_email" to guardianEmail.trim(),
+                "child_code" to ChildCodeNormalizer.forApi(childCode),
+                "restore_token" to restoreToken.trim(),
+                "name" to name.trim().ifBlank { "طفل" },
+                "child_name" to name.trim().ifBlank { "طفل" },
+                "age" to age,
+                "guardian_role" to guardianRole.trim(),
+            ),
+        )
+    }
+
     /**
-     * ربط الطفل بعد تسجيل جهازه من تطبيق الطفل.
      * الحقول مطابقة لـ `POST /add-child` في server.py.
      */
     fun addChild(
@@ -593,12 +616,13 @@ object GuardianApi {
                 val parentId = (json["parent_id"] as? Number)?.toInt()
                 val childId = (json["child_id"] as? Number)?.toInt()
                 val linkedCode = json["child_code"]?.toString()?.trim()
-                if (path.contains("add-child") || path.contains("link-child")) {
+                if (path.contains("add-child") || path.contains("link-child") || path.contains("restore-link")) {
                     ApiResult.LinkSuccess(
                         message = json["message"]?.toString() ?: "تم",
                         parentId = parentId,
                         childId = childId,
                         childCode = linkedCode,
+                        restoreToken = json["restore_token"]?.toString()?.trim(),
                     )
                 } else {
                     ApiResult.Ok(json["message"]?.toString() ?: "تم")
@@ -668,6 +692,7 @@ object GuardianApi {
             val parentId: Int? = null,
             val childId: Int? = null,
             val childCode: String? = null,
+            val restoreToken: String? = null,
         ) : ApiResult()
         data class ChildrenList(val children: List<Map<String, Any?>>) : ApiResult()
         data class EmailCodeSent(

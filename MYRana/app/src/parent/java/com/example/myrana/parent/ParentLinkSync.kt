@@ -7,6 +7,7 @@ import com.example.myrana.util.ChildCodeNormalizer
 /**
  * مزامنة حالة الربط من السيرفر إلى [ParentSession] — يمنع اعتقاد الأم أن الطفل مربوط
  * بينما السيرفر فقد السجل (مثلاً بعد إعادة تشغيل Render).
+ * عند الفقدان: يحاول استعادة الربط تلقائياً عبر [GuardianApi.restoreLink].
  */
 object ParentLinkSync {
 
@@ -14,6 +15,7 @@ object ParentLinkSync {
         OK,
         NOT_LOGGED_IN,
         NOT_LINKED_LOCALLY,
+        RESTORED,
         STALE_CLEARED,
         NETWORK_ERROR,
     }
@@ -29,11 +31,7 @@ object ParentLinkSync {
         return when (val api = GuardianApi.fetchLinkedChildren(email)) {
             is GuardianApi.ApiResult.ChildrenList -> {
                 if (api.children.isEmpty()) {
-                    if (ParentSession.isChildLinked(context)) {
-                        ParentSession.markLinkStale(context)
-                        return Result.STALE_CLEARED
-                    }
-                    return Result.OK
+                    return tryRestoreLink(context, email, localCode)
                 }
                 if (!ParentSession.isChildLinked(context)) {
                     adoptFirstChildFromServer(context, api.children)
@@ -46,7 +44,6 @@ object ParentLinkSync {
                     serverCode.equals(localCode, ignoreCase = true)
                 }
                 if (!found) {
-                    // الطفل النشط غُيّر على السيرفر — انتقلي لأول طفل متاح بدل مسح الكل
                     adoptFirstChildFromServer(context, api.children)
                     Result.OK
                 } else {
@@ -55,6 +52,33 @@ object ParentLinkSync {
             }
             is GuardianApi.ApiResult.Error -> Result.NETWORK_ERROR
             else -> Result.NETWORK_ERROR
+        }
+    }
+
+    private fun tryRestoreLink(context: Context, email: String, localCode: String): Result {
+        val token = ParentSession.restoreToken(context, localCode)
+        if (token.isNullOrBlank()) {
+            ParentSession.markLinkStale(context)
+            return Result.STALE_CLEARED
+        }
+        val name = ParentSession.childName(context).orEmpty().ifBlank { "طفل" }
+        return when (
+            GuardianApi.restoreLink(
+                guardianEmail = email,
+                childCode = localCode,
+                restoreToken = token,
+                name = name,
+                age = ParentSession.pendingChildAge(context),
+                guardianRole = ParentSession.guardianRole(context),
+            )
+        ) {
+            is GuardianApi.ApiResult.LinkSuccess,
+            is GuardianApi.ApiResult.Ok,
+            -> Result.RESTORED
+            else -> {
+                ParentSession.markLinkStale(context)
+                Result.STALE_CLEARED
+            }
         }
     }
 
