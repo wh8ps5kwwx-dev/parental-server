@@ -152,6 +152,17 @@ object ParentSession {
     fun hasPendingChildProfile(context: Context): Boolean =
         !pendingChildName(context).isNullOrBlank()
 
+    /** إعادة ربط نفس الطفل — يُبقي الكود والاسم، بدون مسح بيانات التطبيق. */
+    fun startRelinkSameChild(context: Context) {
+        val name = childName(context)?.trim().orEmpty().ifBlank { "طفل" }
+        prefs(context).edit()
+            .putBoolean(KEY_LINKED, false)
+            .putString(KEY_PENDING_CHILD_NAME, name)
+            .putInt(KEY_PENDING_CHILD_AGE, childAge(context))
+            .apply()
+        clearPendingLink(context)
+    }
+
     /** العودة لإضافة وربط طفل جديد مع الإبقاء على بريد ولي الأمر. */
     fun startAddAnotherChild(context: Context) {
         prefs(context).edit()

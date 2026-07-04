@@ -177,7 +177,10 @@ class ParentMainActivity : AppCompatActivity() {
                     ParentLinkSync.Result.RESTORED ->
                         toast("تم استعادة الربط على السيرفر تلقائياً", false)
                     ParentLinkSync.Result.PENDING_RESTORE ->
-                        toast("الربط محفوظ — جاري مزامنة السيرفر… افتحي تطبيق الطفل", false)
+                        toast(
+                            "السيرفر فقد الربط — من الطفل: 🔗 ربط الأم → إعادة تسجيل. ثم: الأطفال → إعادة ربط",
+                            true,
+                        )
                     else -> Unit
                 }
                 refreshAlertsQuietly()
@@ -221,10 +224,27 @@ class ParentMainActivity : AppCompatActivity() {
             ParentSession.isChildLinked(this) -> showControl()
             ParentSession.isDeviceLinkVerified(this) -> showLinkConfirm()
             ParentSession.hasPendingChildProfile(this) -> showLink()
+            canRelinkSameChild() -> showRelinkSameChild()
             ParentSession.isEmailVerified(this) -> showAddChild()
             !email.isNullOrBlank() -> showVerify()
             else -> showLogin()
         }
+    }
+
+    private fun canRelinkSameChild(): Boolean {
+        return ParentSession.isEmailVerified(this) &&
+            !ParentSession.childCode(this).isNullOrBlank()
+    }
+
+    private fun showRelinkSameChild() {
+        hideAllSteps()
+        stepLink.visibility = View.VISIBLE
+        textStepIndicator.text = getString(R.string.parent_step_link_device)
+        val code = ParentSession.childCode(this).orEmpty()
+        val name = ParentSession.childName(this).orEmpty().ifBlank { "طفل" }
+        ParentSession.savePendingChildProfile(this, name, ParentSession.childAge(this))
+        childCodeField().setText(code)
+        toast(getString(R.string.parent_relink_same_hint), false)
     }
 
     private fun continueToLink() {
@@ -903,7 +923,12 @@ class ParentMainActivity : AppCompatActivity() {
             textStepIndicator.text = "${getString(R.string.parent_step_link_device)} — $pendingName"
         }
         if (childCodeField().text.toString().isBlank()) {
-            pasteChildCodeFromClipboard(silent = true)
+            val savedCode = ParentSession.childCode(this)?.trim().orEmpty()
+            if (savedCode.isNotEmpty()) {
+                childCodeField().setText(savedCode)
+            } else {
+                pasteChildCodeFromClipboard(silent = true)
+            }
         }
     }
 

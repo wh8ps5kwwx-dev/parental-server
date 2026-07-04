@@ -68,6 +68,12 @@
                 style="@style/Widget.MYRana.AcademyButton"
                 android:backgroundTint="@color/child_secondary"
                 android:text="@string/academy_refresh" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnParentLink"
+                style="@style/Widget.MYRana.AcademyButton"
+                android:backgroundTint="@color/child_primary"
+                android:text="@string/academy_btn_parent_link" />
         </GridLayout>
 
         <TextView

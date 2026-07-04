@@ -180,6 +180,8 @@
     <string name="parent_dash_weekly_chart">استخدام الأسبوع</string>
     <string name="parent_dash_top_apps_empty">لا بيانات تطبيقات بعد</string>
     <string name="parent_dash_quick_actions">إجراءات سريعة</string>
+    <string name="parent_relink_same_hint">الكود محفوظ — اضغطي «ربط تلقائي» بعد إعادة تسجيل الطفل على السيرفر</string>
+    <string name="parent_btn_relink_same">إعادة ربط نفس الطفل (بدون مسح)</string>
     <string name="parent_btn_switch_child">تبديل الطفل</string>
     <string name="parent_quick_block">حظر تطبيق</string>
     <string name="parent_quick_lock">تجميد فوري</string>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/child_bg"
+    android:fillViewport="true"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <include layout="@layout/include_child_header" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_child_card"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/child_link_help_title"
+                android:textAppearance="@style/ChildText.Section"
+                android:textSize="20sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/child_link_help_subtitle"
+                android:textAppearance="@style/ChildText.Caption"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/register_child_code_label"
+                android:textColor="@color/child_text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/textChildCodeValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_child_code_card"
+                android:gravity="center"
+                android:padding="14dp"
+                android:textColor="@color/child_text_primary"
+                android:textIsSelectable="true"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                tools:text="CHILD-A1B2C3D4" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCopyChildCode"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/btn_copy_child_code"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp"
+                app:strokeColor="@color/child_primary" />
+
+            <TextView
+                android:id="@+id/textLinkStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_child_step_chip"
+                android:padding="12dp"
+                android:textColor="@color/child_text_primary"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReregisterServer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/child_link_reregister"
+                android:textAllCaps="false"
+                app:backgroundTint="@color/child_primary"
+                app:cornerRadius="14dp" />
+
+            <TextView
+                android:id="@+id/textLinkMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="@color/child_text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBackToGame"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/child_link_back_game"
+            android:textAllCaps="false" />
+    </LinearLayout>
+</ScrollView>

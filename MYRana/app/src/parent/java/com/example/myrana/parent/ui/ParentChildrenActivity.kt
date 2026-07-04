@@ -46,6 +46,14 @@ class ParentChildrenActivity : ParentShellActivity() {
             )
             finish()
         }
+        findViewById<MaterialButton>(R.id.btnRelinkSameChild).setOnClickListener {
+            ParentSession.startRelinkSameChild(this)
+            startActivity(
+                Intent(this, ParentMainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
+            finish()
+        }
         refreshSummary()
         loadChildren()
     }

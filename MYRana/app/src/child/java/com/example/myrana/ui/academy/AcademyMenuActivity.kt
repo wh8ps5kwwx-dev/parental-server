@@ -14,6 +14,7 @@ import com.example.myrana.permissions.ChildPermissionEvaluator
 import com.example.myrana.permissions.ChildPermissionsGate
 import com.example.myrana.permissions.ChildProjectRuntime
 import com.example.myrana.session.ChildSession
+import com.example.myrana.ui.ChildLinkHelpActivity
 import com.example.myrana.ui.ChildUiRouter
 import com.google.android.material.button.MaterialButton
 
@@ -87,6 +88,9 @@ class AcademyMenuActivity : AppCompatActivity() {
         }
         findViewById<MaterialButton>(R.id.btnRefresh).setOnClickListener {
             refreshStats()
+        }
+        findViewById<MaterialButton>(R.id.btnParentLink).setOnClickListener {
+            startActivity(Intent(this, ChildLinkHelpActivity::class.java))
         }
     }
 

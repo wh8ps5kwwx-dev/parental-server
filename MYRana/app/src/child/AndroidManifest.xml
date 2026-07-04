@@ -57,6 +57,11 @@
             android:theme="@style/Theme.MYRana.Game" />
 
         <activity
+            android:name=".ui.ChildLinkHelpActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Child" />
+
+        <activity
             android:name=".ui.ChildRegistrationActivity"
             android:exported="false"
             android:theme="@style/Theme.MYRana.Child"

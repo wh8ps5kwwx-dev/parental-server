@@ -4,4 +4,18 @@
     <string name="child_header_subtitle">ربط الجهاز وبدء التعلّم بأمان</string>
     <string name="register_hint_parent_email">بريد ولي الأمر (Gmail)</string>
     <string name="btn_check_parent_link">تحقق من الربط</string>
+    <string name="academy_btn_parent_link">🔗 ربط الأم / كود الجهاز</string>
+    <string name="child_link_help_title">ربط ولي الأمر</string>
+    <string name="child_link_help_subtitle">لا حاجة لمسح البيانات — انسخي الكود أو أعيدي التسجيل على السيرفر إذا حُذفت القاعدة.</string>
+    <string name="child_link_reregister">إعادة تسجيل على السيرفر</string>
+    <string name="child_link_back_game">العودة للأكاديمية</string>
+    <string name="child_link_no_code">لا يوجد كود — تواصلي مع الدعم أو أعيدي تسجيل الجهاز مرة واحدة.</string>
+    <string name="child_link_reregister_ok">تم التسجيل على السيرفر — اطلبي من الأم «ربط تلقائي»</string>
+    <string name="child_link_reregister_failed">فشل التسجيل — تحققي من الإنترنت وحاولي مرة أخرى</string>
+    <string name="child_link_setup_required">أكملي إعداد الجهاز أولاً</string>
+    <string name="child_link_status_linked">✅ مربوط بجوال الأم</string>
+    <string name="child_link_status_waiting">⏳ بانتظار ربط الأم</string>
+    <string name="child_link_status_not_on_server">⚠️ غير مسجّل على السيرفر — اضغط «إعادة تسجيل»</string>
+    <string name="child_link_status_error">❌ خطأ اتصال بالسيرفر</string>
+    <string name="child_link_status_ok">مسجّل على السيرفر</string>
 </resources>
