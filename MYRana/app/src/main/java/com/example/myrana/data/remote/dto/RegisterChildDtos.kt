@@ -20,6 +20,7 @@ data class RegisterChildRequest(
  */
 data class RegisterChildResponse(
     @SerializedName("status") val status: String?,
+    @SerializedName("success") val success: Boolean? = null,
     @SerializedName("message") val message: String?,
     @SerializedName("child_code") val childCode: String?,
     /** الرمز الذي تدخله الأم + الطفل — يُتحقق منه على السيرفر. */

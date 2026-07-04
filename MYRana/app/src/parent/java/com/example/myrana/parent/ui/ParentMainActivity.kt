@@ -326,7 +326,7 @@ class ParentMainActivity : AppCompatActivity() {
         startAlertPolling()
         toast(getString(R.string.parent_link_success_monitoring), false)
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) { GuardianApi.applyDefaultBlocklist(childCode) }
+            withContext(Dispatchers.IO) { GuardianApi.applyDefaultBlocklist(linked) }
             refreshAlertsQuietly()
             refreshLinkedChildrenSummary()
             refreshDashboardMini()

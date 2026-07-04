@@ -3,7 +3,6 @@ package com.example.myrana.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -18,12 +17,14 @@ import androidx.lifecycle.lifecycleScope
 import com.example.myrana.R
 import com.example.myrana.data.remote.NetworkModule
 import com.example.myrana.data.remote.dto.RegisterChildRequest
+import com.example.myrana.data.remote.dto.RegisterChildResponse
 import com.example.myrana.device.DeviceIdentity
+import com.example.myrana.identity.ChildIdentity
 import com.example.myrana.permissions.ChildPermissionEvaluator
 import com.example.myrana.session.ChildSession
 import com.example.myrana.util.ChildCodeNormalizer
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -62,7 +63,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                 override fun handleOnBackPressed() {
                     finishAffinity()
                 }
-            }
+            },
         )
 
         setContentView(R.layout.activity_child_register)
@@ -78,7 +79,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
         val pendingCode = ChildSession.childCode(this)
         if (!pendingCode.isNullOrBlank() && !ChildSession.isSetupComplete(this)) {
             showWaitingForLink(pendingCode)
-            ensureRegisteredOnServer(pendingCode) { startLinkPolling(pendingCode) }
+            ensureRegisteredOnServer(pendingCode)
         }
 
         findViewById<Button>(R.id.btnSendCode).setOnClickListener { registerDevice() }
@@ -86,22 +87,25 @@ class ChildRegistrationActivity : AppCompatActivity() {
 
     private fun registerDevice() {
         val existing = ChildSession.childCode(this)?.trim().orEmpty()
-        val childCode = existing.ifBlank { "CHILD-${UUID.randomUUID().toString().take(8).uppercase()}" }
+        val suffix = UUID.randomUUID().toString().replace("-", "").take(8).uppercase()
+        val childCode = existing.ifBlank { "CHILD-$suffix" }
         registerOnServer(childCode, showWaitUi = false)
     }
 
     /** إذا حُذفت قاعدة السيرفر (إعادة نشر Render) — أعيدي تسجيل نفس الكود تلقائياً. */
-    private fun ensureRegisteredOnServer(childCode: String, onReady: () -> Unit) {
+    private fun ensureRegisteredOnServer(childCode: String) {
         lifecycleScope.launch {
+            val normalized = ChildCodeNormalizer.normalize(childCode)
             val state = withContext(Dispatchers.IO) {
-                NetworkModule.queryChildRegistrationState(childCode)
+                NetworkModule.queryChildRegistrationState(normalized)
             }
             when (state) {
+                NetworkModule.ChildRegistrationState.LINKED -> onLinkedOnServer()
                 NetworkModule.ChildRegistrationState.NOT_ON_SERVER ->
-                    registerOnServer(childCode, showWaitUi = true, onSuccess = onReady)
+                    registerOnServer(normalized, showWaitUi = true)
                 NetworkModule.ChildRegistrationState.ERROR ->
                     showMessage(getString(R.string.error_network, ""), true)
-                else -> onReady()
+                else -> startLinkPolling(normalized)
             }
         }
     }
@@ -135,13 +139,13 @@ class ChildRegistrationActivity : AppCompatActivity() {
                             deviceName = deviceName,
                             androidVersion = androidVersion,
                             androidDeviceId = androidDeviceId,
-                        )
+                        ),
                     )
                 }
                 val serverChildCode = ChildCodeNormalizer.normalize(
                     response.childCode?.trim().orEmpty().ifBlank { childCode },
                 )
-                if (response.status != "success") {
+                if (!isRegisterSuccess(response)) {
                     showMessage(getString(R.string.error_register_failed), true)
                     findViewById<Button>(R.id.btnSendCode).isEnabled = true
                     return@launch
@@ -154,6 +158,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                     "",
                 )
                 DeviceIdentity.setChildDeviceId(this@ChildRegistrationActivity, serverChildCode)
+                ChildIdentity.bind(this@ChildRegistrationActivity, serverChildCode)
                 showWaitingForLink(serverChildCode)
                 startLinkPolling(serverChildCode)
                 onSuccess?.invoke()
@@ -181,7 +186,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
         if (currentChildCode.isBlank()) return
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(
-            ClipData.newPlainText(getString(R.string.register_child_code_label), currentChildCode)
+            ClipData.newPlainText(getString(R.string.register_child_code_label), currentChildCode),
         )
         showMessage(getString(R.string.child_code_copied), false)
     }
@@ -197,8 +202,7 @@ class ChildRegistrationActivity : AppCompatActivity() {
                 }
                 when (state) {
                     NetworkModule.ChildRegistrationState.LINKED -> {
-                        ChildSession.completeSetup(this@ChildRegistrationActivity)
-                        finishSetupAndOpenGame()
+                        onLinkedOnServer()
                         return@launch
                     }
                     NetworkModule.ChildRegistrationState.NOT_ON_SERVER -> {
@@ -221,9 +225,15 @@ class ChildRegistrationActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun finishSetupAndOpenGame() {
-        startActivity(ChildUiRouter.gameIntent(this))
-        finish()
+    private fun onLinkedOnServer() {
+        val code = ChildCodeNormalizer.normalize(
+            ChildSession.childCode(this).orEmpty().ifBlank { currentChildCode },
+        )
+        if (code.isNotBlank()) {
+            ChildIdentity.bind(this, code)
+        }
+        ChildSession.completeSetup(this)
+        goToPermissionsOrGame()
     }
 
     private fun goToPermissionsOrGame() {
@@ -234,6 +244,9 @@ class ChildRegistrationActivity : AppCompatActivity() {
         }
         finish()
     }
+
+    private fun isRegisterSuccess(response: RegisterChildResponse): Boolean =
+        response.status == "success" || response.success == true
 
     private fun showMessage(msg: String, isError: Boolean) {
         textMessage.text = msg
