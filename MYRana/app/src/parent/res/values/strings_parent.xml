@@ -149,6 +149,30 @@
     <string name="parent_welcome_step_4">اربطي الجهاز برمز التحقق</string>
     <string name="parent_welcome_step_5">فعّلي الصلاحيات وجرّبي الحظر</string>
 
+    <string name="parent_hub_title">الوظائف</string>
+    <string name="parent_dash_last_seen">آخر ظهور</string>
+    <string name="parent_dash_chart_hours">ساعات الاستخدام خلال الأسبوع</string>
+    <string name="parent_dash_chart_period">هذا الأسبوع</string>
+    <string name="parent_stat_usage_daily">وقت الاستخدام اليومي</string>
+    <string name="parent_stat_apps_today">تطبيقات مستخدمة اليوم</string>
+    <string name="parent_stat_block_attempts">تنبيهات الحظر (أسبوع)</string>
+    <string name="parent_stat_alerts_new">تنبيه جديد</string>
+    <string name="parent_stat_link_details">عرض التفاصيل ←</string>
+    <string name="parent_stat_link_alerts">عرض التنبيهات ←</string>
+    <string name="parent_stat_link_apps">عرض التطبيقات ←</string>
+    <string name="parent_stat_link_blocked">إدارة الحظر ←</string>
+    <string name="parent_dash_last_seen_now">الآن</string>
+    <string name="parent_dash_last_seen_unknown">غير معروف</string>
+    <string name="parent_hub_alerts">التنبيهات</string>
+    <string name="parent_hub_reports">التقارير</string>
+    <string name="parent_hub_block">الحظر والتجميد</string>
+    <string name="parent_hub_apps">التطبيقات</string>
+    <string name="parent_hub_screen_time">وقت الشاشة</string>
+    <string name="parent_hub_children">الأطفال</string>
+    <string name="parent_hub_message">رسالة للطفل</string>
+    <string name="parent_hub_settings">الإعدادات</string>
+    <string name="parent_hub_schedule_title">جدولة التجميد</string>
+
     <string name="parent_dash_child_placeholder">لم يُربط طفل بعد</string>
     <string name="parent_dash_battery">البطارية</string>
     <string name="parent_dash_connection">الاتصال</string>

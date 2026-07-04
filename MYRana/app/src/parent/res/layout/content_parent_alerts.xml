@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/parent_search_alert_hint"
+        android:textColor="@color/parent_text_primary"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/textAlertsBody"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:background="@color/parent_surface_muted"
+        android:padding="10dp"
+        android:text="@string/parent_alerts_waiting"
+        android:textColor="@color/parent_text_primary"
+        android:textIsSelectable="true"
+        android:textSize="13sp" />
+
+    <Button
+        android:id="@+id/btnRefreshAlerts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/parent_btn_view_alerts" />
+</LinearLayout>

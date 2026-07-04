@@ -14,6 +14,7 @@ object ParentSession {
     private const val KEY_VERIFIED = "email_verified"
     private const val KEY_CHILD_CODE = "child_code"
     private const val KEY_CHILD_NAME = "child_name"
+    private const val KEY_CHILD_AGE = "child_age"
     private const val KEY_LINKED = "child_linked"
     private const val KEY_PENDING_EMAIL_CODE = "pending_email_code"
     private const val KEY_PENDING_CHILD_CODE = "pending_link_child_code"
@@ -42,6 +43,9 @@ object ParentSession {
 
     fun childName(context: Context): String? =
         prefs(context).getString(KEY_CHILD_NAME, null)
+
+    fun childAge(context: Context): Int =
+        prefs(context).getInt(KEY_CHILD_AGE, 10)
 
     fun isDeviceLinkVerified(context: Context): Boolean =
         prefs(context).getBoolean(KEY_DEVICE_VERIFIED, false)
@@ -105,10 +109,11 @@ object ParentSession {
             .apply()
     }
 
-    fun saveLinkedChild(context: Context, childCode: String, childName: String) {
+    fun saveLinkedChild(context: Context, childCode: String, childName: String, age: Int = pendingChildAge(context)) {
         prefs(context).edit()
             .putString(KEY_CHILD_CODE, childCode.trim())
             .putString(KEY_CHILD_NAME, childName.trim())
+            .putInt(KEY_CHILD_AGE, age.coerceIn(3, 18))
             .putBoolean(KEY_LINKED, true)
             .remove(KEY_PENDING_CHILD_NAME)
             .remove(KEY_PENDING_CHILD_AGE)

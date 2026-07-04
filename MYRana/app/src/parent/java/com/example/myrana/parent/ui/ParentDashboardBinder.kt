@@ -114,19 +114,32 @@ object ParentDashboardBinder {
 
             data.appsOpened.toString()
 
-        activity.findViewById<TextView>(R.id.textStatBlockedValue)?.text = "—"
+        activity.findViewById<TextView>(R.id.textStatBlockedValue)?.text =
+            data.alertsWeek.toString()
 
+        activity.findViewById<TextView>(R.id.textStatAlertsSub)?.apply {
+            if (data.alertsToday > 0) {
+                visibility = View.VISIBLE
+                text = activity.getString(R.string.parent_stat_alerts_new)
+            } else {
+                visibility = View.GONE
+            }
+        }
 
+        activity.findViewById<TextView>(R.id.textDashLastSeen)?.text =
+            lastSeenLabel(activity, data.lastSeenMs, data.online)
 
         val blockMin = data.policy.blockMinutes.coerceAtLeast(1)
-
         val pct = ((minutes * 100) / blockMin).coerceIn(0, 100)
 
         activity.findViewById<ProgressBar>(R.id.progressStatUsage)?.progress = pct
 
         activity.findViewById<TextView>(R.id.textStatUsageSub)?.text =
-
-            "من أصل ${blockMin} د"
+            if (blockMin >= 60) {
+                "من أصل ${blockMin / 60} س"
+            } else {
+                "من أصل ${blockMin} د"
+            }
 
 
 
@@ -161,8 +174,7 @@ object ParentDashboardBinder {
     }
 
     fun bindMainCharts(activity: Activity, chartData: GuardianApi.WeeklyChartData) {
-        bindWeeklyUsageChart(activity.findViewById(R.id.chartMainWeekly), chartData)
-        bindTopAppsChart(activity.findViewById(R.id.chartMainTopApps), chartData)
+        bindWeeklyUsageChart(activity.findViewById(R.id.chartWeeklyUsage), chartData)
     }
 
     fun bindEducationPieChart(chart: SimplePieChartView?, chartData: GuardianApi.WeeklyChartData) {
@@ -300,15 +312,16 @@ object ParentDashboardBinder {
 
 
 
-    fun updateAlertsPreview(activity: Activity, text: CharSequence) {
-
-        activity.findViewById<TextView>(R.id.textAlertsPreview)?.text = text
-
-        activity.findViewById<TextView>(R.id.textDashAlertsPreview)?.text = text
-
+    private fun lastSeenLabel(activity: Activity, lastSeenMs: Long, online: Boolean): String {
+        if (online) {
+            return activity.getString(R.string.parent_dash_last_seen_now)
+        }
+        if (lastSeenMs <= 0L) {
+            return activity.getString(R.string.parent_dash_last_seen_unknown)
+        }
+        val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+        return fmt.format(java.util.Date(lastSeenMs))
     }
-
-
 
     private fun formatDayLabel(day: String): String {
 

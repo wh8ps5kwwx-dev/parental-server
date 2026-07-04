@@ -28,5 +28,38 @@
             android:name=".parent.ui.ParentSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.MYRana.Parent"
-            android:windowSoftInputMode="adjustResize" />    </application>
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".parent.ui.ParentAlertsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent" />
+
+        <activity
+            android:name=".parent.ui.ParentBlockActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".parent.ui.ParentReportsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent" />
+
+        <activity
+            android:name=".parent.ui.ParentAppsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent" />
+
+        <activity
+            android:name=".parent.ui.ParentChildrenActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent" />
+
+        <activity
+            android:name=".parent.ui.ParentMessageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MYRana.Parent"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
 </manifest>

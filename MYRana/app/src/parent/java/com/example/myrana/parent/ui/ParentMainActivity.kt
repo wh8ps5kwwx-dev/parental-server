@@ -59,10 +59,7 @@ class ParentMainActivity : AppCompatActivity() {
     private lateinit var textLinkedChild: TextView
     private lateinit var textDashboardMini: TextView
     private lateinit var textPermissionsMini: TextView
-    private lateinit var chartMainWeekly: SimpleBarChartView
-    private lateinit var chartMainTopApps: SimpleBarChartView
     private lateinit var spinnerChildren: Spinner
-    private lateinit var textAlertsPreview: TextView
     private var linkedChildrenRows: List<Pair<String, String>> = emptyList()
     private var childSpinnerIgnoreSelection = false
     private lateinit var textUsageTitle: TextView
@@ -93,10 +90,7 @@ class ParentMainActivity : AppCompatActivity() {
         textLinkedChild = findViewById(R.id.textLinkedChild)
         textDashboardMini = findViewById(R.id.textDashboardMini)
         textPermissionsMini = findViewById(R.id.textPermissionsMini)
-        chartMainWeekly = findViewById(R.id.chartMainWeekly)
-        chartMainTopApps = findViewById(R.id.chartMainTopApps)
         spinnerChildren = findViewById(R.id.spinnerChildren)
-        textAlertsPreview = findViewById(R.id.textAlertsPreview)
         textUsageTitle = findViewById(R.id.textUsageReportTitle)
         textUsageEmpty = findViewById(R.id.textUsageEmpty)
         recyclerUsage = findViewById(R.id.recyclerUsage)
@@ -166,6 +160,12 @@ class ParentMainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnViewAlerts).setOnClickListener { viewAlerts() }
         findViewById<Button>(R.id.btnSendMessage).setOnClickListener { sendGuardianMessage() }
 
+        setupHubIcons()
+        setupStatCards()
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSwitchChild)?.setOnClickListener {
+            startActivity(Intent(this, ParentChildrenActivity::class.java))
+        }
+
         restoreUiState()
     }
 
@@ -175,9 +175,9 @@ class ParentMainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 when (withContext(Dispatchers.IO) { ParentLinkSync.refreshFromServer(this@ParentMainActivity) }) {
                     ParentLinkSync.Result.RESTORED ->
-                        toast("تم استعادة الربط تلقائياً بعد إعادة تشغيل السيرفر", false)
-                    ParentLinkSync.Result.STALE_CLEARED ->
-                        toast("انقطع الربط — أعيدي «ربط تلقائي» من جديد", true)
+                        toast("تم استعادة الربط على السيرفر تلقائياً", false)
+                    ParentLinkSync.Result.PENDING_RESTORE ->
+                        toast("الربط محفوظ — جاري مزامنة السيرفر… افتحي تطبيق الطفل", false)
                     else -> Unit
                 }
                 refreshAlertsQuietly()
@@ -336,15 +336,10 @@ class ParentMainActivity : AppCompatActivity() {
         return when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchAlerts(childCode) }) {
             is GuardianApi.ApiResult.Alerts -> {
                 if (result.error != null) {
-                    textAlertsPreview.text = result.error
                     false
                 } else if (result.lines.isEmpty()) {
-                    textAlertsPreview.text = getString(R.string.parent_alerts_waiting)
                     false
                 } else {
-                    val preview = result.lines.take(8).joinToString("\n\n")
-                    textAlertsPreview.text =
-                        "${getString(R.string.parent_alerts_preview_title)}\n\n$preview"
                     ParentAlertNotifier.notifyIfNew(this@ParentMainActivity, result.lines)
                     true
                 }
@@ -353,9 +348,9 @@ class ParentMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onLinkSuccess(childCode: String, name: String, restoreToken: String? = null) {
+    private fun onLinkSuccess(childCode: String, name: String, restoreToken: String? = null, age: Int = ParentSession.pendingChildAge(this)) {
         val linked = ChildCodeNormalizer.normalize(childCode)
-        ParentSession.saveLinkedChild(this, linked, name)
+        ParentSession.saveLinkedChild(this, linked, name, age)
         restoreToken?.takeIf { it.isNotBlank() }?.let {
             ParentSession.saveRestoreToken(this, linked, it)
         }
@@ -377,40 +372,22 @@ class ParentMainActivity : AppCompatActivity() {
         when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyChart(code, 7) }) {
             is GuardianApi.ApiResult.WeeklyChart -> withContext(Dispatchers.Main) {
                 ParentReportCache.saveWeeklyChart(this@ParentMainActivity, code, result.data)
-                ParentDashboardBinder.bindMainCharts(this@ParentMainActivity, result.data)
+                ParentDashboardBinder.bindWeeklyChart(this@ParentMainActivity, result.data)
             }
             else -> withContext(Dispatchers.Main) {
                 ParentReportCache.loadWeeklyChart(this@ParentMainActivity, code)?.let { cached ->
-                    ParentDashboardBinder.bindMainCharts(this@ParentMainActivity, cached)
+                    ParentDashboardBinder.bindWeeklyChart(this@ParentMainActivity, cached)
                 }
             }
         }
     }
 
-    /** ملخص سريع للوحة المؤشرات في شاشة التحكم الرئيسية. */
     private suspend fun refreshDashboardMini() {
         val code = ParentSession.childCode(this@ParentMainActivity) ?: return
         when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchChildDashboard(code) }) {
-            is GuardianApi.ApiResult.ChildDashboard -> {
-                val d = result.data
-                val status = if (d.online) {
-                    getString(R.string.parent_status_online)
-                } else {
-                    getString(R.string.parent_status_offline)
-                }
-                val mini = getString(
-                    R.string.parent_dashboard_mini,
-                    d.todaySeconds / 60,
-                    d.appsOpened,
-                    d.alertsToday,
-                )
-                textDashboardMini.text = "$status — $mini\n${d.childCode}"
-                textPermissionsMini.text = ParentPermissionsFormatter.summary(
-                    this@ParentMainActivity,
-                    d.permissionsOk,
-                    d.permissions,
-                )
-                bindUsageApps(usageItemsFromDashboard(d.topAppsToday), quiet = true)
+            is GuardianApi.ApiResult.ChildDashboard -> withContext(Dispatchers.Main) {
+                ParentDashboardBinder.bindDashboard(this@ParentMainActivity, result.data)
+                bindUsageApps(usageItemsFromDashboard(result.data.topAppsToday), quiet = true)
             }
             else -> Unit
         }
@@ -793,14 +770,14 @@ class ParentMainActivity : AppCompatActivity() {
         ) {
             is GuardianApi.ApiResult.LinkSuccess -> {
                 val linked = result.childCode?.takeIf { it.isNotBlank() } ?: childCode
-                onLinkSuccess(linked, name, result.restoreToken)
+                onLinkSuccess(linked, name, result.restoreToken, age)
                 toast(
                     result.message.ifBlank { getString(R.string.parent_auto_link_success) },
                     false,
                 )
             }
             is GuardianApi.ApiResult.Ok -> {
-                onLinkSuccess(childCode, name)
+                onLinkSuccess(childCode, name, age = age)
                 toast(getString(R.string.parent_auto_link_success), false)
             }
             is GuardianApi.ApiResult.Error -> toast(result.message, true)
@@ -956,7 +933,6 @@ class ParentMainActivity : AppCompatActivity() {
             ParentSession.guardianRole(this),
             code
         )
-        textAlertsPreview.text = getString(R.string.parent_alerts_waiting)
         startAlertPolling()
         lifecycleScope.launch { refreshLinkedChildrenSummary() }
     }
@@ -982,6 +958,79 @@ class ParentMainActivity : AppCompatActivity() {
         }
         childCodeField().setText(normalized)
         if (!silent) toast("تم: $normalized", false)
+    }
+
+    private fun setupStatCards() {
+        val openScreenTime = {
+            startActivity(Intent(this, ParentScreenTimeActivity::class.java))
+        }
+        val openAlerts = {
+            startActivity(Intent(this, ParentAlertsActivity::class.java))
+        }
+        val openApps = {
+            startActivity(Intent(this, ParentAppsActivity::class.java))
+        }
+        val openBlock = {
+            startActivity(Intent(this, ParentBlockActivity::class.java))
+        }
+        findViewById<View>(R.id.cardStatUsage)?.setOnClickListener { openScreenTime() }
+        findViewById<View>(R.id.linkStatUsage)?.setOnClickListener { openScreenTime() }
+        findViewById<View>(R.id.cardStatAlerts)?.setOnClickListener { openAlerts() }
+        findViewById<View>(R.id.linkStatAlerts)?.setOnClickListener { openAlerts() }
+        findViewById<View>(R.id.cardStatApps)?.setOnClickListener { openApps() }
+        findViewById<View>(R.id.linkStatApps)?.setOnClickListener { openApps() }
+        findViewById<View>(R.id.cardStatBlocked)?.setOnClickListener { openBlock() }
+        findViewById<View>(R.id.linkStatBlocked)?.setOnClickListener { openBlock() }
+    }
+
+    private fun setupHubIcons() {
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileAlerts),
+            R.drawable.ic_nav_alerts,
+            getString(R.string.parent_hub_alerts),
+        ) { startActivity(Intent(this, ParentAlertsActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileReports),
+            R.drawable.ic_nav_reports,
+            getString(R.string.parent_hub_reports),
+        ) { startActivity(Intent(this, ParentReportsActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileBlock),
+            R.drawable.ic_quick_block,
+            getString(R.string.parent_hub_block),
+        ) { startActivity(Intent(this, ParentBlockActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileApps),
+            R.drawable.ic_info_devices,
+            getString(R.string.parent_hub_apps),
+        ) { startActivity(Intent(this, ParentAppsActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileScreenTime),
+            R.drawable.ic_nav_reports,
+            getString(R.string.parent_hub_screen_time),
+        ) { startActivity(Intent(this, ParentScreenTimeActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileChildren),
+            R.drawable.ic_nav_children,
+            getString(R.string.parent_hub_children),
+        ) { startActivity(Intent(this, ParentChildrenActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileMessage),
+            R.drawable.ic_nav_alerts,
+            getString(R.string.parent_hub_message),
+        ) { startActivity(Intent(this, ParentMessageActivity::class.java)) }
+
+        ParentHubUi.bindTile(
+            findViewById(R.id.hubTileSettings),
+            R.drawable.ic_nav_settings,
+            getString(R.string.parent_hub_settings),
+        ) { startActivity(Intent(this, ParentSettingsActivity::class.java)) }
     }
 
     private fun toast(msg: String, isError: Boolean) {

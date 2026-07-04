@@ -6,12 +6,14 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
+    <!-- بطاقة الطفل — تتداخل قليلاً مع الهيدر البنفسجي -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="-20dp"
         app:cardBackgroundColor="@color/parent_card"
         app:cardCornerRadius="20dp"
-        app:cardElevation="2dp"
+        app:cardElevation="4dp"
         app:strokeColor="@color/parent_card_stroke"
         app:strokeWidth="1dp">
 
@@ -98,6 +100,7 @@
                     app:strokeColor="@color/parent_secondary" />
             </LinearLayout>
 
+            <!-- صف الحالة: بطارية | اتصال | آخر ظهور | حماية -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -107,22 +110,23 @@
                 <LinearLayout
                     style="@style/ParentStatusChip"
                     android:layout_width="0dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_weight="1">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🔋"
-                        android:textSize="16sp" />
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/textDashBattery"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="2dp"
                         android:text="—"
                         android:textColor="@color/parent_text_primary"
-                        android:textSize="14sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -130,30 +134,29 @@
                         android:layout_height="wrap_content"
                         android:text="@string/parent_dash_battery"
                         android:textColor="@color/parent_text_secondary"
-                        android:textSize="11sp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
 
                 <LinearLayout
                     style="@style/ParentStatusChip"
                     android:layout_width="0dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_weight="1">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="📶"
-                        android:textSize="16sp" />
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/textDashConnection"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="2dp"
                         android:text="—"
                         android:textColor="@color/parent_text_primary"
-                        android:textSize="14sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -161,7 +164,37 @@
                         android:layout_height="wrap_content"
                         android:text="@string/parent_dash_connection"
                         android:textColor="@color/parent_text_secondary"
-                        android:textSize="11sp" />
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/ParentStatusChip"
+                    android:layout_width="0dp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🕐"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/textDashLastSeen"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="—"
+                        android:textColor="@color/parent_text_primary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/parent_dash_last_seen"
+                        android:textColor="@color/parent_text_secondary"
+                        android:textSize="9sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -173,16 +206,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🛡️"
-                        android:textSize="16sp" />
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/textDashProtection"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="2dp"
                         android:text="—"
                         android:textColor="@color/parent_text_primary"
-                        android:textSize="14sp"
+                        android:textSize="11sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -190,12 +223,13 @@
                         android:layout_height="wrap_content"
                         android:text="@string/parent_dash_protection"
                         android:textColor="@color/parent_text_secondary"
-                        android:textSize="11sp" />
+                        android:textSize="9sp" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- بطاقات الملخص 2×2 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -238,13 +272,14 @@
             android:layout_weight="1" />
     </LinearLayout>
 
+    <!-- رسم الاستخدام الأسبوعي -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         app:cardBackgroundColor="@color/parent_card"
         app:cardCornerRadius="20dp"
-        app:cardElevation="2dp"
+        app:cardElevation="3dp"
         app:strokeColor="@color/parent_card_stroke"
         app:strokeWidth="1dp">
 
@@ -254,130 +289,50 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/parent_dash_weekly_chart"
-                android:textColor="@color/parent_text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/parent_dash_chart_hours"
+                    android:textColor="@color/parent_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_period_chip"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="@string/parent_dash_chart_period"
+                    android:textColor="@color/parent_primary"
+                    android:textSize="11sp" />
+            </LinearLayout>
 
             <com.example.myrana.parent.ui.SimpleBarChartView
                 android:id="@+id/chartWeeklyUsage"
                 android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="12dp" />
+
+            <TextView
+                android:id="@+id/textDashTopApps"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp" />
+                android:layout_marginTop="12dp"
+                android:text="@string/parent_dash_top_apps_empty"
+                android:textColor="@color/parent_text_secondary"
+                android:textSize="12sp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <TextView
-        android:id="@+id/textDashTopApps"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/bg_parent_card"
-        android:padding="14dp"
-        android:text="@string/parent_dash_top_apps_empty"
-        android:textColor="@color/parent_text_secondary"
-        android:textSize="13sp" />
-
-    <TextView
-        android:id="@+id/textDashAlertsPreview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_parent_card"
-        android:padding="14dp"
-        android:text="@string/parent_alerts_waiting"
-        android:textColor="@color/parent_text_secondary"
-        android:textIsSelectable="true"
-        android:textSize="13sp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/parent_dash_quick_actions"
-        android:textColor="@color/parent_text_primary"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnQuickBlock"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="@string/parent_quick_block"
-                android:textAllCaps="false"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_quick_block"
-                app:strokeColor="@color/parent_primary" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnQuickLock"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="@string/parent_quick_lock"
-                android:textAllCaps="false"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_quick_lock"
-                app:strokeColor="@color/parent_danger" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnQuickScreenTime"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="@string/parent_quick_screen_time"
-                android:textAllCaps="false"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_nav_reports"
-                app:strokeColor="@color/parent_stat_orange" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnQuickNotify"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/parent_quick_notify"
-                android:textAllCaps="false"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_nav_alerts"
-                app:strokeColor="@color/parent_secondary" />
-        </LinearLayout>
-    </HorizontalScrollView>
-
-    <TextView
-        android:id="@+id/textDashboardMini"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/textPermissionsMini"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/textLinkedChild"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
+    <include layout="@layout/parent_hub_icon_grid" />
 </LinearLayout>
