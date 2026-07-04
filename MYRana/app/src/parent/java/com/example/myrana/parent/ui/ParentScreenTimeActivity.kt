@@ -45,6 +45,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
     private lateinit var textAvgUsage: TextView
     private lateinit var chartDailyUsage: SimpleBarChartView
     private lateinit var chartTopApps: SimpleBarChartView
+    private lateinit var chartEduVsFun: SimplePieChartView
     private lateinit var textReport: TextView
     private lateinit var textMessage: TextView
 
@@ -68,6 +69,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
         textAvgUsage = findViewById(R.id.textAvgUsage)
         chartDailyUsage = findViewById(R.id.chartDailyUsage)
         chartTopApps = findViewById(R.id.chartTopApps)
+        chartEduVsFun = findViewById(R.id.chartEduVsFun)
         textReport = findViewById(R.id.textReport)
         textMessage = findViewById(R.id.textScreenTimeMessage)
 
@@ -257,6 +259,7 @@ class ParentScreenTimeActivity : AppCompatActivity() {
 
         ParentDashboardBinder.bindWeeklyUsageChart(chartDailyUsage, d)
         ParentDashboardBinder.bindTopAppsChart(chartTopApps, d)
+        ParentDashboardBinder.bindEducationPieChart(chartEduVsFun, d)
 
         val avgMin = (d.avgDailyScreenSeconds / 60).toInt()
         if (avgMin > 0) {

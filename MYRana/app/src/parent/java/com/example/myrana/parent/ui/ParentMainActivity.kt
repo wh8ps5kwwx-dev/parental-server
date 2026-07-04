@@ -56,6 +56,8 @@ class ParentMainActivity : AppCompatActivity() {
     private lateinit var textLinkedChild: TextView
     private lateinit var textDashboardMini: TextView
     private lateinit var textPermissionsMini: TextView
+    private lateinit var chartMainWeekly: SimpleBarChartView
+    private lateinit var chartMainTopApps: SimpleBarChartView
     private lateinit var spinnerChildren: Spinner
     private lateinit var textAlertsPreview: TextView
     private var linkedChildrenRows: List<Pair<String, String>> = emptyList()
@@ -84,6 +86,8 @@ class ParentMainActivity : AppCompatActivity() {
         textLinkedChild = findViewById(R.id.textLinkedChild)
         textDashboardMini = findViewById(R.id.textDashboardMini)
         textPermissionsMini = findViewById(R.id.textPermissionsMini)
+        chartMainWeekly = findViewById(R.id.chartMainWeekly)
+        chartMainTopApps = findViewById(R.id.chartMainTopApps)
         spinnerChildren = findViewById(R.id.spinnerChildren)
         textAlertsPreview = findViewById(R.id.textAlertsPreview)
         textUsageTitle = findViewById(R.id.textUsageReportTitle)
@@ -103,7 +107,10 @@ class ParentMainActivity : AppCompatActivity() {
                 if (childSpinnerIgnoreSelection) return
                 val row = linkedChildrenRows.getOrNull(position) ?: return
                 ParentSession.saveLinkedChild(this@ParentMainActivity, row.first, row.second)
-                lifecycleScope.launch { refreshDashboardMini() }
+                lifecycleScope.launch {
+                    refreshDashboardMini()
+                    refreshMainCharts()
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
@@ -151,6 +158,7 @@ class ParentMainActivity : AppCompatActivity() {
                 refreshAlertsQuietly()
                 refreshLinkedChildrenSummary()
                 refreshDashboardMini()
+                refreshMainCharts()
             }
             startAlertPolling()
         }
@@ -330,6 +338,18 @@ class ParentMainActivity : AppCompatActivity() {
             refreshAlertsQuietly()
             refreshLinkedChildrenSummary()
             refreshDashboardMini()
+            refreshMainCharts()
+        }
+    }
+
+    /** رسوم بيانية أسبوعية في الشاشة الرئيسية. */
+    private suspend fun refreshMainCharts() {
+        val code = ParentSession.childCode(this@ParentMainActivity) ?: return
+        when (val result = withContext(Dispatchers.IO) { GuardianApi.fetchWeeklyChart(code, 7) }) {
+            is GuardianApi.ApiResult.WeeklyChart -> withContext(Dispatchers.Main) {
+                ParentDashboardBinder.bindMainCharts(this@ParentMainActivity, result.data)
+            }
+            else -> Unit
         }
     }
 

@@ -160,6 +160,45 @@ object ParentDashboardBinder {
 
     }
 
+    fun bindMainCharts(activity: Activity, chartData: GuardianApi.WeeklyChartData) {
+        bindWeeklyUsageChart(activity.findViewById(R.id.chartMainWeekly), chartData)
+        bindTopAppsChart(activity.findViewById(R.id.chartMainTopApps), chartData)
+    }
+
+    fun bindEducationPieChart(chart: SimplePieChartView?, chartData: GuardianApi.WeeklyChartData) {
+        if (chart == null) return
+        val eduPkgs = chartData.educationalApps
+            .mapNotNull { it["package_name"]?.toString()?.lowercase() }
+            .toSet()
+        var eduSec = 0L
+        var funSec = 0L
+        for (row in chartData.topApps) {
+            val pkg = row["package_name"]?.toString().orEmpty().lowercase()
+            val sec = (row["total_seconds"] as? Number)?.toLong() ?: 0L
+            if (pkg in eduPkgs) eduSec += sec else funSec += sec
+        }
+        val eduMin = (eduSec / 60f).coerceAtLeast(0f)
+        val funMin = (funSec / 60f).coerceAtLeast(0f)
+        if (eduMin <= 0f && funMin <= 0f) {
+            chart.setData(emptyList())
+            return
+        }
+        chart.setData(
+            listOf(
+                SimplePieChartView.Slice(
+                    label = chart.context.getString(R.string.parent_chart_edu_label),
+                    value = eduMin,
+                    color = Color.parseColor("#2196F3"),
+                ),
+                SimplePieChartView.Slice(
+                    label = chart.context.getString(R.string.parent_chart_fun_label),
+                    value = funMin,
+                    color = Color.parseColor("#FF9800"),
+                ),
+            ),
+        )
+    }
+
 
 
     fun bindWeeklyUsageChart(chart: SimpleBarChartView?, chartData: GuardianApi.WeeklyChartData) {

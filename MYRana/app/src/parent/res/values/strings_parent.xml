@@ -90,6 +90,9 @@
     <string name="parent_educational_stats">تعليمي: %1$d د | مراقَب: %2$d د</string>
     <string name="parent_chart_daily_usage">رسم — الاستخدام اليومي</string>
     <string name="parent_chart_top_apps">رسم — معدل استهلاك التطبيقات (د/يوم)</string>
+    <string name="parent_chart_edu_vs_fun">رسم — تعليمي مقابل ترفيهي</string>
+    <string name="parent_chart_edu_label">تعليمي</string>
+    <string name="parent_chart_fun_label">ترفيهي</string>
     <string name="parent_chart_avg_line">معدل %1$d د</string>
     <string name="parent_avg_daily_usage">معدل الاستهلاك اليومي: %1$d د</string>
     <string name="parent_usage_avg_per_day">%1$d د/يوم</string>
