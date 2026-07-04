@@ -1,7 +1,6 @@
 package com.example.myrana.permissions
 
 import android.content.Context
-import com.example.myrana.academy.AcademyPythonBridge
 import com.example.myrana.session.ChildSession
 import com.example.myrana.sync.BackgroundMonitoring
 
@@ -31,17 +30,5 @@ object ChildProjectRuntime {
     fun activateMonitoring(context: Context) {
         if (!isMonitoringOperational(context)) return
         BackgroundMonitoring.ensureRunning(context.applicationContext)
-    }
-
-    /** محرك Python للأكاديمية فقط — عند الدخول للعب. */
-    fun activateAcademyEngine(context: Context) {
-        if (!isMonitoringOperational(context)) return
-        AcademyPythonBridge.ensureStarted(context.applicationContext)
-    }
-
-    /** مراقبة + محرك اللعبة (عند فتح الأكاديمية). */
-    fun activateChildStack(context: Context) {
-        activateMonitoring(context)
-        activateAcademyEngine(context)
     }
 }

@@ -16,8 +16,8 @@ android {
 
         // نكهتان: child + parent — تطبيقان منفصلان على محاكيين مختلفين
         missingDimensionStrategy 'role', 'child'
-        versionCode 7
-        versionName "1.5.1"
+        versionCode 8
+        versionName "1.5.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -61,6 +61,36 @@ android {
     }
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+}
+
+// إزالة مكتبات Python من APK الأم — Chaquopy يضيفها لكل النكهات
+afterEvaluate {
+    ["ParentDebug", "ParentRelease"].each { variant ->
+        def mergeTask = tasks.findByName("merge${variant}NativeLibs")
+        if (mergeTask != null) {
+            mergeTask.doLast {
+                def outDir = mergeTask.outputDir.get().asFile
+                if (!outDir.exists()) return
+                outDir.eachFileRecurse { f ->
+                    if (f.isFile() && (
+                        f.name.contains("python") ||
+                        f.name.contains("chaquopy") ||
+                        f.name.contains("crypto_chaquopy") ||
+                        f.name.contains("ssl_chaquopy") ||
+                        f.name.contains("sqlite3_chaquopy")
+                    )) {
+                        f.delete()
+                    }
+                }
+            }
+        }
     }
 }
 

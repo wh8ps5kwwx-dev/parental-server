@@ -6,7 +6,6 @@ import com.example.myrana.enforcement.BlocklistCatalogLoader
 import com.example.myrana.enforcement.PolicyFilterCache
 import com.example.myrana.permissions.ChildProjectRuntime
 import com.example.myrana.permissions.SystemPermissions
-import com.example.myrana.service.ParentSyncService
 import com.example.myrana.session.ChildSession
 import com.example.myrana.worker.MonitoringScheduler
 
@@ -53,8 +52,10 @@ object BackgroundMonitoring {
             Log.w(TAG, "foreground service skipped — grant notifications in Android for fastest blocking")
             return
         }
+        if (!context.packageName.endsWith(".child")) return
         try {
-            ParentSyncService.start(context)
+            val cls = Class.forName("com.example.myrana.service.ParentSyncService")
+            cls.getMethod("start", Context::class.java).invoke(null, context)
         } catch (e: Exception) {
             Log.w(TAG, "foreground service not started: ${e.message}")
         }
