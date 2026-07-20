@@ -1268,6 +1268,24 @@ def policy_add_package(conn, device_id: str, package: str) -> None:
     _policy_save(conn, device_id, hosts, packages, video_keywords=keywords)
 
 
+def policy_remove_package(conn, device_id: str, package: str) -> None:
+    package = _norm_pkg(package)
+    if not package:
+        return
+    _, hosts, packages, keywords = _policy_get(conn, device_id)
+    packages = [p for p in packages if _norm_pkg(p) != package]
+    _policy_save(conn, device_id, hosts, packages, video_keywords=keywords)
+
+
+def policy_remove_host(conn, device_id: str, host: str) -> None:
+    host = _norm_host(host)
+    if not host:
+        return
+    _, hosts, packages, keywords = _policy_get(conn, device_id)
+    hosts = [h for h in hosts if _norm_host(h) != host]
+    _policy_save(conn, device_id, hosts, packages, video_keywords=keywords)
+
+
 def policy_clear(conn, device_id: str) -> None:
     _policy_save(conn, device_id, [], [], video_keywords=[])
 
@@ -1839,6 +1857,10 @@ def send_command():
             policy_add_host(conn, child_code, value)
         elif action in ("block_app", "freeze_app") and value:
             policy_add_package(conn, child_code, value)
+        elif action == "unblock_app" and value:
+            policy_remove_package(conn, child_code, value)
+        elif action == "unblock_site" and value:
+            policy_remove_host(conn, child_code, value)
         elif action == "allow":
             policy_clear(conn, child_code)
         elif action == "apply_default_blocklist":
