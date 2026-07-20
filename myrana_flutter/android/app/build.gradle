@@ -1,0 +1,83 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
+if (flutterVersionCode == null) {
+    flutterVersionCode = "1"
+}
+
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
+if (flutterVersionName == null) {
+    flutterVersionName = "1.0"
+}
+
+android {
+    namespace = "com.example.myrana_flutter"
+    compileSdk = flutter.compileSdkVersion
+    buildToolsVersion = "35.0.0"
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+    }
+
+    defaultConfig {
+        applicationId = "com.example.myrana_flutter"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+
+        // خانات مشابهة لـ MYRana/app/build.gradle
+        buildConfigField "String", "SERVER_ROOT_URL", "\"https://parental-server-4mms.onrender.com/\""
+        buildConfigField "String", "API_KEY", "\"graduation-secret-key\""
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    // WorkManager + coroutines (للمزامنة الخلفية)
+    implementation "androidx.core:core-ktx:1.10.1"
+    implementation "androidx.work:work-runtime-ktx:2.8.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
+
+    // HTTP + JSON (لمزامنة السياسات/رفع الاستخدام)
+    implementation "com.squareup.okhttp3:okhttp:4.11.0"
+    implementation "com.google.code.gson:gson:2.10.1"
+
+    // Activities/Service helpers
+    implementation "androidx.appcompat:appcompat:1.6.1"
+}
