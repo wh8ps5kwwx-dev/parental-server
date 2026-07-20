@@ -1,3 +1,6 @@
 *.apk filter=lfs diff=lfs merge=lfs -text
 # استثناء: روابط raw على GitHub تعمل بدون LFS
 MYRana/releases/*.apk -filter -diff -merge
+
+# Flutter release APKs: raw GitHub download without LFS
+myrana_flutter/releases/*.apk -filter -diff -merge
