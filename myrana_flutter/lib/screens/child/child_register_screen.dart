@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/api/child_api.dart';
 import '../../data/models/api_models.dart';
+import '../../native/enforcement_channel.dart';
 import '../../session/app_session.dart';
 import '../../util/child_code_normalizer.dart';
 import '../../widgets/common_widgets.dart';
@@ -62,7 +63,7 @@ class _ChildRegisterScreenState extends State<ChildRegisterScreen> {
     final r = await api.registerDevice(
       childCode: _code.text,
       deviceName: _name.text,
-      androidVersion: 'Flutter',
+      androidVersion: EnforcementChannel.isAndroid ? 'Android' : 'Flutter',
     );
     if (!mounted) return;
     if (r is ApiOk) {

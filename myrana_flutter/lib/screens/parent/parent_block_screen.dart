@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../data/api/guardian_api.dart';
 import '../../data/models/api_models.dart';
+import '../../native/enforcement_channel.dart';
 import '../../session/app_session.dart';
 import '../../widgets/common_widgets.dart';
 
-/// حظر + قائمة افتراضية + جدولة تجميد — مطابق لـ ParentBlockActivity.
+/// حظر تطبيق/موقع + قائمة افتراضية + جدولة تجميد + السماح — مطابق لـ ParentBlockActivity.
 class ParentBlockScreen extends StatefulWidget {
   const ParentBlockScreen({super.key});
 
@@ -16,6 +17,7 @@ class ParentBlockScreen extends StatefulWidget {
 
 class _ParentBlockScreenState extends State<ParentBlockScreen> {
   final _pkg = TextEditingController();
+  final _host = TextEditingController();
   final _start = TextEditingController(text: '21:00');
   final _end = TextEditingController(text: '07:00');
   String _status = '';
@@ -60,12 +62,13 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
   @override
   void dispose() {
     _pkg.dispose();
+    _host.dispose();
     _start.dispose();
     _end.dispose();
     super.dispose();
   }
 
-  Future<void> _block() async {
+  Future<void> _runCommand(String action, String value) async {
     final session = context.read<AppSession>();
     if (session.childCode.isEmpty) {
       setState(() {
@@ -74,13 +77,22 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
       });
       return;
     }
+    if (action != 'allow' && value.trim().isEmpty) {
+      setState(() {
+        _error = true;
+        _status = action.contains('site')
+            ? 'أدخلي اسم الموقع أو النطاق'
+            : 'أدخلي اسم الحزمة';
+      });
+      return;
+    }
     setState(() {
       _busy = true;
       _error = false;
     });
     final r = await context.read<GuardianApi>().sendCommand(
-          action: 'block_app',
-          value: _pkg.text.trim(),
+          action: action,
+          value: value,
           childCode: session.childCode,
           guardianEmail: session.parentEmail,
         );
@@ -94,23 +106,9 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
         _status = r.message;
       }
     });
-  }
-
-  Future<void> _unblock() async {
-    final session = context.read<AppSession>();
-    setState(() => _busy = true);
-    final r = await context.read<GuardianApi>().sendCommand(
-          action: 'unblock_app',
-          value: _pkg.text.trim(),
-          childCode: session.childCode,
-          guardianEmail: session.parentEmail,
-        );
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _status = r is ApiOk ? r.message : (r is ApiError ? r.message : '');
-      _error = r is ApiError;
-    });
+    if (r is ApiOk) {
+      await _loadPolicy();
+    }
   }
 
   Future<void> _defaults() async {
@@ -125,6 +123,7 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
       _status = r is ApiOk ? r.message : (r is ApiError ? r.message : '');
       _error = r is ApiError;
     });
+    if (r is ApiOk) await _loadPolicy();
   }
 
   Future<void> _scheduleFreeze() async {
@@ -158,11 +157,29 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الحظر')),
+      appBar: AppBar(
+        title: const Text('الحظر'),
+        actions: [
+          IconButton(
+            tooltip: 'تحديث السياسة',
+            onPressed: _busy ? null : _loadPolicy,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           StatusBanner(message: _status, isError: _error),
+          if (EnforcementChannel.isIOS) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'الأوامر تُرسل عبر السيرفر وتُنفَّذ على جهاز الطفل Android — '
+              'ولي الأمر على iPhone سيناريو كامل ومدعوم.',
+              textAlign: TextAlign.right,
+              style: TextStyle(color: Colors.black54, fontSize: 12),
+            ),
+          ],
           if (_loadingPolicy) const LinearProgressIndicator(),
           if (_blockedPackages.isNotEmpty || _blockedHosts.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -193,6 +210,12 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
             ),
             const SizedBox(height: 16),
           ],
+          const Text(
+            'حظر تطبيق',
+            style: TextStyle(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 8),
           TextField(
             controller: _pkg,
             decoration: const InputDecoration(
@@ -202,15 +225,57 @@ class _ParentBlockScreenState extends State<ParentBlockScreen> {
           ),
           const SizedBox(height: 12),
           ElevatedButton(
-            onPressed: _busy ? null : _block,
+            onPressed: _busy
+                ? null
+                : () => _runCommand('block_app', _pkg.text),
             child: const Text('حظر التطبيق'),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
-            onPressed: _busy ? null : _unblock,
-            child: const Text('إلغاء الحظر'),
+            onPressed: _busy
+                ? null
+                : () => _runCommand('unblock_app', _pkg.text),
+            child: const Text('إلغاء حظر التطبيق'),
           ),
-          const SizedBox(height: 16),
+          const Divider(height: 32),
+          const Text(
+            'حظر موقع',
+            style: TextStyle(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _host,
+            decoration: const InputDecoration(
+              labelText: 'الموقع أو النطاق',
+              hintText: 'example.com',
+            ),
+            keyboardType: TextInputType.url,
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: _busy
+                ? null
+                : () => _runCommand('block_site', _host.text),
+            child: const Text('حظر موقع'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: _busy
+                ? null
+                : () => _runCommand('unblock_site', _host.text),
+            child: const Text('إلغاء حظر موقع'),
+          ),
+          const Divider(height: 32),
+          ElevatedButton(
+            onPressed: _busy ? null : () => _runCommand('allow', ''),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('السماح (إلغاء كل الحظر)'),
+          ),
+          const SizedBox(height: 12),
           ElevatedButton(
             onPressed: _busy ? null : _defaults,
             child: const Text('تطبيق قائمة الحظر الافتراضية'),

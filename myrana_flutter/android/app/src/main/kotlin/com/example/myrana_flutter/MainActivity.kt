@@ -5,6 +5,9 @@ import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
 import com.example.myrana.core.ChildContextStore
 import com.example.myrana.enforcement.AccessibilityHelper
 import com.example.myrana.enforcement.EnforcementEngine
@@ -12,6 +15,7 @@ import com.example.myrana.enforcement.PolicyFilterCache
 import com.example.myrana.enforcement.UsageAccessHelper
 import com.example.myrana.enforcement.UsageStatsCollectorLite
 import com.example.myrana.service.ForegroundMonitorService
+import com.example.myrana.util.BatteryLevelHelper
 import com.example.myrana_flutter.native.InstalledAppsCollector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +136,83 @@ class MainActivity : FlutterActivity() {
                         runOnUiThread { result.success(ok) }
                     }
                 }
+                "getBatteryPct" -> {
+                    result.success(BatteryLevelHelper.readPercent(this))
+                }
+                "isIgnoringBatteryOptimizations" -> {
+                    val pm = getSystemService(POWER_SERVICE) as? PowerManager
+                    val ignoring = pm?.isIgnoringBatteryOptimizations(packageName) == true
+                    result.success(ignoring)
+                }
+                "openBatteryOptimizationSettings" -> {
+                    try {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:$packageName")
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (_: Exception) {
+                        try {
+                            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                            result.success(true)
+                        } catch (_: Exception) {
+                            result.success(false)
+                        }
+                    }
+                }
+                "openAppSettings" -> {
+                    try {
+                        startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:$packageName")
+                            },
+                        )
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+                "openScreenTimeSettings" -> {
+                    // Android: no Screen Time pane — open app details as a safe fallback.
+                    try {
+                        startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:$packageName")
+                            },
+                        )
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+                "getPlatformStatus" -> {
+                    result.success(
+                        mapOf(
+                            "platform" to "android",
+                            "enforcement_available" to true,
+                            "usage_stats_available" to true,
+                            "accessibility_blocking_available" to true,
+                            "family_controls_compile_enabled" to false,
+                            "family_controls_entitled" to false,
+                            "parent_via_server" to true,
+                            "child_ui_ok" to true,
+                            "recommended_model" to "parent_any_child_android",
+                            "battery_pct" to BatteryLevelHelper.readPercent(this),
+                            "reason_ar" to "إنفاذ أندرويد كامل عبر Accessibility و Usage Stats.",
+                            "reason_en" to "Full Android enforcement via Accessibility and Usage Stats.",
+                        ),
+                    )
+                }
+                "requestFamilyControlsAuthorization" -> {
+                    result.success(
+                        mapOf(
+                            "ok" to false,
+                            "status" to "android_n_a",
+                            "message" to "FamilyControls is an iOS Screen Time API; Android uses Accessibility.",
+                        ),
+                    )
+                }
+                "isFamilyControlsAvailable" -> result.success(false)
                 else -> result.notImplemented()
             }
         }

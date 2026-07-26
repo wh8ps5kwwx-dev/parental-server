@@ -14,18 +14,25 @@ class ChildAcademyScreen extends StatefulWidget {
 
 class _ChildAcademyScreenState extends State<ChildAcademyScreen> {
   static const _kStars = 'academy_stars';
+  static const _kOwned = 'academy_owned_buildings';
   int _stars = 0;
   final Set<String> _owned = {};
 
   @override
   void initState() {
     super.initState();
-    _loadStars();
+    _loadProgress();
   }
 
-  Future<void> _loadStars() async {
+  Future<void> _loadProgress() async {
     final p = await SharedPreferences.getInstance();
-    setState(() => _stars = p.getInt(_kStars) ?? 0);
+    final owned = p.getStringList(_kOwned) ?? const <String>[];
+    setState(() {
+      _stars = p.getInt(_kStars) ?? 0;
+      _owned
+        ..clear()
+        ..addAll(owned);
+    });
   }
 
   Future<void> _addStars(int n) async {
@@ -45,6 +52,8 @@ class _ChildAcademyScreenState extends State<ChildAcademyScreen> {
     }
     await _addStars(-b.starCost);
     setState(() => _owned.add(b.name));
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList(_kOwned, _owned.toList());
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم بناء ${b.name}!')),

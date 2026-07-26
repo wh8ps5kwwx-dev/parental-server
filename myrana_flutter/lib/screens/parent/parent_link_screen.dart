@@ -70,6 +70,34 @@ class _ParentLinkScreenState extends State<ParentLinkScreen> {
     });
   }
 
+  /// تحقق من رمز جهاز الطفل ثم إتمام الربط — مطابق لـ verifyChildDeviceCode في Kotlin.
+  Future<void> _verifyThenLink() async {
+    setState(() {
+      _busy = true;
+      _error = false;
+      _status = '';
+    });
+    final verified = await context.read<GuardianApi>().verifyChildDeviceCode(
+          _code.text,
+          _otp.text,
+        );
+    if (!mounted) return;
+    if (verified is ApiDeviceVerified) {
+      _code.text = ChildCodeNormalizer.forApi(verified.childCode);
+      setState(() {
+        _status =
+            'تم التحقق من الجهاز: ${verified.deviceName.isEmpty ? verified.childCode : verified.deviceName}';
+      });
+      await _link();
+      return;
+    }
+    // إن فشل التحقق المنفصل نجرّب add-child مباشرة (نفس مسار OTP البريد).
+    if (verified is ApiError) {
+      setState(() => _status = 'التحقق المنفصل: ${verified.message}\nمتابعة الربط…');
+    }
+    await _link();
+  }
+
   Future<void> _link() async {
     final session = context.read<AppSession>();
     setState(() {
@@ -179,8 +207,13 @@ class _ParentLinkScreenState extends State<ParentLinkScreen> {
           ),
           const SizedBox(height: 12),
           ElevatedButton(
+            onPressed: _busy ? null : _verifyThenLink,
+            child: Text(_busy ? 'جاري الربط…' : 'تحقق من الجهاز وإتمام الربط'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
             onPressed: _busy ? null : _link,
-            child: Text(_busy ? 'جاري الربط…' : 'إتمام الربط'),
+            child: const Text('إتمام الربط مباشرة'),
           ),
           const Divider(height: 32),
           const Text(

@@ -65,15 +65,22 @@ class ChildApi {
     required String childCode,
     int batteryPct = -1,
     bool permissionsOk = false,
+    Map<String, bool>? permissions,
   }) async {
     try {
+      final perms = permissions ??
+          <String, bool>{
+            'mandatory_ok': permissionsOk,
+            'usage': permissionsOk,
+            'accessibility': permissionsOk,
+          };
       final json = await _client.postRoot('child-heartbeat', {
         'child_code': ChildCodeNormalizer.forApi(childCode),
         'battery_pct': batteryPct,
         'battery_level': batteryPct,
-        // السيرفر يتوقع خريطة permissions ويحدد mandatory_ok منها.
         'permissions': {
-          'mandatory_ok': permissionsOk,
+          ...perms,
+          'mandatory_ok': perms['mandatory_ok'] ?? permissionsOk,
         },
         'platform': 'flutter',
       });

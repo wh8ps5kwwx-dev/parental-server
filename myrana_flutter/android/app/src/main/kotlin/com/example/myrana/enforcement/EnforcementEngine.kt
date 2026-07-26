@@ -100,6 +100,7 @@ class EnforcementEngine private constructor(context: Context) {
         }
 
         lastForegroundPkg = fgPkg
+        AppUsageAlertHelper.onForegroundChanged(appContext, fgPkg)
 
         // enforce سريع
         if (fgPkg != null) {

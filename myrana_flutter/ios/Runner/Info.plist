@@ -45,5 +45,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!--
+	  Family Controls / Screen Time: the system shows its own authorization UI.
+	  There is no official NSFamilyControlsUsageDescription key; these strings
+	  document purpose for reviewers and in-app copy consistency.
+	-->
+	<key>NSFamilyControlsUsageDescription</key>
+	<string>MYRana needs Screen Time access to shield apps selected for parental controls when a parent sets a block policy.</string>
+	<key>MYRanaFamilyControlsPurposeAR</key>
+	<string>يحتاج MYRana إذن وقت الشاشة (FamilyControls) لحظر التطبيقات المختارة حسب سياسة ولي الأمر عبر ManagedSettings.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

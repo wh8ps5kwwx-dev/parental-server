@@ -2,6 +2,7 @@ package com.example.myrana.enforcement
 
 /**
  * قواعد: حزم النظام لا تُحظر. المتصفحات/يوتيوب تُفحص عبر Accessibility.
+ * تطبيقات المراسلة تُنبَّه عند الفتح (AppUsageAlertHelper).
  */
 object MonitoredAppRegistry {
 
@@ -9,14 +10,61 @@ object MonitoredAppRegistry {
         val pkg = packageName.lowercase().trim()
         if (pkg.isBlank()) return false
         if (pkg == "android") return true
-        // تطبيقنا
-        if (pkg.startsWith("com.example.myrana_flutter")) return true
-        // بادئات النظام
-        if (pkg.startsWith("com.android.systemui")) return true
-        if (pkg.startsWith("com.android.launcher")) return true
-        if (pkg.startsWith("com.android.settings")) return true
+        if (pkg.startsWith("com.example.myrana")) return true
+        if (systemExcludePrefixes.any { pkg.startsWith(it) }) return true
+        if (neverBlockExact.contains(pkg)) return true
+        if (pkg.contains("packageinstaller")) return true
+        if (pkg.contains("documentsui")) return true
+        if (pkg.contains("intentresolver")) return true
+        if (pkg.contains("filemanager") || pkg.contains("fileexplorer") || pkg.contains("myfiles")) return true
+        if (pkg == "com.android.vending" || pkg == "com.sec.android.app.samsungapps") return true
+        if (pkg.contains("permissioncontroller")) return true
+        if (pkg.contains("installer") && pkg.startsWith("com.")) return true
         return false
     }
+
+    private val neverBlockExact: Set<String> = setOf(
+        "com.google.android.apps.nbu.files",
+        "com.google.android.documentsui",
+        "com.android.providers.downloads.ui",
+        "com.sec.android.app.myfiles",
+        "com.mi.android.globalfileexplorer",
+        "com.coloros.filemanager",
+        "com.huawei.android.internal.app",
+    )
+
+    val messagingPackages: Set<String> = setOf(
+        "com.whatsapp",
+        "com.whatsapp.w4b",
+        "org.telegram.messenger",
+        "org.telegram.messenger.web",
+        "com.facebook.orca",
+        "com.facebook.mlite",
+        "com.instagram.android",
+        "com.zhiliaoapp.musically",
+        "com.ss.android.ugc.trill",
+        "com.snapchat.android",
+        "com.twitter.android",
+        "com.viber.voip",
+        "jp.naver.line.android",
+        "com.discord",
+        "com.Slack",
+        "org.thoughtcrime.securesms",
+        "com.google.android.apps.messaging",
+        "com.samsung.android.messaging",
+    )
+
+    private val systemExcludePrefixes: List<String> = listOf(
+        "com.android.systemui",
+        "com.android.launcher",
+        "com.android.settings",
+        "com.google.android.permissioncontroller",
+        "com.android.packageinstaller",
+        "com.android.inputmethod",
+        "com.google.android.inputmethod",
+        "com.samsung.android.app.telephonyui",
+        "com.example.myrana",
+    )
 
     fun shouldMonitorAccessibilityText(packageName: String): Boolean {
         val pkg = packageName.lowercase().trim()
@@ -25,9 +73,16 @@ object MonitoredAppRegistry {
         return true
     }
 
-    fun isMessagingApp(packageName: String): Boolean = false
+    fun isMessagingApp(packageName: String): Boolean =
+        packageName.lowercase() in messagingPackages
 
     fun isBrowserPackage(packageName: String): Boolean =
         packageName.lowercase() in AccessibilityHelper.BROWSER_PACKAGES
-}
 
+    fun appCategoryLabel(packageName: String): String = when {
+        isMessagingApp(packageName) -> "مراسلة"
+        isBrowserPackage(packageName) -> "متصفح"
+        packageName.equals(AccessibilityHelper.YOUTUBE_PACKAGE, ignoreCase = true) -> "YouTube"
+        else -> "تطبيق"
+    }
+}

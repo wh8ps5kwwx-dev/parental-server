@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Family Controls (Screen Time API).
+	  Required for AuthorizationCenter / ManagedSettings / DeviceActivity.
+	  You MUST also:
+	  1) Apple Developer Program membership
+	  2) Enable "Family Controls" on the App ID in Certificates, Identifiers & Profiles
+	  3) In Xcode: Runner target → Signing & Capabilities → + Capability → Family Controls
+	  4) For App Store / TestFlight: request Family Controls entitlement approval from Apple
+	-->
+	<key>com.apple.developer.family-controls</key>
+	<true/>
+	<!-- App Group shared with DeviceActivityMonitorExtension (create on developer.apple.com + Xcode). -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.example.myranaFlutter</string>
+	</array>
+</dict>
+</plist>

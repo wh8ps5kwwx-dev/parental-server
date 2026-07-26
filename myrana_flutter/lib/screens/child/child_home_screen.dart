@@ -62,10 +62,13 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
     final session = context.read<AppSession>();
     if (session.childCode.isEmpty || !session.childLinked) return;
     final api = context.read<ChildApi>();
-    final permsOk = await EnforcementChannel.permissionsReady();
+    final perms = await EnforcementChannel.permissionSnapshot();
+    final battery = await EnforcementChannel.getBatteryPct();
     await api.heartbeat(
       childCode: session.childCode,
-      permissionsOk: permsOk,
+      permissionsOk: perms['mandatory_ok'] == true,
+      permissions: perms,
+      batteryPct: battery,
     );
     final cmd = await api.pollCommand(session.childCode);
     if (!mounted) return;
@@ -252,11 +255,12 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
             icon: const Icon(Icons.sync),
             label: const Text('مزامنة الآن مع السيرفر'),
           ),
-          if (!EnforcementChannel.isAndroid) ...[
+          if (EnforcementChannel.isIOS) ...[
             const SizedBox(height: 8),
             const Text(
-              'ملاحظة: الرقابة الصلبة (حظر التطبيقات) متاحة على أندرويد فقط. '
-              'iOS يدعم الواجهة والـ API مع قيود Screen Time.',
+              'جهاز طفل على iPhone: الواجهة والربط والأكاديمية كاملة. '
+              'للحظر النظامي: افتحي الصلاحيات → FamilyControls → اختاري التطبيقات → زامني. '
+              'يتطلب حساب مطور آبل + صلاحية Family Controls على Mac/Xcode.',
               textAlign: TextAlign.right,
               style: TextStyle(color: Colors.black54, fontSize: 12),
             ),

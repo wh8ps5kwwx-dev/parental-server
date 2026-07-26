@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/api/guardian_api.dart';
 import '../../data/models/api_models.dart';
+import '../../native/enforcement_channel.dart';
 import '../../session/app_session.dart';
 import '../../widgets/common_widgets.dart';
 import 'parent_alerts_screen.dart';
@@ -177,6 +178,15 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               subtitle: 'إعدادات ولي الأمر والخادم',
               onTap: () => _open(const ParentSettingsScreen()),
             ),
+            if (EnforcementChannel.isIOS) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'ولي الأمر على iPhone كامل: الحظر والحدود تُرسل عبر السيرفر '
+                'وتُنفَّذ على جهاز الطفل (Android).',
+                textAlign: TextAlign.right,
+                style: TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text(
               'السيرفر: parental-server-4mms.onrender.com',
