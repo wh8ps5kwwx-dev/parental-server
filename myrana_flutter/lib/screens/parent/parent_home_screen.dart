@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/api/guardian_api.dart';
 import '../../data/models/api_models.dart';
 import '../../native/enforcement_channel.dart';
+import '../../navigation/logout_nav.dart';
 import '../../session/app_session.dart';
 import '../../widgets/common_widgets.dart';
 import 'parent_alerts_screen.dart';
@@ -15,7 +16,6 @@ import 'parent_message_screen.dart';
 import 'parent_reports_screen.dart';
 import 'parent_screen_time_screen.dart';
 import 'parent_settings_screen.dart';
-import '../role_select_screen.dart';
 
 /// Hub — مطابق لـ ParentMainActivity / ParentHubUi.
 class ParentHomeScreen extends StatefulWidget {
@@ -81,10 +81,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             onPressed: () async {
               await session.logoutParent();
               if (!context.mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const RoleSelectScreen()),
-                (_) => false,
-              );
+              goAfterLogout(context);
             },
           ),
         ],

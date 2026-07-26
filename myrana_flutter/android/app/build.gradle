@@ -42,7 +42,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.myrana_flutter"
+        // نفس أساس Kotlin MYRana → applicationId نهائي: .parent / .child
+        applicationId = "com.example.myrana"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
         versionCode = flutterVersionCode.toInteger()
@@ -51,6 +52,20 @@ android {
         // خانات مشابهة لـ MYRana/app/build.gradle
         buildConfigField "String", "SERVER_ROOT_URL", "\"https://parental-server-4mms.onrender.com/\""
         buildConfigField "String", "API_KEY", "\"graduation-secret-key\""
+    }
+
+    flavorDimensions "role"
+    productFlavors {
+        child {
+            dimension "role"
+            applicationIdSuffix ".child"
+            resValue "string", "app_name", "أكاديمية العباقرة"
+        }
+        parent {
+            dimension "role"
+            applicationIdSuffix ".parent"
+            resValue "string", "app_name", "حماية الأطفال"
+        }
     }
 
     buildTypes {

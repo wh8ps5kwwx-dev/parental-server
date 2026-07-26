@@ -6,7 +6,8 @@ import '../theme/app_theme.dart';
 import 'child/child_home_screen.dart';
 import 'parent/parent_login_screen.dart';
 
-/// اختيار الدور: ولي أمر / طفل — بدل نكهتي parent و child في Gradle.
+/// اختيار الدور — للتطوير/iOS فقط.
+/// على أندرويد الإنتاجي استخدم نكهات Gradle: `--flavor parent` / `--flavor child`.
 class RoleSelectScreen extends StatelessWidget {
   const RoleSelectScreen({super.key});
 

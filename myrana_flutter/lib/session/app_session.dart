@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/app_flavor.dart';
+
 /// جلسات ولي الأمر / الطفل — بديل SharedPreferences في Kotlin.
 class AppSession extends ChangeNotifier {
   static const _kRole = 'role'; // parent | child | none
@@ -36,6 +38,11 @@ class AppSession extends ChangeNotifier {
     childLinked = _prefs!.getBool(_kLinked) ?? false;
     guardianRole = _prefs!.getString(_kGuardianRole) ?? 'ولي أمر';
     restoreToken = _prefs!.getString(_kRestoreToken) ?? '';
+    // نكهة Gradle تقفل الدور مثل MYRana Kotlin.
+    if (AppFlavor.isLocked) {
+      role = AppFlavor.lockedRole;
+      await _prefs?.setString(_kRole, role);
+    }
     notifyListeners();
   }
 
@@ -105,13 +112,13 @@ class AppSession extends ChangeNotifier {
     childCode = '';
     childName = '';
     restoreToken = '';
-    role = 'none';
+    role = AppFlavor.isLocked ? AppFlavor.lockedRole : 'none';
     await _prefs?.remove(_kEmail);
     await _prefs?.remove(_kEmailVerified);
     await _prefs?.remove(_kChildCode);
     await _prefs?.remove(_kChildName);
     await _prefs?.remove(_kRestoreToken);
-    await _prefs?.setString(_kRole, 'none');
+    await _prefs?.setString(_kRole, role);
     notifyListeners();
   }
 
@@ -119,11 +126,11 @@ class AppSession extends ChangeNotifier {
     childCode = '';
     deviceVerifyCode = '';
     childLinked = false;
-    role = 'none';
+    role = AppFlavor.isLocked ? AppFlavor.lockedRole : 'none';
     await _prefs?.remove(_kChildCode);
     await _prefs?.remove(_kDeviceVerify);
     await _prefs?.remove(_kLinked);
-    await _prefs?.setString(_kRole, 'none');
+    await _prefs?.setString(_kRole, role);
     notifyListeners();
   }
 }

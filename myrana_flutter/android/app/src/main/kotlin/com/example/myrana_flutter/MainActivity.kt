@@ -55,6 +55,7 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(messenger, CHANNEL_ENFORCEMENT).setMethodCallHandler { call, result ->
             when (call.method) {
+                "getAppFlavor" -> result.success(BuildConfig.FLAVOR)
                 "setChildContext" -> {
                     val childCode = call.argument<String>("childCode")?.trim().orEmpty()
                     ChildContextStore.setChildCode(this, childCode)
@@ -105,17 +106,23 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "startForeground" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        requestPermissions(
-                            arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-                            REQ_NOTIFICATION,
-                        )
+                    if (BuildConfig.FLAVOR != "child") {
+                        result.success(false)
+                    } else {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            requestPermissions(
+                                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                                REQ_NOTIFICATION,
+                            )
+                        }
+                        ForegroundMonitorService.start(this)
+                        result.success(true)
                     }
-                    ForegroundMonitorService.start(this)
-                    result.success(true)
                 }
                 "stopForeground" -> {
-                    ForegroundMonitorService.stop(this)
+                    if (BuildConfig.FLAVOR == "child") {
+                        ForegroundMonitorService.stop(this)
+                    }
                     result.success(true)
                 }
                 "getInstalledApps" -> {
@@ -186,20 +193,30 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "getPlatformStatus" -> {
+                    val isChild = BuildConfig.FLAVOR == "child"
                     result.success(
                         mapOf(
                             "platform" to "android",
-                            "enforcement_available" to true,
-                            "usage_stats_available" to true,
-                            "accessibility_blocking_available" to true,
+                            "app_flavor" to BuildConfig.FLAVOR,
+                            "enforcement_available" to isChild,
+                            "usage_stats_available" to isChild,
+                            "accessibility_blocking_available" to isChild,
                             "family_controls_compile_enabled" to false,
                             "family_controls_entitled" to false,
                             "parent_via_server" to true,
-                            "child_ui_ok" to true,
+                            "child_ui_ok" to isChild,
                             "recommended_model" to "parent_any_child_android",
                             "battery_pct" to BatteryLevelHelper.readPercent(this),
-                            "reason_ar" to "إنفاذ أندرويد كامل عبر Accessibility و Usage Stats.",
-                            "reason_en" to "Full Android enforcement via Accessibility and Usage Stats.",
+                            "reason_ar" to if (isChild) {
+                                "إنفاذ أندرويد كامل عبر Accessibility و Usage Stats."
+                            } else {
+                                "تطبيق ولي الأمر — الإنفاذ على جهاز الطفل عبر السيرفر."
+                            },
+                            "reason_en" to if (isChild) {
+                                "Full Android enforcement via Accessibility and Usage Stats."
+                            } else {
+                                "Parent app — enforcement runs on the child device via server."
+                            },
                         ),
                     )
                 }

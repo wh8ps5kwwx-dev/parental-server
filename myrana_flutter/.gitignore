@@ -38,3 +38,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local APKs only — do not push (GitHub size limits)
+releases/*.apk
+*.apk
+
+# Local build/analyze logs
+*_out.txt
+*_log.txt
+*_fresh.txt
+sdk_install.txt

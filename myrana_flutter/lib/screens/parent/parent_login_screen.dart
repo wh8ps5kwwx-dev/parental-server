@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_flavor.dart';
 import '../../data/api/guardian_api.dart';
 import '../../data/models/api_models.dart';
+import '../../navigation/logout_nav.dart';
 import '../../session/app_session.dart';
 import '../../widgets/common_widgets.dart';
-import '../role_select_screen.dart';
 import 'parent_home_screen.dart';
 
 /// OTP login — مطابق لتدفق send-email-code / verify-email-code.
@@ -89,17 +90,19 @@ class _ParentLoginScreenState extends State<ParentLoginScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('دخول ولي الأمر'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () async {
-            await context.read<AppSession>().setRole('none');
-            if (!context.mounted) return;
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const RoleSelectScreen()),
-              (_) => false,
-            );
-          },
-        ),
+        leading: AppFlavor.isParent
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () async {
+                  if (!AppFlavor.isLocked) {
+                    await context.read<AppSession>().setRole('none');
+                  }
+                  if (!context.mounted) return;
+                  goAfterLogout(context);
+                },
+              ),
+        automaticallyImplyLeading: !AppFlavor.isParent,
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),

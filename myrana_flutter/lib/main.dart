@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'config/app_flavor.dart';
 import 'data/api/api_client.dart';
 import 'data/api/child_api.dart';
 import 'data/api/guardian_api.dart';
@@ -13,6 +14,7 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppFlavor.resolveFromPlatform();
   final session = AppSession();
   await session.load();
   final client = ApiClient();
@@ -44,7 +46,7 @@ class MyranaApp extends StatelessWidget {
         Provider.value(value: childApi),
       ],
       child: MaterialApp(
-        title: 'MYRana Flutter',
+        title: AppFlavor.appTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         locale: const Locale('ar'),
@@ -66,7 +68,6 @@ class _RootRouter extends StatelessWidget {
     final session = context.watch<AppSession>();
     switch (session.role) {
       case 'parent':
-        // ولي أمر بدون تحقق بريد → شاشة الدخول وليس الاختيار فقط
         if (session.parentEmailVerified) {
           return const ParentHomeScreen();
         }
@@ -74,6 +75,9 @@ class _RootRouter extends StatelessWidget {
       case 'child':
         return const ChildHomeScreen();
       default:
+        // نكهات Gradle تقفل الدور؛ بدون نكهة يبقى اختيار الدور للتطوير.
+        if (AppFlavor.isParent) return const ParentLoginScreen();
+        if (AppFlavor.isChild) return const ChildHomeScreen();
         return const RoleSelectScreen();
     }
   }

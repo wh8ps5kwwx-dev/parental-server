@@ -6,9 +6,9 @@ import 'package:provider/provider.dart';
 import '../../data/api/child_api.dart';
 import '../../data/models/api_models.dart';
 import '../../native/enforcement_channel.dart';
+import '../../navigation/logout_nav.dart';
 import '../../session/app_session.dart';
 import '../../widgets/common_widgets.dart';
-import '../role_select_screen.dart';
 import 'child_academy_screen.dart';
 import 'child_permissions_screen.dart';
 import 'child_register_screen.dart';
@@ -201,10 +201,7 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
               }
               await session.clearChild();
               if (!context.mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const RoleSelectScreen()),
-                (_) => false,
-              );
+              goAfterLogout(context);
             },
           ),
         ],

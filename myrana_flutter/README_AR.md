@@ -1,7 +1,7 @@
 # MYRana Flutter — دليل التشغيل بالعربية
 
-**المنتج كامل للسيناريو المدعوم ✅**  
-ولي أمر (Android أو iPhone) + طفل على **Android** = رقابة كاملة عبر السيرفر والإنفاذ الأصلي.
+**التطبيقان كاملان فلاتر ✅**  
+نكهتان أندرويد مثل Kotlin: **حماية الأطفال** (ولي الأمر) + **أكاديمية العباقرة** (طفل) — APKان منفصلان.
 
 > مشروع Kotlin الأصلي **`MYRana/` لم يُحذف** — يبقى مرجعاً ونسخة احتياطية.
 
@@ -11,16 +11,17 @@
 
 | الطبقة | الحالة |
 |--------|--------|
-| واجهات ولي الأمر + الطفل | ✅ كاملة (Android + iOS) |
+| نكهات Gradle `parent` / `child` | ✅ تطبيقان (applicationId + اسم مختلف) |
+| واجهات ولي الأمر + الطفل | ✅ كاملة |
 | REST API (Guardian + Child) | ✅ كاملة |
-| MethodChannel + إنفاذ أندرويد | ✅ كامل |
-| Accessibility / Usage Stats / Foreground / Boot | ✅ كامل (Android) |
+| MethodChannel + إنفاذ أندرويد | ✅ كامل (**نكهة الطفل فقط** في المانيفست) |
+| Accessibility / Usage Stats / Foreground / Boot | ✅ كامل — مُعلَن في نكهة `child` فقط |
 | حظر تطبيق + موقع + السماح + جدولة تجميد | ✅ كامل (يُنفَّذ على طفل Android) |
 | تنبيهات فتح تطبيقات المراسلة | ✅ كامل (Android child) |
 | نسبة البطارية + صلاحيات في النبضة | ✅ كامل |
-| بناء APK debug + release | ✅ في `releases/` |
-| ولي أمر على iPhone | ✅ كامل عبر السيرفر (يتحكم بطفل Android أو iOS بعد FamilyControls) |
-| طفل على iPhone | ✅ واجهة + ربط + أكاديمية + مسار FamilyControls/ManagedSettings الحقيقي |
+| بناء APK parent + child | ✅ في `releases/` |
+| ولي أمر على iPhone | ✅ كامل عبر السيرفر |
+| طفل على iPhone | ✅ واجهة + ربط + أكاديمية + FamilyControls |
 | GPS | ❌ غير موجود (متعمد — لا اختراع) |
 
 ---
@@ -60,10 +61,10 @@
 
 ### على هاتف الطفل (أندرويد) — خطوات إلزامية
 
-1. ثبّتي التطبيق واختاري **أنا جهاز الطفل**.
+1. ثبّتي **`app-child-release.apk`** (أكاديمية العباقرة).
 2. سجّلي الجهاز → يظهر كود `CHILD-...`.
 3. بعد ربط ولي الأمر: افتحي **الصلاحيات المطلوبة** وفعّلي بالترتيب:
-   - **Usage Access** (اضغطي الصف → فعّلي MYRana Flutter)
+   - **Usage Access** (اضغطي الصف → فعّلي أكاديمية العباقرة)
    - **Accessibility Service** (اضغطي الصف → فعّلي الخدمة)
    - **تجاهل تحسين البطارية** (موصى به)
    - **تشغيل المراقبة** (Foreground Service — إشعار ثابت)
@@ -71,7 +72,7 @@
 
 ### على هاتف ولي الأمر (Android أو iPhone)
 
-1. اختاري **أنا ولي الأمر** → دخول OTP بالبريد.
+1. على أندرويد: ثبّتي **`app-parent-release.apk`** (حماية الأطفال) → دخول OTP بالبريد.
 2. **ربط طفل** بكود `CHILD-...` من جهاز الطفل (تحقق من الجهاز + إتمام الربط).
 3. من **الحظر** أو **التطبيقات**: احظري حزمة أو موقعاً، أو اضغطي «السماح» لإلغاء كل الحظر.
 4. خلال دقيقة تقريباً يُنفَّذ الحظر على جهاز الطفل Android (أو فوراً عند استلام الأمر).
@@ -103,32 +104,46 @@
 ```bash
 cd E:\parent_monitor_project\myrana_flutter
 flutter pub get
-flutter run
+
+# ولي الأمر
+flutter run --flavor parent -t lib/main.dart
+
+# جهاز الطفل
+flutter run --flavor child -t lib/main.dart
 ```
 
-بناء APK:
+### بناء APKان منفصلان (موصى به)
 
 ```bash
-flutter build apk --debug
-flutter build apk --release
+flutter build apk --flavor parent --release
+flutter build apk --flavor child --release
 ```
 
-الملفات الناتجة:
+انسخِ المخرجات محلياً إلى `releases/` (لا تُرفع إلى GitHub — حجمها كبير):
 
-- `build/app/outputs/flutter-apk/app-debug.apk`
-- `build/app/outputs/flutter-apk/app-release.apk`
-- نسخة جاهزة في `releases/flutter-app-debug.apk` و `releases/flutter-app-release.apk`
+```bash
+copy build\app\outputs\flutter-apk\app-parent-release.apk releases\
+copy build\app\outputs\flutter-apk\app-child-release.apk releases\
+```
+
+| النكهة | applicationId | اسم التطبيق | مسار البناء | نسخة محلية |
+|--------|---------------|-------------|-------------|------------|
+| parent | `com.example.myrana.parent` | حماية الأطفال | `build/app/outputs/flutter-apk/app-parent-release.apk` | `releases/app-parent-release.apk` |
+| child | `com.example.myrana.child` | أكاديمية العباقرة | `build/app/outputs/flutter-apk/app-child-release.apk` | `releases/app-child-release.apk` |
+
+النكهة تُقرأ تلقائياً من `BuildConfig.FLAVOR` عبر MethodChannel (`getAppFlavor`).
 
 ---
 
-## اختيار الدور (بدل نكهات Gradle)
+## نكهات Gradle (مثل Kotlin)
 
-| في Kotlin | في Flutter |
-|-----------|------------|
-| `parent` flavor | شاشة البداية → **أنا ولي الأمر** |
-| `child` flavor | شاشة البداية → **أنا جهاز الطفل** |
+| النكهة | applicationId | الاسم | المانيفست |
+|--------|---------------|-------|-----------|
+| `parent` | `com.example.myrana.parent` | حماية الأطفال | بدون Accessibility / Foreground / Boot |
+| `child` | `com.example.myrana.child` | أكاديمية العباقرة | كامل الإنفاذ الأصلي |
 
-الدور يُحفظ في `shared_preferences` عبر `AppSession`.
+الدور يُقفل حسب النكهة في `AppSession` + `AppFlavor`.  
+شاشة اختيار الدور تبقى للتطوير/iOS فقط عندما لا توجد نكهة.
 
 ---
 
@@ -265,15 +280,20 @@ android/.../com/example/myrana/util/BatteryLevelHelper.kt
 myrana_flutter/
 ├── lib/
 │   ├── main.dart
+│   ├── config/app_flavor.dart   # نكهة parent/child
 │   ├── config/server_config.dart
 │   ├── data/api/          # GuardianApi + ChildApi
 │   ├── session/           # shared_preferences
-│   ├── screens/parent/    # شاشات ولي أمر (تعمل على iOS)
-│   ├── screens/child/     # شاشات طفل (تعمل على iOS)
+│   ├── screens/parent/    # شاشات ولي أمر
+│   ├── screens/child/     # شاشات طفل
 │   └── native/            # MethodChannel Dart
-├── android/               # تنفيذ أصلي كامل
-├── ios/                   # FamilyControls + ManagedSettings + DeviceActivity (شيفرة امتداد جاهزة)
-├── releases/              # APK debug + release
+├── android/
+│   └── app/src/
+│       ├── main/          # مشترك
+│       ├── parent/        # مانيفست بلا Accessibility
+│       └── child/         # Accessibility + FGS + Boot
+├── ios/
+├── releases/              # app-parent-release.apk + app-child-release.apk
 └── test/
 ```
 
@@ -284,8 +304,8 @@ myrana_flutter/
 ```bash
 flutter analyze
 flutter test
-flutter build apk --debug
-flutter build apk --release
+flutter build apk --flavor parent --release
+flutter build apk --flavor child --release
 ```
 
 ---
@@ -293,10 +313,10 @@ flutter build apk --release
 ## الفروق عن Kotlin الأصلي
 
 1. **Room/SQLite** → كاش SharedPreferences (`PolicyFilterCache`) بدل Room كامل
-2. **iOS** → ولي أمر كامل عبر السيرفر؛ طفل مع مسار Screen Time الحقيقي (يحتاج حساب مطور + تفويض على الجهاز)
+2. **iOS** → ولي أمر كامل عبر السيرفر؛ طفل مع مسار Screen Time الحقيقي
 3. **MYRana/** → يبقى المرجع الكامل للميزات المتقدمة الاختيارية (Media scan، outbox Room)
 4. **GPS** → غير منفّذ في المشروعين — لا يُذكر كميزة
-5. **APK واحد** بدور وقت التشغيل بدل نكهتي Gradle
+5. **نكهات Gradle** → نفس فكرة Kotlin (`parent` / `child`) بأسماء وأرقام حزم مطابقة
 
 ---
 
@@ -306,16 +326,17 @@ flutter build apk --release
 |---------|------|
 | الطفل غير موجود على السيرفر | سجّلي من جهاز الطفل أولاً |
 | رمز الربط خاطئ | أرسلي رمزاً جديداً من «إرسال رمز الربط» |
-| الحظر لا يعمل | تأكدي أن جهاز الطفل Android + Usage Access + Accessibility + تشغيل المراقبة |
+| الحظر لا يعمل | ثبّتي APK الطفل + Usage Access + Accessibility + تشغيل المراقبة |
 | الحظر يبقى بعد «إلغاء» | تأكدي أن السيرفر المحدَّث منشور (يدعم `unblock_app`) وانتظري مزامنة السياسة |
 | لا تقارير استخدام | اطلبي «تحديث الاستخدام» + صلاحية Usage Access على Android |
 | بعد إعادة التشغيل توقفت المراقبة | فعّلي تجاهل تحسين البطارية؛ BootReceiver يعيد التشغيل إن وُجد child_code |
-| طفل على iPhone بلا درع | افتحي الصلاحيات → FamilyControls → منتقي التطبيقات → مزامنة؛ وتأكدي من تفعيل الصلاحية في حساب المطوّر |
+| طفل على iPhone بلا درع | افتحي الصلاحيات → FamilyControls → منتقي التطبيقات → مزامنة |
+| `flutter run` يطلب flavor | أضيفي `--flavor parent` أو `--flavor child` |
 
 ---
 
 ## الحكم النهائي
 
-**المنتج كامل ✅** لسيناريو النشر المدعوم: ولي أمر على أي جهاز (بما فيه iPhone) + طفل على Android مع إنفاذ أصلي.
+**التطبيقان كاملان فلاتر ✅** — نكهتان أندرويد (`app-parent-release.apk` + `app-child-release.apk`) بنفس فكرة Kotlin، مع إنفاذ أصلي على جهاز الطفل فقط.
 
-**طفل على iPhone:** واجهة وربط وأكاديمية كاملة + مسار Screen Time حقيقي (`AuthorizationCenter` / `ManagedSettingsStore` + App Group). لتفعيل الحظر على الجهاز: حساب Apple Developer + صلاحية Family Controls في Xcode + تفويض المستخدم + اختيار التطبيقات. شيفرة DeviceActivityMonitor للعتبات اليومية مكتملة وتُضاف كهدف امتداد على Mac. Android لم يُكسر؛ `MYRana/` لم يُحذف؛ لا GPS.
+**طفل على iPhone:** واجهة وربط وأكاديمية + Screen Time. Android لم يُكسر؛ `MYRana/` لم يُحذف؛ لا GPS.
