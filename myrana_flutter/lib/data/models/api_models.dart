@@ -74,6 +74,42 @@ class ApiDevicePolicy extends ApiResult {
   final List<String> videoKeywords;
 }
 
+/// نتيجة التحقق من موقع — POST /api/check-url.
+class ApiUrlCheck extends ApiResult {
+  const ApiUrlCheck({
+    required this.host,
+    required this.blocked,
+    required this.inPolicy,
+    required this.inCatalog,
+    required this.explanation,
+    this.policyMatch,
+    this.catalogMatch,
+    this.url = '',
+  });
+
+  final String host;
+  final String url;
+  final bool blocked;
+  final bool inPolicy;
+  final bool inCatalog;
+  final String? policyMatch;
+  final String? catalogMatch;
+  final String explanation;
+
+  factory ApiUrlCheck.fromJson(Map<String, dynamic> json) {
+    return ApiUrlCheck(
+      host: (json['host'] ?? '').toString(),
+      url: (json['url'] ?? '').toString(),
+      blocked: json['blocked'] == true,
+      inPolicy: json['in_policy'] == true,
+      inCatalog: json['in_catalog'] == true,
+      policyMatch: json['policy_match']?.toString(),
+      catalogMatch: json['catalog_match']?.toString(),
+      explanation: (json['explanation'] ?? json['message'] ?? '').toString(),
+    );
+  }
+}
+
 class ApiAlerts extends ApiResult {
   const ApiAlerts(this.lines, [this.error]);
   final List<String> lines;

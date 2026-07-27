@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myrana.R
 import com.example.myrana.data.remote.GuardianApi
+import com.example.myrana.parent.ParentSession
 import com.example.myrana.util.AppIconHelper
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -78,6 +79,7 @@ class ParentBlockActivity : ParentShellActivity() {
             }
         }
         findViewById<MaterialButton>(R.id.btnApplyDefaultBlocklist).setOnClickListener { applyDefaultBlocklist() }
+        findViewById<MaterialButton>(R.id.btnCheckUrl).setOnClickListener { checkUrl() }
 
         chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             durationMode = when (checkedIds.firstOrNull()) {
@@ -239,6 +241,40 @@ class ParentBlockActivity : ParentShellActivity() {
                 else -> Toast.makeText(this@ParentBlockActivity, "فشل تطبيق القائمة", Toast.LENGTH_SHORT).show()
             }
             findViewById<MaterialButton>(R.id.btnApplyDefaultBlocklist).isEnabled = true
+        }
+    }
+
+    private fun checkUrl() {
+        val input = findViewById<TextInputEditText>(R.id.inputTarget)
+        val url = input.text?.toString().orEmpty().trim()
+        if (url.isEmpty()) {
+            Toast.makeText(this, "أدخلي رابطاً أو نطاقاً", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val childCode = ParentSession.childCode(this).orEmpty()
+        val status = findViewById<TextView>(R.id.textBlockMessage)
+        val btn = findViewById<MaterialButton>(R.id.btnCheckUrl)
+        btn.isEnabled = false
+        lifecycleScope.launch {
+            when (val result = withContext(Dispatchers.IO) { GuardianApi.checkUrl(url, childCode) }) {
+                is GuardianApi.ApiResult.UrlCheck -> {
+                    val flags = buildString {
+                        append("محظور: ${if (result.blocked) "نعم" else "لا"}")
+                        append(" · سياسة: ${if (result.inPolicy) "نعم" else "لا"}")
+                        append(" · كتالوج: ${if (result.inCatalog) "نعم" else "لا"}")
+                        append("\n")
+                        append(result.explanation)
+                    }
+                    status.text = flags
+                    Toast.makeText(this@ParentBlockActivity, flags, Toast.LENGTH_LONG).show()
+                }
+                is GuardianApi.ApiResult.Error -> {
+                    status.text = result.message
+                    Toast.makeText(this@ParentBlockActivity, result.message, Toast.LENGTH_SHORT).show()
+                }
+                else -> Toast.makeText(this@ParentBlockActivity, "فشل التحقق", Toast.LENGTH_SHORT).show()
+            }
+            btn.isEnabled = true
         }
     }
 }

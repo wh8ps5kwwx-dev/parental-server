@@ -414,6 +414,130 @@ class GuardianApi {
     }
   }
 
+  /// التحقق من موقع/نطاق مقابل سياسة الطفل + كتالوج الحظر.
+  /// يستخدم POST /api/check-url مع احتياطي محلي إن فشل المسار.
+  Future<ApiResult> checkUrl({
+    required String url,
+    String childCode = '',
+  }) async {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      return const ApiError('أدخلي رابطاً أو نطاقاً');
+    }
+    try {
+      final body = <String, dynamic>{
+        'url': trimmed,
+      };
+      if (childCode.trim().isNotEmpty) {
+        body['child_code'] = ChildCodeNormalizer.forApi(childCode);
+      }
+      final json = await _client.postRoot('api/check-url', body);
+      if (_ok(json) || json.containsKey('blocked')) {
+        return ApiUrlCheck.fromJson(json);
+      }
+      // سيرفر قديم بلا المسار — احتياطي محلي
+      return _checkUrlLocalFallback(trimmed, childCode);
+    } catch (_) {
+      return _checkUrlLocalFallback(trimmed, childCode);
+    }
+  }
+
+  Future<ApiResult> _checkUrlLocalFallback(String url, String childCode) async {
+    final host = _extractHost(url);
+    if (host.isEmpty) {
+      return const ApiError('أدخلي رابطاً أو نطاقاً صالحاً');
+    }
+
+    var inPolicy = false;
+    String? policyMatch;
+    if (childCode.trim().isNotEmpty) {
+      final policy = await fetchBlockedPolicy(childCode);
+      if (policy is ApiDevicePolicy) {
+        for (final p in policy.blockedHosts) {
+          if (_hostMatches(host, p)) {
+            inPolicy = true;
+            policyMatch = p;
+            break;
+          }
+        }
+      }
+    }
+
+    var inCatalog = false;
+    String? catalogMatch;
+    try {
+      final catJson = await _client.getRoot('blocklist/catalog');
+      final catalog = catJson['catalog'];
+      final sites = catalog is Map
+          ? ((catalog['sites'] as List?) ?? const [])
+          : const [];
+      for (final raw in sites) {
+        final p = raw.toString().trim().toLowerCase();
+        if (p.isNotEmpty && _hostMatches(host, p)) {
+          inCatalog = true;
+          catalogMatch = p;
+          break;
+        }
+      }
+    } catch (_) {}
+
+    final blocked = inPolicy;
+    late final String explanation;
+    if (blocked && inCatalog) {
+      explanation =
+          'الموقع «$host» محظور في سياسة الطفل (مطابقة: $policyMatch) وموجود أيضاً في كتالوج الحظر الافتراضي.';
+    } else if (blocked) {
+      explanation =
+          'الموقع «$host» محظور في سياسة الطفل الحالية (مطابقة: $policyMatch).';
+    } else if (inCatalog) {
+      explanation =
+          'الموقع «$host» موجود في كتالوج الحظر الافتراضي (مطابقة: $catalogMatch) لكنه غير مضاف لسياسة هذا الطفل بعد. يمكنكِ تطبيق القائمة الافتراضية أو حظره يدوياً من شاشة الحظر.';
+    } else if (childCode.trim().isEmpty) {
+      explanation =
+          'الموقع «$host» غير موجود في كتالوج الحظر. لم يُحدد طفل للتحقق من سياسته.';
+    } else {
+      explanation =
+          'الموقع «$host» غير محظور في سياسة الطفل وغير موجود في كتالوج الحظر الافتراضي.';
+    }
+
+    return ApiUrlCheck(
+      host: host,
+      url: url,
+      blocked: blocked,
+      inPolicy: inPolicy,
+      inCatalog: inCatalog,
+      policyMatch: policyMatch,
+      catalogMatch: catalogMatch,
+      explanation: explanation,
+    );
+  }
+
+  static String _extractHost(String raw) {
+    var s = raw.trim().toLowerCase();
+    if (s.isEmpty) return '';
+    s = s.split(RegExp(r'\s+')).first;
+    if (!s.contains('://') && !s.startsWith('//')) {
+      s = 'http://$s';
+    }
+    try {
+      var host = (Uri.parse(s).host).toLowerCase();
+      if (host.startsWith('www.')) host = host.substring(4);
+      return host;
+    } catch (_) {
+      var h = raw.split('/').first.split('?').first.split('#').first.trim().toLowerCase();
+      if (h.startsWith('www.')) h = h.substring(4);
+      return h;
+    }
+  }
+
+  static bool _hostMatches(String host, String pattern) {
+    final h = host.trim().toLowerCase().replaceFirst(RegExp(r'^\.+'), '');
+    final p = pattern.trim().toLowerCase().replaceFirst(RegExp(r'^\.+'), '');
+    if (h.isEmpty || p.isEmpty) return false;
+    if (h == p || h.endsWith('.$p')) return true;
+    return h.contains(p);
+  }
+
   /// سياسة الحظر الحالية (blockedHosts/blockedPackages) من السيرفر.
   Future<ApiResult> fetchBlockedPolicy(String childCode) async {
     try {

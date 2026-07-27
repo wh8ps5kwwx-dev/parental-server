@@ -360,6 +360,17 @@
                 android:textAllCaps="false"
                 app:backgroundTint="@color/parent_primary_dark"
                 app:cornerRadius="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCheckUrl"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/parent_btn_check_url"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp"
+                app:strokeColor="@color/parent_primary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

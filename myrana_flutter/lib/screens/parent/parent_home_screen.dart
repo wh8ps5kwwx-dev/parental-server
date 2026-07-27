@@ -16,6 +16,7 @@ import 'parent_message_screen.dart';
 import 'parent_reports_screen.dart';
 import 'parent_screen_time_screen.dart';
 import 'parent_settings_screen.dart';
+import 'parent_url_check_screen.dart';
 
 /// Hub — مطابق لـ ParentMainActivity / ParentHubUi.
 class ParentHomeScreen extends StatefulWidget {
@@ -144,6 +145,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               title: 'الحظر',
               subtitle: 'حظر تطبيق أو تطبيق القائمة الافتراضية',
               onTap: () => _open(const ParentBlockScreen()),
+            ),
+            HubTile(
+              icon: Icons.travel_explore,
+              title: 'التحقق من موقع',
+              subtitle: 'هل الرابط محظور في السياسة أو الكتالوج؟',
+              onTap: () => _open(const ParentUrlCheckScreen()),
             ),
             HubTile(
               icon: Icons.timer,

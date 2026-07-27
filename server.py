@@ -1,15 +1,15 @@
 # ==============================
-# سيرفر مشروع الرقابة الأبوية
+# ط³ظٹط±ظپط± ظ…ط´ط±ظˆط¹ ط§ظ„ط±ظ‚ط§ط¨ط© ط§ظ„ط£ط¨ظˆظٹط©
 # Parental Control Server
 #
-# وظائف السيرفر:
-# 1) إرسال رمز تحقق لبريد ولي الأمر
-# 2) التحقق من رمز البريد
-# 3) تسجيل جهاز الطفل
-# 4) ربط جهاز الطفل بحساب ولي الأمر
-# 5) إرسال أوامر التحكم للطفل
-# 6) استقبال التقارير والتنبيهات
-# 7) حفظ التحكم الزمني
+# ظˆط¸ط§ط¦ظپ ط§ظ„ط³ظٹط±ظپط±:
+# 1) ط¥ط±ط³ط§ظ„ ط±ظ…ط² طھط­ظ‚ظ‚ ظ„ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±
+# 2) ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط±ظ…ط² ط§ظ„ط¨ط±ظٹط¯
+# 3) طھط³ط¬ظٹظ„ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„
+# 4) ط±ط¨ط· ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ ط¨ط­ط³ط§ط¨ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±
+# 5) ط¥ط±ط³ط§ظ„ ط£ظˆط§ظ…ط± ط§ظ„طھط­ظƒظ… ظ„ظ„ط·ظپظ„
+# 6) ط§ط³طھظ‚ط¨ط§ظ„ ط§ظ„طھظ‚ط§ط±ظٹط± ظˆط§ظ„طھظ†ط¨ظٹظ‡ط§طھ
+# 7) ط­ظپط¸ ط§ظ„طھط­ظƒظ… ط§ظ„ط²ظ…ظ†ظٹ
 # ==============================
 
 from flask import Flask, request, jsonify
@@ -29,23 +29,23 @@ import hashlib
 from email.message import EmailMessage
 from typing import Tuple
 
-# سجلات ربط الطفل — تظهر في log السيرفر (Render → Logs)
+# ط³ط¬ظ„ط§طھ ط±ط¨ط· ط§ظ„ط·ظپظ„ â€” طھط¸ظ‡ط± ظپظٹ log ط§ظ„ط³ظٹط±ظپط± (Render â†’ Logs)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("myrana.link")
 
-# صلاحية رموز البريد (دقائق)
+# طµظ„ط§ط­ظٹط© ط±ظ…ظˆط² ط§ظ„ط¨ط±ظٹط¯ (ط¯ظ‚ط§ط¦ظ‚)
 OTP_EMAIL_EXPIRY_MINUTES = int(os.environ.get("OTP_EMAIL_EXPIRY_MINUTES", "60"))
-# صلاحية رمز ربط الجهاز (دقائق) — 0 = بدون انتهاء
+# طµظ„ط§ط­ظٹط© ط±ظ…ط² ط±ط¨ط· ط§ظ„ط¬ظ‡ط§ط² (ط¯ظ‚ط§ط¦ظ‚) â€” 0 = ط¨ط¯ظˆظ† ط§ظ†طھظ‡ط§ط،
 DEVICE_OTP_EXPIRY_MINUTES = int(os.environ.get("DEVICE_OTP_EXPIRY_MINUTES", "60"))
 
-# إنشاء تطبيق Flask
+# ط¥ظ†ط´ط§ط، طھط·ط¨ظٹظ‚ Flask
 app = Flask(__name__)
 
-# قاعدة البيانات — Render المجاني يمسح الملفات عند إعادة التشغيل.
-# الحل: أضيفي على Render:
+# ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ â€” Render ط§ظ„ظ…ط¬ط§ظ†ظٹ ظٹظ…ط³ط­ ط§ظ„ظ…ظ„ظپط§طھ ط¹ظ†ط¯ ط¥ط¹ط§ط¯ط© ط§ظ„طھط´ط؛ظٹظ„.
+# ط§ظ„ط­ظ„: ط£ط¶ظٹظپظٹ ط¹ظ„ظ‰ Render:
 #   TURSO_DATABASE_URL=libsql://....turso.io
 #   TURSO_AUTH_TOKEN=...
-# أو قرصاً دائماً: DATA_DIR=/var/data
+# ط£ظˆ ظ‚ط±طµط§ظ‹ ط¯ط§ط¦ظ…ط§ظ‹: DATA_DIR=/var/data
 def _resolve_db_path() -> str:
     data_dir = os.environ.get("DATA_DIR", "").strip()
     if not data_dir and os.path.isdir("/var/data") and os.access("/var/data", os.W_OK):
@@ -88,33 +88,33 @@ def _db_mode() -> str:
 DB = _resolve_db_path()
 DB_MODE = _db_mode()
 
-# مفتاح حماية الطلبات بين التطبيق والسيرفر
+# ظ…ظپطھط§ط­ ط­ظ…ط§ظٹط© ط§ظ„ط·ظ„ط¨ط§طھ ط¨ظٹظ† ط§ظ„طھط·ط¨ظٹظ‚ ظˆط§ظ„ط³ظٹط±ظپط±
 API_KEY = os.environ.get("API_KEY", "graduation-secret-key")
 
-# بيانات البريد لإرسال رموز التحقق (Gmail App Password على Render)
+# ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¨ط±ظٹط¯ ظ„ط¥ط±ط³ط§ظ„ ط±ظ…ظˆط² ط§ظ„طھط­ظ‚ظ‚ (Gmail App Password ط¹ظ„ظ‰ Render)
 # SMTP_USER=your@gmail.com  SMTP_PASS=16-char-app-password  SMTP_PORT=465
 SMTP_USER = os.environ.get("SMTP_USER", "").strip()
-# App Password: أحياناً يُلصق مع مسافات — نزيلها
+# App Password: ط£ط­ظٹط§ظ†ط§ظ‹ ظٹظڈظ„طµظ‚ ظ…ط¹ ظ…ط³ط§ظپط§طھ â€” ظ†ط²ظٹظ„ظ‡ط§
 SMTP_PASS = os.environ.get("SMTP_PASS", "").replace(" ", "").strip()
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
 SMTP_LAST_ERROR = ""
-# Render المجاني يحظر SMTP — استخدمي Resend API (HTTPS) بدلاً من Gmail SMTP
+# Render ط§ظ„ظ…ط¬ط§ظ†ظٹ ظٹط­ط¸ط± SMTP â€” ط§ط³طھط®ط¯ظ…ظٹ Resend API (HTTPS) ط¨ط¯ظ„ط§ظ‹ ظ…ظ† Gmail SMTP
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 RESEND_FROM = os.environ.get(
     "RESEND_FROM", "MYRana <onboarding@resend.dev>"
 ).strip()
 
 
-# دالة ترجع الوقت الحالي
+# ط¯ط§ظ„ط© طھط±ط¬ط¹ ط§ظ„ظˆظ‚طھ ط§ظ„ط­ط§ظ„ظٹ
 
 
 # FIX: normalize child_code to support codes with or without CHILD- prefix
 def clean_child_code(raw):
     """
-    تنظيف كود الطفل للبحث في قاعدة البيانات:
-    trim → uppercase → إزالة CHILD- → أحرف وأرقام فقط.
-    مثال: CHILD-1DF71288 → 1DF71288
+    طھظ†ط¸ظٹظپ ظƒظˆط¯ ط§ظ„ط·ظپظ„ ظ„ظ„ط¨ط­ط« ظپظٹ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ:
+    trim â†’ uppercase â†’ ط¥ط²ط§ظ„ط© CHILD- â†’ ط£ط­ط±ظپ ظˆط£ط±ظ‚ط§ظ… ظپظ‚ط·.
+    ظ…ط«ط§ظ„: CHILD-1DF71288 â†’ 1DF71288
     """
     code = (raw or "").strip().upper()
     if code.startswith("CHILD-"):
@@ -124,7 +124,7 @@ def clean_child_code(raw):
 
 
 def normalize_child_code(raw):
-    """الصيغة القياسية للتخزين والاستجابة: CHILD-XXXXXXXX"""
+    """ط§ظ„طµظٹط؛ط© ط§ظ„ظ‚ظٹط§ط³ظٹط© ظ„ظ„طھط®ط²ظٹظ† ظˆط§ظ„ط§ط³طھط¬ط§ط¨ط©: CHILD-XXXXXXXX"""
     suffix = clean_child_code(raw)
     if not suffix:
         return ""
@@ -132,7 +132,7 @@ def normalize_child_code(raw):
 
 
 def find_child_device(cur, child_code_raw, log_on_miss=True):
-    """يبحث بـ CHILD-1DF71288 أو 1DF71288 أو أي صيغة مخزّنة."""
+    """ظٹط¨ط­ط« ط¨ظ€ CHILD-1DF71288 ط£ظˆ 1DF71288 ط£ظˆ ط£ظٹ طµظٹط؛ط© ظ…ط®ط²ظ‘ظ†ط©."""
     original = child_code_raw
     suffix = clean_child_code(child_code_raw)
     if not suffix:
@@ -168,7 +168,7 @@ def find_child_device(cur, child_code_raw, log_on_miss=True):
 
 
 def _child_not_found_response(raw, detail_ar: str = ""):
-    """JSON موحّد — Child not found + الكود الأصلي والمنظّف في السجلات."""
+    """JSON ظ…ظˆط­ظ‘ط¯ â€” Child not found + ط§ظ„ظƒظˆط¯ ط§ظ„ط£طµظ„ظٹ ظˆط§ظ„ظ…ظ†ط¸ظ‘ظپ ظپظٹ ط§ظ„ط³ط¬ظ„ط§طھ."""
     cleaned = clean_child_code(raw)
     logger.warning("child_not_found original=%r cleaned=%r", raw, cleaned)
     extra = {
@@ -182,7 +182,7 @@ def _child_not_found_response(raw, detail_ar: str = ""):
 
 
 def _migrate_child_codes_in_db(cur):
-    """FIX: normalize child_code to support codes with or without CHILD- prefix — ترحيل DB."""
+    """FIX: normalize child_code to support codes with or without CHILD- prefix â€” طھط±ط­ظٹظ„ DB."""
     for table, col in (
         ("child_devices", "child_code"),
         ("children", "child_code"),
@@ -241,14 +241,14 @@ def _otp_expired(created_at: str | None, minutes: int) -> bool:
 
 
 def _json_error(message: str, code: int = 400, **extra):
-    """استجابة JSON موحّدة — لا HTML."""
+    """ط§ط³طھط¬ط§ط¨ط© JSON ظ…ظˆط­ظ‘ط¯ط© â€” ظ„ط§ HTML."""
     payload = {"success": False, "status": "error", "message": message}
     payload.update(extra)
     return jsonify(payload), code
 
 
 def _json_success(message: str, code: int = 200, **extra):
-    """نجاح — JSON فقط مع success: true."""
+    """ظ†ط¬ط§ط­ â€” JSON ظپظ‚ط· ظ…ط¹ success: true."""
     payload = {"success": True, "status": "success", "message": message}
     payload.update(extra)
     return jsonify(payload), code
@@ -348,7 +348,7 @@ def _upsert_child_app_meta(conn, child_code: str, apps: list) -> int:
 
 
 def _ensure_guardian(cur, email: str) -> int:
-    """إنشاء/جلب parent_id من بريد ولي الأمر."""
+    """ط¥ظ†ط´ط§ط،/ط¬ظ„ط¨ parent_id ظ…ظ† ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±."""
     email = (email or "").strip()
     cur.execute("SELECT id FROM guardians WHERE email = ? LIMIT 1", (email,))
     row = cur.fetchone()
@@ -363,7 +363,7 @@ def _ensure_guardian(cur, email: str) -> int:
 
 def db_child_code(raw) -> str:
     # FIX: normalize child_code to support codes with or without CHILD- prefix
-    """مفتاح قاعدة البيانات — CHILD-1DF71288 → 1DF71288"""
+    """ظ…ظپطھط§ط­ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ â€” CHILD-1DF71288 â†’ 1DF71288"""
     return clean_child_code(raw)
 
 
@@ -377,7 +377,7 @@ def _extract_parent_email(data: dict) -> str:
 
 
 def _extract_verification_code(data: dict) -> str:
-    """رمز الربط — أسماء موحّدة بين Android و Flask."""
+    """ط±ظ…ط² ط§ظ„ط±ط¨ط· â€” ط£ط³ظ…ط§ط، ظ…ظˆط­ظ‘ط¯ط© ط¨ظٹظ† Android ظˆ Flask."""
     raw = (
         data.get("device_verify_code")
         or data.get("verification_code")
@@ -395,7 +395,7 @@ def _extract_child_code(data: dict) -> str:
 
 
 def _child_code_from_request_args() -> str:
-    """مفتاح DB من query string — CHILD-1DF71288 → 1DF71288"""
+    """ظ…ظپطھط§ط­ DB ظ…ظ† query string â€” CHILD-1DF71288 â†’ 1DF71288"""
     return db_child_code(request.args.get("child_code", ""))
 
 
@@ -412,7 +412,7 @@ def _safe_age(data: dict, default: int = 10) -> int:
 
 def _child_display_name(data: dict) -> str:
     name = (data.get("name") or data.get("child_name") or "").strip()
-    return name or "طفل"
+    return name or "ط·ظپظ„"
 
 
 def _guardian_verified(cur, email: str) -> bool:
@@ -442,7 +442,7 @@ def _log_link_context(step: str, parent_email: str, child_code: str, verify_code
 
 
 def _make_restore_token(parent_email: str, child_code: str) -> str:
-    """رمز استعادة الربط — يُحفظ على جوال الأم بعد أول ربط ناجح."""
+    """ط±ظ…ط² ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط±ط¨ط· â€” ظٹظڈط­ظپط¸ ط¹ظ„ظ‰ ط¬ظˆط§ظ„ ط§ظ„ط£ظ… ط¨ط¹ط¯ ط£ظˆظ„ ط±ط¨ط· ظ†ط§ط¬ط­."""
     email = (parent_email or "").strip().lower()
     code = db_child_code(child_code) or clean_child_code(child_code)
     if not email or not code:
@@ -453,21 +453,21 @@ def _make_restore_token(parent_email: str, child_code: str) -> str:
 
 
 def _restore_link_transaction(cur, conn, data: dict):
-    """إعادة ربط الأم بالطفل بعد فقدان بيانات Render — بدون Turso."""
+    """ط¥ط¹ط§ط¯ط© ط±ط¨ط· ط§ظ„ط£ظ… ط¨ط§ظ„ط·ظپظ„ ط¨ط¹ط¯ ظپظ‚ط¯ط§ظ† ط¨ظٹط§ظ†ط§طھ Render â€” ط¨ط¯ظˆظ† Turso."""
     parent_email = _extract_parent_email(data)
     raw_child = str(data.get("child_code") or data.get("childCode") or "").strip()
     child_code = db_child_code(raw_child) or clean_child_code(raw_child)
     token = (data.get("restore_token") or "").strip()
-    name = (data.get("name") or data.get("child_name") or "طفل").strip() or "طفل"
+    name = (data.get("name") or data.get("child_name") or "ط·ظپظ„").strip() or "ط·ظپظ„"
     try:
         age = int(data.get("age") or 10)
     except (TypeError, ValueError):
         age = 10
-    guardian_role = (data.get("guardian_role") or "ولي أمر").strip() or "ولي أمر"
+    guardian_role = (data.get("guardian_role") or "ظˆظ„ظٹ ط£ظ…ط±").strip() or "ظˆظ„ظٹ ط£ظ…ط±"
 
     if not parent_email or not child_code or not token:
         return _json_error(
-            "parent_email و child_code و restore_token مطلوبان",
+            "parent_email ظˆ child_code ظˆ restore_token ظ…ط·ظ„ظˆط¨ط§ظ†",
             400,
             error_code="missing_fields",
         )
@@ -475,7 +475,7 @@ def _restore_link_transaction(cur, conn, data: dict):
     expected = _make_restore_token(parent_email, child_code)
     if not expected or not hmac.compare_digest(expected, token):
         return _json_error(
-            "رمز استعادة الربط غير صالح",
+            "ط±ظ…ط² ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط±ط¨ط· ط؛ظٹط± طµط§ظ„ط­",
             403,
             error_code="invalid_restore_token",
         )
@@ -484,7 +484,7 @@ def _restore_link_transaction(cur, conn, data: dict):
     if not device_row:
         return _child_not_found_response(
             raw_child,
-            "من جوال الطفل: افتحي التطبيق ليُعاد التسجيل ثم أعيدي المحاولة",
+            "ظ…ظ† ط¬ظˆط§ظ„ ط§ظ„ط·ظپظ„: ط§ظپطھط­ظٹ ط§ظ„طھط·ط¨ظٹظ‚ ظ„ظٹظڈط¹ط§ط¯ ط§ظ„طھط³ط¬ظٹظ„ ط«ظ… ط£ط¹ظٹط¯ظٹ ط§ظ„ظ…ط­ط§ظˆظ„ط©",
         )
 
     device_db_key = device_row["child_code"]
@@ -513,7 +513,7 @@ def _restore_link_transaction(cur, conn, data: dict):
     conn.commit()
     logger.info("[restore-link] OK parent=%s child=%r", parent_email, child_code)
     return _json_success(
-        "تم استعادة الربط بعد إعادة تشغيل السيرفر",
+        "طھظ… ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط±ط¨ط· ط¨ط¹ط¯ ط¥ط¹ط§ط¯ط© طھط´ط؛ظٹظ„ ط§ظ„ط³ظٹط±ظپط±",
         child_code=normalize_child_code(child_code),
         child_code_clean=child_code,
         child_name=name,
@@ -523,11 +523,11 @@ def _restore_link_transaction(cur, conn, data: dict):
 
 def _link_child_transaction(cur, conn, data: dict):
     """
-    ربط الطفل — يعتمد على:
+    ط±ط¨ط· ط§ظ„ط·ظپظ„ â€” ظٹط¹طھظ…ط¯ ط¹ظ„ظ‰:
       parent_email / guardian_email / email
-      child_code (CHILD-1DF71288 أو 1DF71288)
+      child_code (CHILD-1DF71288 ط£ظˆ 1DF71288)
       verification_code / device_verify_code / otp / code
-    الاسم اختياري (افتراضي: طفل) — لا يُستخدم في التحقق.
+    ط§ظ„ط§ط³ظ… ط§ط®طھظٹط§ط±ظٹ (ط§ظپطھط±ط§ط¶ظٹ: ط·ظپظ„) â€” ظ„ط§ ظٹظڈط³طھط®ط¯ظ… ظپظٹ ط§ظ„طھط­ظ‚ظ‚.
     """
     parent_email = _extract_parent_email(data)
     raw_input = str(data.get("child_code") or data.get("childCode") or "").strip()
@@ -542,7 +542,7 @@ def _link_child_transaction(cur, conn, data: dict):
     )
     name = _child_display_name(data)
     age = _safe_age(data)
-    guardian_role = (data.get("guardian_role") or "ولي أمر").strip() or "ولي أمر"
+    guardian_role = (data.get("guardian_role") or "ظˆظ„ظٹ ط£ظ…ط±").strip() or "ظˆظ„ظٹ ط£ظ…ط±"
     device = (data.get("device") or "").strip()
     android_version = (data.get("android_version") or "").strip()
     child_email = (data.get("child_email") or parent_email).strip()
@@ -553,20 +553,20 @@ def _link_child_transaction(cur, conn, data: dict):
 
     if not parent_email:
         _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing parent_email")
-        return _fail("parent_email مطلوب", error_code="missing_parent_email")
+        return _fail("parent_email ظ…ط·ظ„ظˆط¨", error_code="missing_parent_email")
 
     if not child_code:
         _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing child_code")
-        return _fail("child_code مطلوب", error_code="missing_child_code")
+        return _fail("child_code ظ…ط·ظ„ظˆط¨", error_code="missing_child_code")
 
     if not verify_code:
         _log_link_context("add-child", parent_email, child_code, verify_code, None, "missing verification_code")
-        return _fail("verification_code مطلوب", error_code="missing_verification_code")
+        return _fail("verification_code ظ…ط·ظ„ظˆط¨", error_code="missing_verification_code")
 
     if not _guardian_verified(cur, parent_email):
         _log_link_context("add-child", parent_email, child_code, verify_code, None, "parent not verified")
         return _fail(
-            "يجب التحقق من بريد ولي الأمر أولاً — أرسلي رمز التحقق من Gmail",
+            "ظٹط¬ط¨ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط± ط£ظˆظ„ط§ظ‹ â€” ط£ط±ط³ظ„ظٹ ط±ظ…ط² ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† Gmail",
             error_code="parent_email_not_verified",
         )
 
@@ -584,10 +584,10 @@ def _link_child_transaction(cur, conn, data: dict):
         )
         return _child_not_found_response(
             raw_child,
-            "سجّلي الجهاز من تطبيق الطفل أولاً (CHILD-...)",
+            "ط³ط¬ظ‘ظ„ظٹ ط§ظ„ط¬ظ‡ط§ط² ظ…ظ† طھط·ط¨ظٹظ‚ ط§ظ„ط·ظپظ„ ط£ظˆظ„ط§ظ‹ (CHILD-...)",
         )
 
-    # مفتاح الصف الفعلي في child_devices (قد يكون 1DF71288 أو CHILD-1DF71288 قبل الترحيل)
+    # ظ…ظپطھط§ط­ ط§ظ„طµظپ ط§ظ„ظپط¹ظ„ظٹ ظپظٹ child_devices (ظ‚ط¯ ظٹظƒظˆظ† 1DF71288 ط£ظˆ CHILD-1DF71288 ظ‚ط¨ظ„ ط§ظ„طھط±ط­ظٹظ„)
     device_db_key = str(device_row["child_code"] or "").strip()
     child_code = db_child_code(device_db_key)
     logger.info(
@@ -606,7 +606,7 @@ def _link_child_transaction(cur, conn, data: dict):
             parent_id = _ensure_guardian(cur, parent_email)
             _log_link_context("add-child", parent_email, child_code, verify_code, stored_code, "already linked same parent")
             conn.commit()
-            # 200 وليس 409 — Android يقرأ JSON فقط عند isSuccessful
+            # 200 ظˆظ„ظٹط³ 409 â€” Android ظٹظ‚ط±ط£ JSON ظپظ‚ط· ط¹ظ†ط¯ isSuccessful
             return _json_success(
                 "Child linked successfully",
                 200,
@@ -618,7 +618,7 @@ def _link_child_transaction(cur, conn, data: dict):
                 restore_token=_make_restore_token(parent_email, child_code),
             )
         return _fail(
-            "الجهاز مربوط بحساب أم آخر",
+            "ط§ظ„ط¬ظ‡ط§ط² ظ…ط±ط¨ظˆط· ط¨ط­ط³ط§ط¨ ط£ظ… ط¢ط®ط±",
             409,
             error_code="already_linked_other_parent",
         )
@@ -700,7 +700,7 @@ def _link_child_transaction(cur, conn, data: dict):
     )
 
 
-# دالة الاتصال بقاعدة البيانات
+# ط¯ط§ظ„ط© ط§ظ„ط§طھطµط§ظ„ ط¨ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ
 def db():
     turso_url, turso_token = _turso_credentials()
     if turso_url and turso_token:
@@ -708,7 +708,7 @@ def db():
             import libsql
         except ImportError as exc:
             raise RuntimeError(
-                "Turso configured but libsql not installed — add libsql to requirements.txt"
+                "Turso configured but libsql not installed â€” add libsql to requirements.txt"
             ) from exc
         conn = libsql.connect(database=turso_url, auth_token=turso_token)
     else:
@@ -720,7 +720,7 @@ def db():
 
 
 def _storage_status() -> dict:
-    """حالة التخزين — للتشخيص من GET /"""
+    """ط­ط§ظ„ط© ط§ظ„طھط®ط²ظٹظ† â€” ظ„ظ„طھط´ط®ظٹطµ ظ…ظ† GET /"""
     url, _ = _turso_credentials()
     info = {
         "mode": DB_MODE,
@@ -730,8 +730,8 @@ def _storage_status() -> dict:
     }
     if DB_MODE == "local_ephemeral":
         info["warning"] = (
-            "البيانات تُمسح عند إعادة تشغيل Render — أضيفي TURSO_DATABASE_URL "
-            "و TURSO_AUTH_TOKEN أو DATA_DIR=/var/data مع قرص دائم"
+            "ط§ظ„ط¨ظٹط§ظ†ط§طھ طھظڈظ…ط³ط­ ط¹ظ†ط¯ ط¥ط¹ط§ط¯ط© طھط´ط؛ظٹظ„ Render â€” ط£ط¶ظٹظپظٹ TURSO_DATABASE_URL "
+            "ظˆ TURSO_AUTH_TOKEN ط£ظˆ DATA_DIR=/var/data ظ…ط¹ ظ‚ط±طµ ط¯ط§ط¦ظ…"
         )
     try:
         conn = db()
@@ -766,20 +766,20 @@ def _log_db_startup():
         logger.warning(status["warning"])
 
 def smtp_configured():
-    """هل بيانات SMTP مضبوطة؟ بدونها لا يُرسل بريد حقيقي."""
+    """ظ‡ظ„ ط¨ظٹط§ظ†ط§طھ SMTP ظ…ط¶ط¨ظˆط·ط©طں ط¨ط¯ظˆظ†ظ‡ط§ ظ„ط§ ظٹظڈط±ط³ظ„ ط¨ط±ظٹط¯ ط­ظ‚ظٹظ‚ظٹ."""
     return bool(SMTP_USER and SMTP_PASS)
 
 
 def email_configured():
-    """SMTP أو Resend API — Render المجاني يحتاج Resend."""
+    """SMTP ط£ظˆ Resend API â€” Render ط§ظ„ظ…ط¬ط§ظ†ظٹ ظٹط­طھط§ط¬ Resend."""
     return bool(RESEND_API_KEY) or smtp_configured()
 
 
 def verification_payload(code, email_sent, success_message, dev_message):
-    """استجابة API: الرمز يُعاد في JSON فقط عند فشل SMTP (وضع تطوير)."""
+    """ط§ط³طھط¬ط§ط¨ط© API: ط§ظ„ط±ظ…ط² ظٹظڈط¹ط§ط¯ ظپظٹ JSON ظپظ‚ط· ط¹ظ†ط¯ ظپط´ظ„ SMTP (ظˆط¶ط¹ طھط·ظˆظٹط±)."""
     global SMTP_LAST_ERROR
     if not email_sent and email_configured() and SMTP_LAST_ERROR:
-        dev_message = f"فشل إرسال البريد — تحققي من App Password على Render ({SMTP_LAST_ERROR})"
+        dev_message = f"ظپط´ظ„ ط¥ط±ط³ط§ظ„ ط§ظ„ط¨ط±ظٹط¯ â€” طھط­ظ‚ظ‚ظٹ ظ…ظ† App Password ط¹ظ„ظ‰ Render ({SMTP_LAST_ERROR})"
     payload = {
         "success": True,
         "status": "success",
@@ -789,12 +789,12 @@ def verification_payload(code, email_sent, success_message, dev_message):
     if not email_sent:
         payload["verification_code"] = code
         payload["dev_fallback"] = True
-        print("EMAIL DEV FALLBACK — code for", code[:2] + "****")
+        print("EMAIL DEV FALLBACK â€” code for", code[:2] + "****")
     return payload
 
 
 def send_email_resend(to_email, subject, body):
-    """إرسال عبر Resend HTTPS — يعمل على Render المجاني."""
+    """ط¥ط±ط³ط§ظ„ ط¹ط¨ط± Resend HTTPS â€” ظٹط¹ظ…ظ„ ط¹ظ„ظ‰ Render ط§ظ„ظ…ط¬ط§ظ†ظٹ."""
     global SMTP_LAST_ERROR
     if not RESEND_API_KEY:
         return False
@@ -832,7 +832,7 @@ def send_email_resend(to_email, subject, body):
         return False
 
 
-# دالة إرسال البريد — Resend (Render مجاني) أو SMTP (سيرفر مدفوع)
+# ط¯ط§ظ„ط© ط¥ط±ط³ط§ظ„ ط§ظ„ط¨ط±ظٹط¯ â€” Resend (Render ظ…ط¬ط§ظ†ظٹ) ط£ظˆ SMTP (ط³ظٹط±ظپط± ظ…ط¯ظپظˆط¹)
 def send_email(to_email, subject, body):
     global SMTP_LAST_ERROR
     if RESEND_API_KEY:
@@ -867,12 +867,12 @@ def send_email(to_email, subject, body):
         SMTP_LAST_ERROR = f"{type(e).__name__}: {str(e)[:120]}"
         print("EMAIL ERROR:", SMTP_LAST_ERROR)
         return False
-# إنشاء الجداول إذا لم تكن موجودة
+# ط¥ظ†ط´ط§ط، ط§ظ„ط¬ط¯ط§ظˆظ„ ط¥ط°ط§ ظ„ظ… طھظƒظ† ظ…ظˆط¬ظˆط¯ط©
 def init_db():
     conn = db()
     cur = conn.cursor()
 
-    # جدول رموز تحقق البريد
+    # ط¬ط¯ظˆظ„ ط±ظ…ظˆط² طھط­ظ‚ظ‚ ط§ظ„ط¨ط±ظٹط¯
     cur.execute("""
     CREATE TABLE IF NOT EXISTS email_codes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -883,7 +883,7 @@ def init_db():
     )
     """)
 
-    # جدول أجهزة الأطفال قبل الربط
+    # ط¬ط¯ظˆظ„ ط£ط¬ظ‡ط²ط© ط§ظ„ط£ط·ظپط§ظ„ ظ‚ط¨ظ„ ط§ظ„ط±ط¨ط·
     cur.execute("""
     CREATE TABLE IF NOT EXISTS child_devices (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -902,7 +902,7 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
-    # جدول أولياء الأمور (parent_id)
+    # ط¬ط¯ظˆظ„ ط£ظˆظ„ظٹط§ط، ط§ظ„ط£ظ…ظˆط± (parent_id)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS guardians (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -914,7 +914,7 @@ def init_db():
     # FIX: normalize child_code to support codes with or without CHILD- prefix
     _migrate_child_codes_in_db(cur)
 
-    # جدول الأطفال المرتبطين بولي الأمر
+    # ط¬ط¯ظˆظ„ ط§ظ„ط£ط·ظپط§ظ„ ط§ظ„ظ…ط±طھط¨ط·ظٹظ† ط¨ظˆظ„ظٹ ط§ظ„ط£ظ…ط±
     cur.execute("""
     CREATE TABLE IF NOT EXISTS children (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -932,7 +932,7 @@ def init_db():
 
     _ensure_children_columns(cur)
 
-    # جدول أوامر التحكم
+    # ط¬ط¯ظˆظ„ ط£ظˆط§ظ…ط± ط§ظ„طھط­ظƒظ…
     cur.execute("""
     CREATE TABLE IF NOT EXISTS commands (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -945,7 +945,7 @@ def init_db():
     )
     """)
 
-    # جدول التقارير
+    # ط¬ط¯ظˆظ„ ط§ظ„طھظ‚ط§ط±ظٹط±
     cur.execute("""
     CREATE TABLE IF NOT EXISTS reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -956,7 +956,7 @@ def init_db():
     )
     """)
 
-    # جدول التنبيهات
+    # ط¬ط¯ظˆظ„ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ
     cur.execute("""
     CREATE TABLE IF NOT EXISTS alerts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -966,7 +966,7 @@ def init_db():
     )
     """)
 
-    # سياسة الحظر لكل جهاز (تطبيق MYRana الأندرويد + مزامنة القوائم)
+    # ط³ظٹط§ط³ط© ط§ظ„ط­ط¸ط± ظ„ظƒظ„ ط¬ظ‡ط§ط² (طھط·ط¨ظٹظ‚ MYRana ط§ظ„ط£ظ†ط¯ط±ظˆظٹط¯ + ظ…ط²ط§ظ…ظ†ط© ط§ظ„ظ‚ظˆط§ط¦ظ…)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS device_policies (
         device_id TEXT PRIMARY KEY,
@@ -980,7 +980,7 @@ def init_db():
 
     _ensure_policy_columns(cur)
 
-    # استخدام التطبيقات (تجميع يومي → تقرير أسبوعي)
+    # ط§ط³طھط®ط¯ط§ظ… ط§ظ„طھط·ط¨ظٹظ‚ط§طھ (طھط¬ظ…ظٹط¹ ظٹظˆظ…ظٹ â†’ طھظ‚ط±ظٹط± ط£ط³ط¨ظˆط¹ظٹ)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS usage_daily (
         child_code TEXT NOT NULL,
@@ -991,7 +991,7 @@ def init_db():
     )
     """)
 
-    # جدول التحكم الزمني
+    # ط¬ط¯ظˆظ„ ط§ظ„طھط­ظƒظ… ط§ظ„ط²ظ…ظ†ظٹ
     cur.execute("""
     CREATE TABLE IF NOT EXISTS schedules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1005,7 +1005,7 @@ def init_db():
     )
     """)
 
-    # سياسة وقت الشاشة لكل طفل
+    # ط³ظٹط§ط³ط© ظˆظ‚طھ ط§ظ„ط´ط§ط´ط© ظ„ظƒظ„ ط·ظپظ„
     cur.execute("""
     CREATE TABLE IF NOT EXISTS screen_time_policies (
         child_code TEXT PRIMARY KEY,
@@ -1014,7 +1014,7 @@ def init_db():
     )
     """)
 
-    # آخر اتصال لجهاز الطفل
+    # ط¢ط®ط± ط§طھطµط§ظ„ ظ„ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„
     cur.execute("""
     CREATE TABLE IF NOT EXISTS child_status (
         child_code TEXT PRIMARY KEY,
@@ -1023,7 +1023,7 @@ def init_db():
     )
     """)
 
-    # أحداث وقت الشاشة (تحذيرات / إغلاق)
+    # ط£ط­ط¯ط§ط« ظˆظ‚طھ ط§ظ„ط´ط§ط´ط© (طھط­ط°ظٹط±ط§طھ / ط¥ط؛ظ„ط§ظ‚)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS screen_time_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1096,6 +1096,48 @@ def _norm_host(host: str) -> str:
     return (host or "").strip().lower()
 
 
+def _extract_url_host(raw: str) -> str:
+    """ط§ط³طھط®ط±ط§ط¬ ط§ظ„ظ†ط·ط§ظ‚ ظ…ظ† ط±ط§ط¨ط· ط£ظˆ ط§ط³ظ… ظ…ظˆظ‚ط¹ â€” ظ„ظ€ /api/check-url."""
+    from urllib.parse import urlparse
+
+    s = (raw or "").strip().lower()
+    if not s:
+        return ""
+    # ط¥ط²ط§ظ„ط© ظ…ط³ط§ظپط§طھ ظˆظ…ط®ط·ط· ظ†ط§ظ‚طµ
+    s = s.split()[0]
+    if "://" not in s and not s.startswith("//"):
+        s = "http://" + s
+    try:
+        host = (urlparse(s).hostname or "").strip().lower()
+    except Exception:
+        host = ""
+    if not host:
+        host = _norm_host(raw.split("/")[0].split("?")[0].split("#")[0])
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _host_matches_pattern(host: str, pattern: str) -> bool:
+    """ظ…ط·ط§ط¨ظ‚ط© ظ†ط·ط§ظ‚ ظ…ط¹ ظ†ظ…ط· ط­ط¸ط± (ظ…ط³ط§ظˆظٹط© / ظ†ط·ط§ظ‚ ظپط±ط¹ظٹ / ط§ط­طھظˆط§ط، ظƒظ†طµ Accessibility)."""
+    h = (host or "").strip().lower().lstrip(".")
+    p = (pattern or "").strip().lower().lstrip(".")
+    if not h or not p:
+        return False
+    if h == p or h.endswith("." + p):
+        return True
+    # ظ†ظپط³ ط£ط³ظ„ظˆط¨ PolicyFilterCache.matchBlockedHost ط¹ظ„ظ‰ ظ†طµ ط§ظ„ط±ط§ط¨ط·
+    return p in h
+
+
+def _find_matching_host(host: str, patterns: list) -> str | None:
+    for item in patterns or []:
+        p = _norm_host(str(item))
+        if p and _host_matches_pattern(host, p):
+            return p
+    return None
+
+
 def _norm_pkg(package: str) -> str:
     from blocklists.package_resolver import resolve_app_package
 
@@ -1103,7 +1145,7 @@ def _norm_pkg(package: str) -> str:
 
 
 def _ensure_children_columns(cur) -> None:
-    """ترقية جدول children القديم — يمنع 500 عند الربط (child_email / linked_at)."""
+    """طھط±ظ‚ظٹط© ط¬ط¯ظˆظ„ children ط§ظ„ظ‚ط¯ظٹظ… â€” ظٹظ…ظ†ط¹ 500 ط¹ظ†ط¯ ط§ظ„ط±ط¨ط· (child_email / linked_at)."""
     cur.execute("PRAGMA table_info(children)")
     cols = {row[1] for row in cur.fetchall()}
     if not cols:
@@ -1181,7 +1223,7 @@ def _policy_save(
 
 
 def load_blocklist_catalog() -> dict:
-    """تحميل catalog.json — بجانب server.py (Render/RA) أو من جذر المشروع."""
+    """طھط­ظ…ظٹظ„ catalog.json â€” ط¨ط¬ط§ظ†ط¨ server.py (Render/RA) ط£ظˆ ظ…ظ† ط¬ط°ط± ط§ظ„ظ…ط´ط±ظˆط¹."""
     from pathlib import Path
 
     here = Path(__file__).resolve().parent
@@ -1206,7 +1248,7 @@ def blocklist_catalog_counts(cat: dict | None = None) -> dict:
 
 
 def apply_default_blocklist(conn, device_id: str, merge: bool = True) -> dict:
-    """دمج catalog.json في سياسة جهاز الطفل (child_code = device_id)."""
+    """ط¯ظ…ط¬ catalog.json ظپظٹ ط³ظٹط§ط³ط© ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ (child_code = device_id)."""
     # FIX: normalize child_code to support codes with or without CHILD- prefix
     device_id = db_child_code(device_id) or (device_id or "").strip()
     if not device_id:
@@ -1320,24 +1362,24 @@ def usage_add_seconds(conn, child_code: str, day: str, package_name: str, second
     )
 
 
-# حماية كل الروابط باستخدام API_KEY
+# ط­ظ…ط§ظٹط© ظƒظ„ ط§ظ„ط±ظˆط§ط¨ط· ط¨ط§ط³طھط®ط¯ط§ظ… API_KEY
 @app.before_request
 def protect():
-    # الصفحة الرئيسية لا تحتاج حماية
+    # ط§ظ„طµظپط­ط© ط§ظ„ط±ط¦ظٹط³ظٹط© ظ„ط§ طھط­طھط§ط¬ ط­ظ…ط§ظٹط©
     if request.path == "/":
         return
 
-    # التحقق من مفتاح الحماية
+    # ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ظ…ظپطھط§ط­ ط§ظ„ط­ظ…ط§ظٹط©
     if request.headers.get("X-API-KEY") != API_KEY:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
 
 
-# اختبار أن السيرفر يعمل
+# ط§ط®طھط¨ط§ط± ط£ظ† ط§ظ„ط³ظٹط±ظپط± ظٹط¹ظ…ظ„
 @app.route("/")
 def home():
     return jsonify({
         "status": "running",
-        "deploy_version": "2026-07-20-unblock-fix",
+        "deploy_version": "2026-07-27-check-url",
         "message": "Parental Control Server is running",
         "storage": _storage_status(),
         "smtp_ready": email_configured(),
@@ -1351,8 +1393,8 @@ def home():
 
 
 # ==============================
-# سياسة الحظر — عقد MYRana (أندرويد)
-# device_id = child_code من تطبيق الأم/الطفل
+# ط³ظٹط§ط³ط© ط§ظ„ط­ط¸ط± â€” ط¹ظ‚ط¯ MYRana (ط£ظ†ط¯ط±ظˆظٹط¯)
+# device_id = child_code ظ…ظ† طھط·ط¨ظٹظ‚ ط§ظ„ط£ظ…/ط§ظ„ط·ظپظ„
 # ==============================
 @app.route("/api/v1/devices/<device_id>/policy", methods=["GET"])
 def api_get_policy(device_id):
@@ -1424,7 +1466,83 @@ def api_apply_default_blocklist():
     return jsonify(result)
 
 
-# إرسال رمز تحقق لبريد ولي الأمر
+@app.route("/api/check-url", methods=["POST"])
+def api_check_url():
+    """طھط­ظ‚ظ‚ ظˆظ„ظٹ ط§ظ„ط£ظ…ط± ظ…ظ† ظ…ظˆظ‚ط¹: ط³ظٹط§ط³ط© ط§ظ„ط·ظپظ„ + ظƒطھط§ظ„ظˆط¬ ط§ظ„ط­ط¸ط± ط§ظ„ط§ظپطھط±ط§ط¶ظٹ."""
+    data = request.get_json(silent=True) or {}
+    raw_url = str(
+        data.get("url") or data.get("host") or data.get("domain") or ""
+    ).strip()
+    host = _extract_url_host(raw_url)
+    if not host:
+        return _json_error(
+            "ط£ط¯ط®ظ„ظٹ ط±ط§ط¨ط·ط§ظ‹ ط£ظˆ ظ†ط·ط§ظ‚ط§ظ‹ طµط§ظ„ط­ط§ظ‹",
+            400,
+            error_code="missing_url",
+        )
+
+    raw_child = str(data.get("child_code") or data.get("childCode") or "").strip()
+    device_id = db_child_code(raw_child) if raw_child else ""
+    policy_hosts: list = []
+    policy_match = None
+    if device_id:
+        conn = db()
+        _, policy_hosts, _, _ = _policy_get(conn, device_id)
+        conn.close()
+        policy_match = _find_matching_host(host, policy_hosts)
+
+    cat = load_blocklist_catalog()
+    catalog_sites = [_norm_host(s) for s in (cat.get("sites") or []) if _norm_host(s)]
+    catalog_match = _find_matching_host(host, catalog_sites)
+
+    in_policy = policy_match is not None
+    in_catalog = catalog_match is not None
+    blocked = in_policy  # ط§ظ„ط­ط¸ط± ط§ظ„ظپط¹ظ„ظٹ ط¹ظ„ظ‰ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ = ط³ظٹط§ط³ط© ط§ظ„ط·ظپظ„
+
+    if blocked and in_catalog:
+        explanation = (
+            f"ط§ظ„ظ…ظˆظ‚ط¹ آ«{host}آ» ظ…ط­ط¸ظˆط± ظپظٹ ط³ظٹط§ط³ط© ط§ظ„ط·ظپظ„ "
+            f"(ظ…ط·ط§ط¨ظ‚ط©: {policy_match}) ظˆظ…ظˆط¬ظˆط¯ ط£ظٹط¶ط§ظ‹ ظپظٹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ط­ط¸ط± ط§ظ„ط§ظپطھط±ط§ط¶ظٹ."
+        )
+    elif blocked:
+        explanation = (
+            f"ط§ظ„ظ…ظˆظ‚ط¹ آ«{host}آ» ظ…ط­ط¸ظˆط± ظپظٹ ط³ظٹط§ط³ط© ط§ظ„ط·ظپظ„ ط§ظ„ط­ط§ظ„ظٹط© "
+            f"(ظ…ط·ط§ط¨ظ‚ط©: {policy_match})."
+        )
+    elif in_catalog:
+        explanation = (
+            f"ط§ظ„ظ…ظˆظ‚ط¹ آ«{host}آ» ظ…ظˆط¬ظˆط¯ ظپظٹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ط­ط¸ط± ط§ظ„ط§ظپطھط±ط§ط¶ظٹ "
+            f"(ظ…ط·ط§ط¨ظ‚ط©: {catalog_match}) ظ„ظƒظ†ظ‡ ط؛ظٹط± ظ…ط¶ط§ظپ ظ„ط³ظٹط§ط³ط© ظ‡ط°ط§ ط§ظ„ط·ظپظ„ ط¨ط¹ط¯. "
+            "ظٹظ…ظƒظ†ظƒظگ طھط·ط¨ظٹظ‚ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط§ظپطھط±ط§ط¶ظٹط© ط£ظˆ ط­ط¸ط±ظ‡ ظٹط¯ظˆظٹط§ظ‹ ظ…ظ† ط´ط§ط´ط© ط§ظ„ط­ط¸ط±."
+        )
+    elif not device_id:
+        explanation = (
+            f"ط§ظ„ظ…ظˆظ‚ط¹ آ«{host}آ» ط؛ظٹط± ظ…ظˆط¬ظˆط¯ ظپظٹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ط­ط¸ط±. "
+            "ظ„ظ… ظٹظڈط­ط¯ط¯ ط·ظپظ„ ظ„ظ„طھط­ظ‚ظ‚ ظ…ظ† ط³ظٹط§ط³طھظ‡."
+        )
+    else:
+        explanation = (
+            f"ط§ظ„ظ…ظˆظ‚ط¹ آ«{host}آ» ط؛ظٹط± ظ…ط­ط¸ظˆط± ظپظٹ ط³ظٹط§ط³ط© ط§ظ„ط·ظپظ„ "
+            "ظˆط؛ظٹط± ظ…ظˆط¬ظˆط¯ ظپظٹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ط­ط¸ط± ط§ظ„ط§ظپطھط±ط§ط¶ظٹ."
+        )
+
+    return jsonify({
+        "status": "success",
+        "success": True,
+        "host": host,
+        "url": raw_url,
+        "blocked": blocked,
+        "in_policy": in_policy,
+        "in_catalog": in_catalog,
+        "policy_match": policy_match,
+        "catalog_match": catalog_match,
+        "child_code": device_id or None,
+        "explanation": explanation,
+        "message": explanation,
+    })
+
+
+# ط¥ط±ط³ط§ظ„ ط±ظ…ط² طھط­ظ‚ظ‚ ظ„ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±
 @app.route("/send-email-code", methods=["POST"])
 def send_email_code():
     try:
@@ -1449,26 +1567,26 @@ def send_email_code():
 
         email_sent = send_email(
             email,
-            "MYRana — رمز التحقق من البريد",
-            f"رمز التحقق لبريدك ({email}):\n\n{code}\n\n"
-            f"أدخليه في تطبيق الأم لتأكيد أن البريد ملكك.",
+            "MYRana â€” ط±ظ…ط² ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط§ظ„ط¨ط±ظٹط¯",
+            f"ط±ظ…ط² ط§ظ„طھط­ظ‚ظ‚ ظ„ط¨ط±ظٹط¯ظƒ ({email}):\n\n{code}\n\n"
+            f"ط£ط¯ط®ظ„ظٹظ‡ ظپظٹ طھط·ط¨ظٹظ‚ ط§ظ„ط£ظ… ظ„طھط£ظƒظٹط¯ ط£ظ† ط§ظ„ط¨ط±ظٹط¯ ظ…ظ„ظƒظƒ.",
         )
 
         payload = verification_payload(
             code,
             email_sent,
-            f"تم إرسال رمز التحقق إلى {email}",
-            "لم يُرسل البريد — الرمز للتطوير فقط",
+            f"طھظ… ط¥ط±ط³ط§ظ„ ط±ظ…ط² ط§ظ„طھط­ظ‚ظ‚ ط¥ظ„ظ‰ {email}",
+            "ظ„ظ… ظٹظڈط±ط³ظ„ ط§ظ„ط¨ط±ظٹط¯ â€” ط§ظ„ط±ظ…ط² ظ„ظ„طھط·ظˆظٹط± ظپظ‚ط·",
         )
         if not email_sent:
             payload["email_verify_code"] = code
         return jsonify(payload)
     except Exception as exc:
         logger.exception("send-email-code failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إرسال رمز البريد", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط±ط³ط§ظ„ ط±ظ…ط² ط§ظ„ط¨ط±ظٹط¯", 500, error_code="server_error")
 
 
-# التحقق من رمز البريد
+# ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط±ظ…ط² ط§ظ„ط¨ط±ظٹط¯
 @app.route("/verify-email-code", methods=["POST"])
 def verify_email_code():
     try:
@@ -1477,7 +1595,7 @@ def verify_email_code():
         code = _extract_verification_code(data)
 
         if not email or not code:
-            return _json_error("email و verification_code مطلوبان", 400)
+            return _json_error("email ظˆ verification_code ظ…ط·ظ„ظˆط¨ط§ظ†", 400)
 
         conn = db()
         cur = conn.cursor()
@@ -1495,12 +1613,12 @@ def verify_email_code():
         if not row:
             conn.close()
             logger.info("[verify-email] failed email=%s code=%s reason=not_found", email, code[:2] + "****")
-            return _json_error("كود التحقق غير صحيح", 400, error_code="invalid_code")
+            return _json_error("ظƒظˆط¯ ط§ظ„طھط­ظ‚ظ‚ ط؛ظٹط± طµط­ظٹط­", 400, error_code="invalid_code")
 
         if _otp_expired(row["created_at"], OTP_EMAIL_EXPIRY_MINUTES):
             conn.close()
             logger.info("[verify-email] expired email=%s", email)
-            return _json_error("كود التحقق منتهي الصلاحية — أرسلي رمزاً جديداً", 400, error_code="expired_code")
+            return _json_error("ظƒظˆط¯ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ†طھظ‡ظٹ ط§ظ„طµظ„ط§ط­ظٹط© â€” ط£ط±ط³ظ„ظٹ ط±ظ…ط²ط§ظ‹ ط¬ط¯ظٹط¯ط§ظ‹", 400, error_code="expired_code")
 
         cur.execute("UPDATE email_codes SET verified = 1 WHERE id = ?", (row["id"],))
         conn.commit()
@@ -1508,10 +1626,10 @@ def verify_email_code():
         return _json_success("Email verified successfully")
     except Exception as exc:
         logger.exception("verify-email-code failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء التحقق من البريد", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط§ظ„ط¨ط±ظٹط¯", 500, error_code="server_error")
 
 
-# تسجيل جهاز الطفل — بدون بريد (التحقق مرة واحدة عند الربط من تطبيق الأم)
+# طھط³ط¬ظٹظ„ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ â€” ط¨ط¯ظˆظ† ط¨ط±ظٹط¯ (ط§ظ„طھط­ظ‚ظ‚ ظ…ط±ط© ظˆط§ط­ط¯ط© ط¹ظ†ط¯ ط§ظ„ط±ط¨ط· ظ…ظ† طھط·ط¨ظٹظ‚ ط§ظ„ط£ظ…)
 @app.route("/register-child-device", methods=["POST"])
 def register_child_device():
     try:
@@ -1523,7 +1641,7 @@ def register_child_device():
         android_version = (data.get("android_version") or "").strip()
 
         if not suffix or not device_name:
-            return _json_error("child_code و device_name مطلوبان", 400)
+            return _json_error("child_code ظˆ device_name ظ…ط·ظ„ظˆط¨ط§ظ†", 400)
 
         conn = db()
         cur = conn.cursor()
@@ -1531,10 +1649,10 @@ def register_child_device():
 
         if existing and existing["linked"]:
             conn.close()
-            return _json_error("الجهاز مربوط مسبقاً", 400, error_code="already_linked")
+            return _json_error("ط§ظ„ط¬ظ‡ط§ط² ظ…ط±ط¨ظˆط· ظ…ط³ط¨ظ‚ط§ظ‹", 400, error_code="already_linked")
 
         if existing:
-            # لا نغيّر device_verify_code عند إعادة التسجيل — حتى يبقى رمز الربط صالحاً
+            # ظ„ط§ ظ†ط؛ظٹظ‘ط± device_verify_code ط¹ظ†ط¯ ط¥ط¹ط§ط¯ط© ط§ظ„طھط³ط¬ظٹظ„ â€” ط­طھظ‰ ظٹط¨ظ‚ظ‰ ط±ظ…ط² ط§ظ„ط±ط¨ط· طµط§ظ„ط­ط§ظ‹
             cur.execute(
                 """
                 UPDATE child_devices
@@ -1554,7 +1672,7 @@ def register_child_device():
             else:
                 device_code = str(random.randint(100000, 999999))
             verify_out = device_code
-            # FIX: normalize child_code — يُخزَّن بدون بادئة: 1DF71288
+            # FIX: normalize child_code â€” ظٹظڈط®ط²ظ‘ظژظ† ط¨ط¯ظˆظ† ط¨ط§ط¯ط¦ط©: 1DF71288
             cur.execute(
                 """
                 INSERT INTO child_devices
@@ -1568,17 +1686,17 @@ def register_child_device():
         conn.commit()
         conn.close()
         return _json_success(
-            "Child device registered — waiting for parent link",
+            "Child device registered â€” waiting for parent link",
             child_code=normalize_child_code(stored),
             child_code_clean=clean_child_code(stored),
             device_verify_code=verify_out,
         )
     except Exception as exc:
         logger.exception("register-child-device failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء تسجيل الطفل", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، طھط³ط¬ظٹظ„ ط§ظ„ط·ظپظ„", 500, error_code="server_error")
 
 
-# إرسال رمز الربط لبريد ولي الأمر — مرة واحدة أثناء الربط
+# ط¥ط±ط³ط§ظ„ ط±ظ…ط² ط§ظ„ط±ط¨ط· ظ„ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط± â€” ظ…ط±ط© ظˆط§ط­ط¯ط© ط£ط«ظ†ط§ط، ط§ظ„ط±ط¨ط·
 @app.route("/send-link-code", methods=["POST"])
 def send_link_code():
     try:
@@ -1587,14 +1705,14 @@ def send_link_code():
         child_code = _extract_child_code(data)
 
         if not parent_email or not child_code:
-            return _json_error("parent_email و child_code مطلوبان", 400)
+            return _json_error("parent_email ظˆ child_code ظ…ط·ظ„ظˆط¨ط§ظ†", 400)
 
         conn = db()
         cur = conn.cursor()
         if not _guardian_verified(cur, parent_email):
             conn.close()
             return _json_error(
-                "يجب التحقق من بريد ولي الأمر أولاً (رمز التحقق)",
+                "ظٹط¬ط¨ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط± ط£ظˆظ„ط§ظ‹ (ط±ظ…ط² ط§ظ„طھط­ظ‚ظ‚)",
                 400,
                 error_code="parent_email_not_verified",
             )
@@ -1605,13 +1723,13 @@ def send_link_code():
             conn.close()
             return _child_not_found_response(
                 raw_child,
-                "لم يُعثر على جهاز الطفل — سجّلي من جوال الطفل أولاً (تسجيل الجهاز)",
+                "ظ„ظ… ظٹظڈط¹ط«ط± ط¹ظ„ظ‰ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ â€” ط³ط¬ظ‘ظ„ظٹ ظ…ظ† ط¬ظˆط§ظ„ ط§ظ„ط·ظپظ„ ط£ظˆظ„ط§ظ‹ (طھط³ط¬ظٹظ„ ط§ظ„ط¬ظ‡ط§ط²)",
             )
 
         child_code = row["child_code"]
         if row["linked"]:
             conn.close()
-            return _json_error("الجهاز مربوط مسبقاً", 400, error_code="already_linked")
+            return _json_error("ط§ظ„ط¬ظ‡ط§ط² ظ…ط±ط¨ظˆط· ظ…ط³ط¨ظ‚ط§ظ‹", 400, error_code="already_linked")
 
         force_resend = bool(data.get("force_resend"))
         existing_code = str(row["device_verify_code"] or "").strip()
@@ -1648,27 +1766,27 @@ def send_link_code():
 
         email_sent = send_email(
             parent_email,
-            "MYRana — رمز ربط الطفل",
-            f"رمز ربط الطفل ({normalize_child_code(child_code)}):\n\n{device_code}\n\n"
-            f"أدخليه في تطبيق الأم لإتمام الربط.\n"
-            f"(هذا ليس رمز تحقق البريد الأول)",
+            "MYRana â€” ط±ظ…ط² ط±ط¨ط· ط§ظ„ط·ظپظ„",
+            f"ط±ظ…ط² ط±ط¨ط· ط§ظ„ط·ظپظ„ ({normalize_child_code(child_code)}):\n\n{device_code}\n\n"
+            f"ط£ط¯ط®ظ„ظٹظ‡ ظپظٹ طھط·ط¨ظٹظ‚ ط§ظ„ط£ظ… ظ„ط¥طھظ…ط§ظ… ط§ظ„ط±ط¨ط·.\n"
+            f"(ظ‡ط°ط§ ظ„ظٹط³ ط±ظ…ط² طھط­ظ‚ظ‚ ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط£ظˆظ„)",
         )
 
         payload = verification_payload(
             device_code,
             email_sent,
-            "تم إرسال رمز الربط إلى بريدك",
-            "SMTP غير مضبوط — الرمز للتطوير فقط",
+            "طھظ… ط¥ط±ط³ط§ظ„ ط±ظ…ط² ط§ظ„ط±ط¨ط· ط¥ظ„ظ‰ ط¨ط±ظٹط¯ظƒ",
+            "SMTP ط؛ظٹط± ظ…ط¶ط¨ظˆط· â€” ط§ظ„ط±ظ…ط² ظ„ظ„طھط·ظˆظٹط± ظپظ‚ط·",
         )
         if not email_sent:
             payload["link_code"] = device_code
         return jsonify(payload)
     except Exception as exc:
         logger.exception("send-link-code failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إرسال رمز الربط", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط±ط³ط§ظ„ ط±ظ…ط² ط§ظ„ط±ط¨ط·", 500, error_code="server_error")
 
 
-# هل اكتمل ربط جهاز الطفل؟ (يستعلم عنه تطبيق الطفل)
+# ظ‡ظ„ ط§ظƒطھظ…ظ„ ط±ط¨ط· ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„طں (ظٹط³طھط¹ظ„ظ… ط¹ظ†ظ‡ طھط·ط¨ظٹظ‚ ط§ظ„ط·ظپظ„)
 @app.route("/child-link-status", methods=["GET"])
 def child_link_status():
     raw = request.args.get("child_code", "")
@@ -1683,7 +1801,7 @@ def child_link_status():
     if not row:
         return _child_not_found_response(
             raw,
-            "لم يُعثر على جهاز الطفل — افتحي تطبيق الطفل واضغطي تسجيل الجهاز",
+            "ظ„ظ… ظٹظڈط¹ط«ط± ط¹ظ„ظ‰ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ â€” ط§ظپطھط­ظٹ طھط·ط¨ظٹظ‚ ط§ظ„ط·ظپظ„ ظˆط§ط¶ط؛ط·ظٹ طھط³ط¬ظٹظ„ ط§ظ„ط¬ظ‡ط§ط²",
         )
 
     return _json_success(
@@ -1694,7 +1812,7 @@ def child_link_status():
     )
 
 
-# التحقق من رمز جهاز الطفل — اختياري قبل الربط النهائي
+# ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط±ظ…ط² ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ â€” ط§ط®طھظٹط§ط±ظٹ ظ‚ط¨ظ„ ط§ظ„ط±ط¨ط· ط§ظ„ظ†ظ‡ط§ط¦ظٹ
 @app.route("/verify-child-device-code", methods=["POST"])
 def verify_child_device_code():
     try:
@@ -1704,7 +1822,7 @@ def verify_child_device_code():
         parent_email = _extract_parent_email(data)
 
         if not child_code or not code:
-            return _json_error("child_code و verification_code مطلوبان", 400)
+            return _json_error("child_code ظˆ verification_code ظ…ط·ظ„ظˆط¨ط§ظ†", 400)
 
         conn = db()
         cur = conn.cursor()
@@ -1717,13 +1835,13 @@ def verify_child_device_code():
             conn.close()
             return _child_not_found_response(
                 raw_child,
-                "من جوال الطفل اضغطي «تسجيل الجهاز» ثم أعيدي الربط",
+                "ظ…ظ† ط¬ظˆط§ظ„ ط§ظ„ط·ظپظ„ ط§ط¶ط؛ط·ظٹ آ«طھط³ط¬ظٹظ„ ط§ظ„ط¬ظ‡ط§ط²آ» ط«ظ… ط£ط¹ظٹط¯ظٹ ط§ظ„ط±ط¨ط·",
             )
 
         if not stored or stored != code:
             conn.close()
             return _json_error(
-                "كود التحقق غير صحيح — استخدمي رمز الربط من Gmail (الرسالة الثانية)",
+                "ظƒظˆط¯ ط§ظ„طھط­ظ‚ظ‚ ط؛ظٹط± طµط­ظٹط­ â€” ط§ط³طھط®ط¯ظ…ظٹ ط±ظ…ط² ط§ظ„ط±ط¨ط· ظ…ظ† Gmail (ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط«ط§ظ†ظٹط©)",
                 400,
                 error_code="invalid_verification_code",
             )
@@ -1737,7 +1855,7 @@ def verify_child_device_code():
 
         return jsonify({
             "status": "success",
-            "message": "تم التحقق من رمز الربط",
+            "message": "طھظ… ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط±ظ…ط² ط§ظ„ط±ط¨ط·",
             "child_code": device_row["child_code"],
             "child_email": device_row["child_email"],
             "device_name": device_row["device_name"],
@@ -1745,10 +1863,10 @@ def verify_child_device_code():
         })
     except Exception as exc:
         logger.exception("verify-child-device-code failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء التحقق من رمز الربط", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط±ظ…ط² ط§ظ„ط±ط¨ط·", 500, error_code="server_error")
 
 
-# إضافة وربط الطفل — الاسم اختياري؛ الربط بـ parent_email + child_code + verification_code
+# ط¥ط¶ط§ظپط© ظˆط±ط¨ط· ط§ظ„ط·ظپظ„ â€” ط§ظ„ط§ط³ظ… ط§ط®طھظٹط§ط±ظٹط› ط§ظ„ط±ط¨ط· ط¨ظ€ parent_email + child_code + verification_code
 @app.route("/add-child", methods=["POST"])
 @app.route("/link-child", methods=["POST"])
 def add_child():
@@ -1775,7 +1893,7 @@ def add_child():
                 pass
         logger.exception("add-child failed: %s\n%s", exc, traceback.format_exc())
         return _json_error(
-            "خطأ داخلي أثناء ربط الطفل — راجعي سجلات السيرفر",
+            "ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط±ط¨ط· ط§ظ„ط·ظپظ„ â€” ط±ط§ط¬ط¹ظٹ ط³ط¬ظ„ط§طھ ط§ظ„ط³ظٹط±ظپط±",
             500,
             error_code="server_error",
         )
@@ -1787,7 +1905,7 @@ def add_child():
                 pass
 
 
-# استعادة الربط بعد إعادة تشغيل Render — بدون Turso (رمز من أول ربط ناجح)
+# ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط±ط¨ط· ط¨ط¹ط¯ ط¥ط¹ط§ط¯ط© طھط´ط؛ظٹظ„ Render â€” ط¨ط¯ظˆظ† Turso (ط±ظ…ط² ظ…ظ† ط£ظˆظ„ ط±ط¨ط· ظ†ط§ط¬ط­)
 @app.route("/restore-link", methods=["POST"])
 def restore_link():
     conn = None
@@ -1803,7 +1921,7 @@ def restore_link():
             except Exception:
                 pass
         logger.exception("restore-link failed: %s", exc)
-        return _json_error("خطأ أثناء استعادة الربط", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط£ط«ظ†ط§ط، ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط±ط¨ط·", 500, error_code="server_error")
     finally:
         if conn:
             try:
@@ -1812,7 +1930,7 @@ def restore_link():
                 pass
 
 
-# إرسال أمر من تطبيق الأم إلى جهاز الطفل
+# ط¥ط±ط³ط§ظ„ ط£ظ…ط± ظ…ظ† طھط·ط¨ظٹظ‚ ط§ظ„ط£ظ… ط¥ظ„ظ‰ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„
 @app.route("/send-command", methods=["POST"])
 def send_command():
     try:
@@ -1880,10 +1998,10 @@ def send_command():
         return jsonify({"status": "success", "message": "Command sent"})
     except Exception as exc:
         logger.exception("send-command failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إرسال الأمر", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط±ط³ط§ظ„ ط§ظ„ط£ظ…ط±", 500, error_code="server_error")
 
 
-# جهاز الطفل يسحب آخر أمر غير منفذ
+# ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ ظٹط³ط­ط¨ ط¢ط®ط± ط£ظ…ط± ط؛ظٹط± ظ…ظ†ظپط°
 @app.route("/get-command", methods=["GET"])
 def get_command():
     try:
@@ -1922,10 +2040,10 @@ def get_command():
         return jsonify(result)
     except Exception as exc:
         logger.exception("get-command failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء جلب الأمر", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¬ظ„ط¨ ط§ظ„ط£ظ…ط±", 500, error_code="server_error")
 
 
-# إضافة جدول تحكم زمني
+# ط¥ط¶ط§ظپط© ط¬ط¯ظˆظ„ طھط­ظƒظ… ط²ظ…ظ†ظٹ
 @app.route("/add-schedule", methods=["POST"])
 def add_schedule():
     try:
@@ -1974,10 +2092,10 @@ def add_schedule():
         return jsonify({"status": "success", "message": "Schedule added"})
     except Exception as exc:
         logger.exception("add-schedule failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إضافة الجدول", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط¶ط§ظپط© ط§ظ„ط¬ط¯ظˆظ„", 500, error_code="server_error")
 
 
-# جداول زمنية نشطة الآن (حظر/تجميد مؤقت)
+# ط¬ط¯ط§ظˆظ„ ط²ظ…ظ†ظٹط© ظ†ط´ط·ط© ط§ظ„ط¢ظ† (ط­ط¸ط±/طھط¬ظ…ظٹط¯ ظ…ط¤ظ‚طھ)
 @app.route("/active-schedules", methods=["GET"])
 def active_schedules():
     child_code = _child_code_from_request_args()
@@ -2005,7 +2123,7 @@ def active_schedules():
     return jsonify({"packages": list(dict.fromkeys(packages))})
 
 
-# رفع استخدام التطبيقات من جهاز الطفل
+# ط±ظپط¹ ط§ط³طھط®ط¯ط§ظ… ط§ظ„طھط·ط¨ظٹظ‚ط§طھ ظ…ظ† ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„
 @app.route("/upload-usage", methods=["POST"])
 def upload_usage():
     data = request.get_json() or {}
@@ -2024,7 +2142,7 @@ def upload_usage():
     return jsonify({"status": "success", "message": "Usage saved"})
 
 
-# تقرير استخدام أسبوعي لولي الأمر
+# طھظ‚ط±ظٹط± ط§ط³طھط®ط¯ط§ظ… ط£ط³ط¨ظˆط¹ظٹ ظ„ظˆظ„ظٹ ط§ظ„ط£ظ…ط±
 @app.route("/weekly-report", methods=["GET"])
 def weekly_report():
     child_code = db_child_code(request.args.get("child_code", ""))
@@ -2066,7 +2184,7 @@ def weekly_report():
     })
 
 
-# إرسال تقرير من جهاز الطفل
+# ط¥ط±ط³ط§ظ„ طھظ‚ط±ظٹط± ظ…ظ† ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„
 @app.route("/add-report", methods=["POST"])
 def add_report():
     data = request.get_json() or {}
@@ -2090,7 +2208,7 @@ def add_report():
     return jsonify({"status": "success", "message": "Report added"})
 
 
-# عرض التقارير للأم
+# ط¹ط±ط¶ ط§ظ„طھظ‚ط§ط±ظٹط± ظ„ظ„ط£ظ…
 @app.route("/reports", methods=["GET"])
 def reports():
     child_code = _child_code_from_request_args()
@@ -2113,7 +2231,7 @@ def reports():
     return jsonify([dict(r) for r in rows])
 
 
-# إضافة تنبيه من جهاز الطفل
+# ط¥ط¶ط§ظپط© طھظ†ط¨ظٹظ‡ ظ…ظ† ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„
 @app.route("/add-alert", methods=["POST"])
 def add_alert():
     try:
@@ -2141,17 +2259,17 @@ def add_alert():
         return jsonify({"success": True, "status": "success"})
     except Exception as exc:
         logger.exception("add-alert failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إضافة التنبيه", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط¶ط§ظپط© ط§ظ„طھظ†ط¨ظٹظ‡", 500, error_code="server_error")
 
 
-# رسالة من ولي الأمر — تُحفظ في التنبيهات ليراها في لوحة الأم
+# ط±ط³ط§ظ„ط© ظ…ظ† ظˆظ„ظٹ ط§ظ„ط£ظ…ط± â€” طھظڈط­ظپط¸ ظپظٹ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ ظ„ظٹط±ط§ظ‡ط§ ظپظٹ ظ„ظˆط­ط© ط§ظ„ط£ظ…
 @app.route("/send-guardian-message", methods=["POST"])
 def send_guardian_message():
     try:
         data = request.get_json(silent=True) or {}
         child_code = db_child_code(data.get("child_code", ""))
         message = (data.get("message") or "").strip()
-        role = (data.get("guardian_role") or "ولي الأمر").strip()
+        role = (data.get("guardian_role") or "ظˆظ„ظٹ ط§ظ„ط£ظ…ط±").strip()
         if not child_code or not message:
             return _json_error("child_code and message required", 400, error_code="missing_child_code")
 
@@ -2171,16 +2289,16 @@ def send_guardian_message():
         )
         conn.commit()
         conn.close()
-        return jsonify({"status": "success", "message": "تم إرسال الرسالة"})
+        return jsonify({"status": "success", "message": "طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط©"})
     except Exception as exc:
         logger.exception("send-guardian-message failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إرسال الرسالة", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط©", 500, error_code="server_error")
 
 
-# عرض التنبيهات للأم
+# ط¹ط±ط¶ ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ ظ„ظ„ط£ظ…
 @app.route("/list-children", methods=["GET"])
 def list_children():
-    """قائمة الأطفال المرتبطين بولي أمر — دعم تعدد الأطفال."""
+    """ظ‚ط§ط¦ظ…ط© ط§ظ„ط£ط·ظپط§ظ„ ط§ظ„ظ…ط±طھط¨ط·ظٹظ† ط¨ظˆظ„ظٹ ط£ظ…ط± â€” ط¯ط¹ظ… طھط¹ط¯ط¯ ط§ظ„ط£ط·ظپط§ظ„."""
     parent_email = _extract_parent_email(dict(request.args))
     if not parent_email:
         return _json_error("parent_email is required", 400, error_code="missing_parent_email")
@@ -2217,7 +2335,7 @@ def list_children():
                 perms = {}
         rows.append({
             "child_id": int(r["child_id"]),
-            "name": r["name"] or "طفل",
+            "name": r["name"] or "ط·ظپظ„",
             "age": r["age"],
             "child_code": normalize_child_code(code_db),
             "child_code_clean": clean_child_code(code_db),
@@ -2287,7 +2405,7 @@ DEFAULT_GUARDIAN_SETTINGS = {
 
 
 def _audit_log(cur, guardian_email: str, child_code: str, action: str, detail: str = ""):
-    """سجل تغييرات ولي الأمر."""
+    """ط³ط¬ظ„ طھط؛ظٹظٹط±ط§طھ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±."""
     try:
         cur.execute(
             """
@@ -2341,7 +2459,7 @@ def _guardian_settings_save(conn, guardian_email: str, settings: dict) -> None:
 
 
 def _cleanup_old_data(conn, retention_days: int) -> dict:
-    """حذف بيانات أقدم من retention_days."""
+    """ط­ط°ظپ ط¨ظٹط§ظ†ط§طھ ط£ظ‚ط¯ظ… ظ…ظ† retention_days."""
     days = max(7, min(90, int(retention_days or 30)))
     cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d 00:00:00")
     cur = conn.cursor()
@@ -2367,7 +2485,7 @@ def _cleanup_old_data(conn, retention_days: int) -> dict:
 
 
 def _run_startup_cleanup():
-    """تنظيف تلقائي عند تشغيل السيرفر — لكل ولي أمر حسب إعداداته."""
+    """طھظ†ط¸ظٹظپ طھظ„ظ‚ط§ط¦ظٹ ط¹ظ†ط¯ طھط´ط؛ظٹظ„ ط§ظ„ط³ظٹط±ظپط± â€” ظ„ظƒظ„ ظˆظ„ظٹ ط£ظ…ط± ط­ط³ط¨ ط¥ط¹ط¯ط§ط¯ط§طھظ‡."""
     try:
         conn = db()
         cur = conn.cursor()
@@ -2389,7 +2507,7 @@ def _run_startup_cleanup():
 
 
 def _email_summary_sent_key(period: str) -> str:
-    """مفتاح يومي أو أسبوعي لمنع إرسال مكرر."""
+    """ظ…ظپطھط§ط­ ظٹظˆظ…ظٹ ط£ظˆ ط£ط³ط¨ظˆط¹ظٹ ظ„ظ…ظ†ط¹ ط¥ط±ط³ط§ظ„ ظ…ظƒط±ط±."""
     if period == "weekly":
         return datetime.now().strftime("%Y-W%W")
     return datetime.now().strftime("%Y-%m-%d")
@@ -2432,11 +2550,11 @@ def _send_guardian_summary_email(
     child_code: str,
     period: str,
 ) -> bool:
-    """إرسال ملخص يومي/أسبوعي لطفل واحد — يُستخدم من الزر والـ cron."""
+    """ط¥ط±ط³ط§ظ„ ظ…ظ„ط®طµ ظٹظˆظ…ظٹ/ط£ط³ط¨ظˆط¹ظٹ ظ„ط·ظپظ„ ظˆط§ط­ط¯ â€” ظٹظڈط³طھط®ط¯ظ… ظ…ظ† ط§ظ„ط²ط± ظˆط§ظ„ظ€ cron."""
     days = 7 if period == "weekly" else 1
     code = db_child_code(child_code)
     body = _build_usage_summary(conn, code, days=days)
-    subject = f"MYRana — ملخص {'الأسبوع' if days > 1 else 'اليوم'}"
+    subject = f"MYRana â€” ظ…ظ„ط®طµ {'ط§ظ„ط£ط³ط¨ظˆط¹' if days > 1 else 'ط§ظ„ظٹظˆظ…'}"
     sent = send_email(guardian_email.strip(), subject, body)
     cur = conn.cursor()
     _audit_log(
@@ -2453,13 +2571,13 @@ def _send_guardian_summary_email(
 
 def _run_scheduled_email_summaries() -> dict:
     """
-    إرسال الملخصات المجدولة حسب إعدادات ولي الأمر.
-    يُستدعى من /cron/email-summaries على Render أو خيط خلفي محلياً.
+    ط¥ط±ط³ط§ظ„ ط§ظ„ظ…ظ„ط®طµط§طھ ط§ظ„ظ…ط¬ط¯ظˆظ„ط© ط­ط³ط¨ ط¥ط¹ط¯ط§ط¯ط§طھ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±.
+    ظٹظڈط³طھط¯ط¹ظ‰ ظ…ظ† /cron/email-summaries ط¹ظ„ظ‰ Render ط£ظˆ ط®ظٹط· ط®ظ„ظپظٹ ظ…ط­ظ„ظٹط§ظ‹.
     """
     stats = {"daily_sent": 0, "weekly_sent": 0, "skipped": 0, "failed": 0}
     if not email_configured():
         stats["skipped"] = -1
-        logger.info("[email-cron] SMTP غير مضبوط — تخطي")
+        logger.info("[email-cron] SMTP ط؛ظٹط± ظ…ط¶ط¨ظˆط· â€” طھط®ط·ظٹ")
         return stats
 
     conn = db()
@@ -2514,7 +2632,7 @@ _email_cron_started = False
 
 
 def _start_email_cron_thread():
-    """خيط خلفي للتطوير المحلي — على Render استخدمي Cron Job يضرب /cron/email-summaries."""
+    """ط®ظٹط· ط®ظ„ظپظٹ ظ„ظ„طھط·ظˆظٹط± ط§ظ„ظ…ط­ظ„ظٹ â€” ط¹ظ„ظ‰ Render ط§ط³طھط®ط¯ظ…ظٹ Cron Job ظٹط¶ط±ط¨ /cron/email-summaries."""
     global _email_cron_started
     if _email_cron_started:
         return
@@ -2565,17 +2683,17 @@ def _build_usage_summary(conn, child_code: str, days: int = 1) -> str:
     )
     top = cur.fetchall()
     lines = [
-        f"MYRana — ملخص {'اليوم' if days <= 1 else f'{days} أيام'}",
-        f"كود الطفل: {normalize_child_code(child_code)}",
-        f"وقت الاستخدام: {total_sec // 60} دقيقة",
-        f"التنبيهات: {alerts}",
+        f"MYRana â€” ظ…ظ„ط®طµ {'ط§ظ„ظٹظˆظ…' if days <= 1 else f'{days} ط£ظٹط§ظ…'}",
+        f"ظƒظˆط¯ ط§ظ„ط·ظپظ„: {normalize_child_code(child_code)}",
+        f"ظˆظ‚طھ ط§ظ„ط§ط³طھط®ط¯ط§ظ…: {total_sec // 60} ط¯ظ‚ظٹظ‚ط©",
+        f"ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ: {alerts}",
         "",
-        "أكثر التطبيقات:",
+        "ط£ظƒط«ط± ط§ظ„طھط·ط¨ظٹظ‚ط§طھ:",
     ]
     for i, r in enumerate(top, 1):
-        lines.append(f"  {i}. {r['package_name']} — {int(r['total_seconds'] or 0) // 60} د")
+        lines.append(f"  {i}. {r['package_name']} â€” {int(r['total_seconds'] or 0) // 60} ط¯")
     if not top:
-        lines.append("  (لا بيانات بعد)")
+        lines.append("  (ظ„ط§ ط¨ظٹط§ظ†ط§طھ ط¨ط¹ط¯)")
     return "\n".join(lines)
 
 
@@ -2652,12 +2770,12 @@ def screen_time_policy():
         return jsonify({"success": True, "status": "success", "message": "Screen time policy saved"})
     except Exception as exc:
         logger.exception("screen-time-policy POST failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء حفظ السياسة", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط­ظپط¸ ط§ظ„ط³ظٹط§ط³ط©", 500, error_code="server_error")
 
 
 @app.route("/sync-child-apps", methods=["POST"])
 def sync_child_apps():
-    """رفع قائمة تطبيقات الطفل مع الأسماء والأيقونات لعرضها عند الأم."""
+    """ط±ظپط¹ ظ‚ط§ط¦ظ…ط© طھط·ط¨ظٹظ‚ط§طھ ط§ظ„ط·ظپظ„ ظ…ط¹ ط§ظ„ط£ط³ظ…ط§ط، ظˆط§ظ„ط£ظٹظ‚ظˆظ†ط§طھ ظ„ط¹ط±ط¶ظ‡ط§ ط¹ظ†ط¯ ط§ظ„ط£ظ…."""
     try:
         data = request.get_json(silent=True) or {}
         child_code = db_child_code(data.get("child_code", ""))
@@ -2671,12 +2789,12 @@ def sync_child_apps():
         return jsonify({"success": True, "status": "success", "saved": saved})
     except Exception as exc:
         logger.exception("sync-child-apps failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء مزامنة التطبيقات", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ظ…ط²ط§ظ…ظ†ط© ط§ظ„طھط·ط¨ظٹظ‚ط§طھ", 500, error_code="server_error")
 
 
 @app.route("/child-installed-apps", methods=["GET"])
 def child_installed_apps():
-    """قائمة التطبيقات المثبتة على جهاز الطفل (اسم + أيقونة)."""
+    """ظ‚ط§ط¦ظ…ط© ط§ظ„طھط·ط¨ظٹظ‚ط§طھ ط§ظ„ظ…ط«ط¨طھط© ط¹ظ„ظ‰ ط¬ظ‡ط§ط² ط§ظ„ط·ظپظ„ (ط§ط³ظ… + ط£ظٹظ‚ظˆظ†ط©)."""
     try:
         child_code = db_child_code(request.args.get("child_code", ""))
         if not child_code:
@@ -2716,7 +2834,7 @@ def child_installed_apps():
         )
     except Exception as exc:
         logger.exception("child-installed-apps failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء جلب التطبيقات", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¬ظ„ط¨ ط§ظ„طھط·ط¨ظٹظ‚ط§طھ", 500, error_code="server_error")
 
 
 @app.route("/child-heartbeat", methods=["POST"])
@@ -2756,7 +2874,7 @@ def child_heartbeat():
         return jsonify({"success": True, "status": "success"})
     except Exception as exc:
         logger.exception("child-heartbeat failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء نبضة الاتصال", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ظ†ط¨ط¶ط© ط§ظ„ط§طھطµط§ظ„", 500, error_code="server_error")
 
 
 @app.route("/screen-time-events", methods=["POST"])
@@ -2799,7 +2917,7 @@ def screen_time_events():
         return jsonify({"success": True, "status": "success"})
     except Exception as exc:
         logger.exception("screen-time-events failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء رفع أحداث وقت الشاشة", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط±ظپط¹ ط£ط­ط¯ط§ط« ظˆظ‚طھ ط§ظ„ط´ط§ط´ط©", 500, error_code="server_error")
 
 
 @app.route("/child-dashboard", methods=["GET"])
@@ -2955,7 +3073,7 @@ def guardian_settings():
         )
     except Exception as exc:
         logger.exception("guardian-settings failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء حفظ الإعدادات", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط­ظپط¸ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ", 500, error_code="server_error")
 
 
 @app.route("/audit-log", methods=["GET"])
@@ -3000,12 +3118,12 @@ def audit_log_list():
         return _json_success("Audit log", entries=rows, count=len(rows))
     except Exception as exc:
         logger.exception("audit-log failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء جلب السجل", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¬ظ„ط¨ ط§ظ„ط³ط¬ظ„", 500, error_code="server_error")
 
 
 @app.route("/send-email-summary", methods=["POST"])
 def send_email_summary():
-    """إرسال ملخص يومي أو أسبوعي لبريد ولي الأمر."""
+    """ط¥ط±ط³ط§ظ„ ظ…ظ„ط®طµ ظٹظˆظ…ظٹ ط£ظˆ ط£ط³ط¨ظˆط¹ظٹ ظ„ط¨ط±ظٹط¯ ظˆظ„ظٹ ط§ظ„ط£ظ…ط±."""
     try:
         data = request.get_json(silent=True) or {}
         parent_email = _extract_parent_email(data)
@@ -3022,19 +3140,19 @@ def send_email_summary():
         conn.close()
         if not sent:
             return _json_error(
-                "تعذّر إرسال البريد — تحققي من SMTP/Resend على Render",
+                "طھط¹ط°ظ‘ط± ط¥ط±ط³ط§ظ„ ط§ظ„ط¨ط±ظٹط¯ â€” طھط­ظ‚ظ‚ظٹ ظ…ظ† SMTP/Resend ط¹ظ„ظ‰ Render",
                 500,
                 error_code="email_failed",
             )
         return _json_success(f"Summary email sent ({period})", email_sent=True, period=period)
     except Exception as exc:
         logger.exception("send-email-summary failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء إرسال الملخص", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¥ط±ط³ط§ظ„ ط§ظ„ظ…ظ„ط®طµ", 500, error_code="server_error")
 
 
 @app.route("/weekly-chart", methods=["GET"])
 def weekly_chart():
-    """بيانات الرسوم البيانية — استخدام يومي + أفضل التطبيقات + التنبيهات."""
+    """ط¨ظٹط§ظ†ط§طھ ط§ظ„ط±ط³ظˆظ… ط§ظ„ط¨ظٹط§ظ†ظٹط© â€” ط§ط³طھط®ط¯ط§ظ… ظٹظˆظ…ظٹ + ط£ظپط¶ظ„ ط§ظ„طھط·ط¨ظٹظ‚ط§طھ + ط§ظ„طھظ†ط¨ظٹظ‡ط§طھ."""
     try:
         child_code = db_child_code(request.args.get("child_code", ""))
         if not child_code:
@@ -3142,14 +3260,14 @@ def weekly_chart():
         })
     except Exception as exc:
         logger.exception("weekly-chart failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء جلب بيانات الرسم البياني", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ط¬ظ„ط¨ ط¨ظٹط§ظ†ط§طھ ط§ظ„ط±ط³ظ… ط§ظ„ط¨ظٹط§ظ†ظٹ", 500, error_code="server_error")
 
 
 @app.route("/cron/email-summaries", methods=["GET", "POST"])
 def cron_email_summaries():
     """
-    مهمة مجدولة — على Render: Cron Job يضرب هذا المسار يومياً.
-    Header: X-CRON-SECRET أو ?secret= نفس CRON_SECRET (أو API_KEY).
+    ظ…ظ‡ظ…ط© ظ…ط¬ط¯ظˆظ„ط© â€” ط¹ظ„ظ‰ Render: Cron Job ظٹط¶ط±ط¨ ظ‡ط°ط§ ط§ظ„ظ…ط³ط§ط± ظٹظˆظ…ظٹط§ظ‹.
+    Header: X-CRON-SECRET ط£ظˆ ?secret= ظ†ظپط³ CRON_SECRET (ط£ظˆ API_KEY).
     """
     try:
         secret = (
@@ -3159,12 +3277,12 @@ def cron_email_summaries():
         ).strip()
         expected = os.environ.get("CRON_SECRET") or os.environ.get("API_KEY", "")
         if not expected or secret != expected:
-            return _json_error("غير مصرّح", 401, error_code="unauthorized")
+            return _json_error("ط؛ظٹط± ظ…طµط±ظ‘ط­", 401, error_code="unauthorized")
         stats = _run_scheduled_email_summaries()
-        return _json_success("تم تشغيل مهمة البريد المجدولة", stats=stats)
+        return _json_success("طھظ… طھط´ط؛ظٹظ„ ظ…ظ‡ظ…ط© ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ظ…ط¬ط¯ظˆظ„ط©", stats=stats)
     except Exception as exc:
         logger.exception("cron email-summaries failed: %s", exc)
-        return _json_error("خطأ داخلي أثناء مهمة البريد", 500, error_code="server_error")
+        return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ط£ط«ظ†ط§ط، ظ…ظ‡ظ…ط© ط§ظ„ط¨ط±ظٹط¯", 500, error_code="server_error")
 
 
 @app.route("/daily-report", methods=["GET"])
@@ -3193,26 +3311,26 @@ def daily_report():
 
 @app.errorhandler(404)
 def not_found_json(error):
-    return _json_error("المسار غير موجود", 404, error_code="not_found")
+    return _json_error("ط§ظ„ظ…ط³ط§ط± ط؛ظٹط± ظ…ظˆط¬ظˆط¯", 404, error_code="not_found")
 
 
 @app.errorhandler(500)
 def server_error_json(error):
     logger.exception("unhandled 500: %s", error)
-    return _json_error("خطأ داخلي في السيرفر", 500, error_code="server_error")
+    return _json_error("ط®ط·ط£ ط¯ط§ط®ظ„ظٹ ظپظٹ ط§ظ„ط³ظٹط±ظپط±", 500, error_code="server_error")
 
 
 @app.errorhandler(Exception)
 def unhandled_exception(error):
     logger.exception("unhandled exception: %s", error)
-    return _json_error("خطأ غير متوقع", 500, error_code="server_error")
+    return _json_error("ط®ط·ط£ ط؛ظٹط± ظ…طھظˆظ‚ط¹", 500, error_code="server_error")
 
 
-# إنشاء الجداول عند تشغيل السيرفر
+# ط¥ظ†ط´ط§ط، ط§ظ„ط¬ط¯ط§ظˆظ„ ط¹ظ†ط¯ طھط´ط؛ظٹظ„ ط§ظ„ط³ظٹط±ظپط±
 init_db()
 _log_db_startup()
 _start_email_cron_thread()
 
-# تشغيل محلي فقط، أما Render يستخدم gunicorn
+# طھط´ط؛ظٹظ„ ظ…ط­ظ„ظٹ ظپظ‚ط·طŒ ط£ظ…ط§ Render ظٹط³طھط®ط¯ظ… gunicorn
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

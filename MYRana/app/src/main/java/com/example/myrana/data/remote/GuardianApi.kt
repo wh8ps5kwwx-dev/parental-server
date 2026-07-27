@@ -441,6 +441,35 @@ object GuardianApi {
         }
     }
 
+    /** التحقق من موقع مقابل سياسة الطفل + كتالوج الحظر — POST /api/check-url. */
+    fun checkUrl(url: String, childCode: String = ""): ApiResult {
+        return try {
+            val body = mutableMapOf<String, Any?>("url" to url.trim())
+            if (childCode.isNotBlank()) {
+                body["child_code"] = ChildCodeNormalizer.forApi(childCode)
+            }
+            val response = NetworkModule.postRoot("api/check-url", body)
+            val mapType = object : TypeToken<Map<String, Any?>>() {}.type
+            val json: Map<String, Any?> = gson.fromJson(response, mapType)
+            if (json["status"]?.toString() == "success" || json["success"] == true || json.containsKey("blocked")) {
+                ApiResult.UrlCheck(
+                    host = json["host"]?.toString().orEmpty(),
+                    blocked = json["blocked"] == true,
+                    inPolicy = json["in_policy"] == true,
+                    inCatalog = json["in_catalog"] == true,
+                    explanation = json["explanation"]?.toString()
+                        ?: json["message"]?.toString().orEmpty(),
+                    policyMatch = json["policy_match"]?.toString(),
+                    catalogMatch = json["catalog_match"]?.toString(),
+                )
+            } else {
+                ApiResult.Error(json["message"]?.toString() ?: response)
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "خطأ شبكة")
+        }
+    }
+
     /** جلب تنبيهات محاولات الحظر. */
     fun fetchAlerts(childCode: String): ApiResult.Alerts {
         return try {
@@ -717,6 +746,15 @@ object GuardianApi {
         data class ReportText(val text: String) : ApiResult()
         data class GuardianSettingsLoaded(val settings: Map<String, Any?>) : ApiResult()
         data class AuditLog(val lines: List<String>) : ApiResult()
+        data class UrlCheck(
+            val host: String,
+            val blocked: Boolean,
+            val inPolicy: Boolean,
+            val inCatalog: Boolean,
+            val explanation: String,
+            val policyMatch: String? = null,
+            val catalogMatch: String? = null,
+        ) : ApiResult()
     }
 
     data class ChildDashboardData(

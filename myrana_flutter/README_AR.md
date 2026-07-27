@@ -153,6 +153,7 @@ copy build\app\outputs\flutter-apk\app-child-release.apk releases\
 2. **لوحة التحكم:** مؤشرات من `child-dashboard`
 3. **ربط طفل:** كود `CHILD-...` → `send-link-code` → `verify-child-device-code` → `add-child`
 4. **إدارة:** تطبيقات، حظر (تطبيق/موقع/سماح)، وقت شاشة، تنبيهات، تقارير، رسائل، إعدادات
+5. **التحقق من المواقع:** من لوحة ولي الأمر → «التحقق من موقع» → أدخلي رابطاً أو نطاقاً → تظهر هل محظور في سياسة الطفل، وهل موجود في كتالوج الحظر الافتراضي، مع شرح قصير بالعربية
 
 ### الشاشات (`lib/screens/parent/`)
 
@@ -164,6 +165,7 @@ copy build\app\outputs\flutter-apk\app-child-release.apk releases\
 | الأطفال | `parent_children_screen.dart` | list-children |
 | التطبيقات | `parent_apps_screen.dart` | child-installed-apps, send-command |
 | الحظر | `parent_block_screen.dart` | block/unblock app+site, allow, schedule, blocklist |
+| التحقق من موقع | `parent_url_check_screen.dart` | POST `/api/check-url` (+ احتياطي: policy + catalog) |
 | وقت الشاشة | `parent_screen_time_screen.dart` | screen-time-policy |
 | التنبيهات | `parent_alerts_screen.dart` | alerts |
 | التقارير | `parent_reports_screen.dart` | daily-report, weekly-chart |
