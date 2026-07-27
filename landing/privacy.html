@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — MYRana</title>
+  <meta name="description" content="Privacy policy for MYRana parental monitoring: usage stats, policies, OTP email, child_code linking — no GPS location." />
+  <link rel="icon" href="assets/images/myrana-logo.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <img src="assets/images/myrana-logo.png" alt="MYRana logo" width="40" height="40" />
+        <span>MYRana</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="index.html#contact">Contact</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main class="legal-page">
+    <div class="container">
+      <article>
+        <h1>Privacy Policy</h1>
+        <p><strong>Last updated:</strong> July 2026</p>
+        <p>
+          This policy describes how the <strong>MYRana</strong> graduation project
+          (parent app <span lang="ar">حماية الأطفال</span>, child app <span lang="ar">أكاديمية العباقرة</span>)
+          handles data in the implemented Android / Flutter clients and the Flask server on Render.
+          It reflects <em>actual</em> collection in the codebase — not hypothetical marketing features.
+        </p>
+
+        <h2>1. Who this applies to</h2>
+        <p>
+          Guardians who verify email and link child devices, and children whose devices run the academy /
+          monitoring client under family supervision (target age roughly 5–13).
+        </p>
+
+        <h2>2. Data we collect</h2>
+        <ul>
+          <li><strong>Guardian email</strong> — for registration / login and OTP verification (Gmail / Resend).</li>
+          <li><strong>OTP / email codes</strong> — short-lived verification and parent–child link codes.</li>
+          <li><strong>Child device code</strong> — identifiers such as <code>CHILD-XXXXXXXX</code> and child display names.</li>
+          <li><strong>Linking &amp; device records</strong> — guardian–child relationships and device registration status.</li>
+          <li><strong>Usage statistics</strong> — app usage / foreground time derived from Android Usage Access.</li>
+          <li><strong>Screen-time events &amp; policies</strong> — daily limits, sleep schedules, and related events.</li>
+          <li><strong>Blocked apps &amp; sites</strong> — package names, blocklists, and content-filter matches (Accessibility).</li>
+          <li><strong>Commands &amp; policies</strong> — block / freeze / allow and other guardian commands synced to the child.</li>
+          <li><strong>Alerts &amp; reports</strong> — content/usage alerts and aggregated activity reporting data.</li>
+          <li><strong>Heartbeat / status</strong> — online status and permission readiness (e.g. Usage Access, Accessibility).</li>
+          <li><strong>Installed app metadata</strong> — as needed for parent app lists and blocking (where implemented).</li>
+          <li><strong>Guardian messages</strong> — text messages sent from parent to linked child devices.</li>
+        </ul>
+
+        <h2>3. Data we do <em>not</em> collect</h2>
+        <ul>
+          <li><strong>GPS / precise location</strong> — the apps do not request location permissions or store coordinates.</li>
+          <li><strong>Continuous microphone or camera surveillance</strong> — not part of the implemented monitoring stack.</li>
+          <li><strong>Payment / banking data</strong> — this is an educational project, not a commercial billing product.</li>
+        </ul>
+
+        <h2>4. How data is used</h2>
+        <ul>
+          <li>Authenticate guardians and securely link child devices.</li>
+          <li>Enforce parental policies (blocks, screen time, content filtering) on the child device.</li>
+          <li>Show dashboards, alerts, and reports to the linked guardian.</li>
+          <li>Operate the disguised child experience (<span lang="ar">أكاديمية العباقرة</span>) alongside background enforcement.</li>
+        </ul>
+
+        <h2>5. Storage &amp; transmission</h2>
+        <p>
+          Data is transmitted to the project’s Flask API over HTTPS (Render deployment).
+          The server uses SQLite for persistence; child devices may keep local Room / policy caches and sync when online.
+          Email OTP delivery uses configured SMTP / Resend credentials on the server environment.
+        </p>
+
+        <h2>6. Permissions on the child device</h2>
+        <p>
+          Monitoring depends on Android <strong>Usage Access</strong> and <strong>Accessibility</strong>
+          (plus related notification / battery settings when prompted). These permissions enable usage reporting,
+          app blocking, and site/content filtering — not location tracking.
+        </p>
+
+        <h2>7. Sharing</h2>
+        <p>
+          Data is shared between the linked guardian account and the associated child device(s) through the project server.
+          There is no sale of personal data. Third-party processors are limited to infrastructure needed to run the demo
+          (e.g. Render hosting, email delivery for OTP).
+        </p>
+
+        <h2>8. Retention</h2>
+        <p>
+          As a graduation / demo deployment, retention may be limited by hosting disk policy and redeployments.
+          Guardians should treat the live Render instance as educational infrastructure, not a long-term archive.
+        </p>
+
+        <h2>9. Children’s privacy</h2>
+        <p>
+          The system is intended for family use under guardian responsibility. The child UI is educational/game-oriented;
+          monitoring data is for the linked parent account. Guardians should install and configure the child app with informed consent within the family.
+        </p>
+
+        <h2>10. Contact</h2>
+        <p>
+          <!-- TODO: Add official student / supervisor contact when available. -->
+          For questions about this graduation project’s privacy practices, use the contact form on the
+          <a href="index.html#contact">landing page</a>.
+        </p>
+
+        <p><a class="btn btn-ghost" href="index.html">← Back to MYRana</a></p>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-bottom">
+      <span>© 2026 MYRana — Privacy</span>
+      <span><a href="terms.html">Terms of Use</a></span>
+    </div>
+  </footer>
+</body>
+</html>

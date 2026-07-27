@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MYRana — Stealthy Cyber Parenting Framework</title>
+  <meta name="description" content="MYRana: a stealthy cybersecurity-based parental monitoring system. Parent app حماية الأطفال, child app أكاديمية العباقرة. Flutter + Kotlin, Flask on Render." />
+  <link rel="icon" href="assets/images/myrana-logo.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="#hero">
+        <img src="assets/images/myrana-logo.png" alt="MYRana logo" width="40" height="40" />
+        <span>MYRana</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">Menu</button>
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#screenshots">Screenshots</a></li>
+        <li><a href="#objectives">Objectives</a></li>
+        <li><a href="#profile">Profile</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main>
+    <!-- 1. Hero -->
+    <section class="hero" id="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Graduation Project · Cybersecurity Parental Control</p>
+          <h1>MYRana</h1>
+          <p class="product-ar" lang="ar" dir="rtl">حماية الأطفال · أكاديمية العباقرة</p>
+          <p class="headline">A Stealthy Cybersecurity-Based Parental Monitoring System</p>
+          <p class="lede">
+            Monitoring runs quietly in the background while the child sees an educational game.
+            Guardians link devices securely, set policies, block apps and sites, and review usage — without GPS or location tracking.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#about">Learn More</a>
+            <a class="btn btn-ghost" href="#features">Explore Features</a>
+          </div>
+        </div>
+        <div class="hero-visual reveal">
+          <div class="orbit" aria-hidden="true"></div>
+          <div class="phone-frame">
+            <div class="phone-screen">
+              <img src="assets/images/hero-app.png" alt="MYRana app screenshot from project documentation" />
+              <strong>MYRana</strong>
+              <span lang="ar" dir="rtl">حماية الأطفال</span>
+              <span lang="ar" dir="rtl">أكاديمية العباقرة</span>
+              <span>Android · Flutter + Kotlin</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. About -->
+    <section id="about">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">About</span>
+          <h2>Embedded monitoring with a child-friendly face</h2>
+          <p>Built as a graduation project: dual mobile experience, Flask API, and Render hosting.</p>
+        </div>
+        <div class="about-panel reveal">
+          <div class="about-text">
+            <p>
+              <strong>MYRana</strong> is a stealth-oriented parental control framework.
+              On the child device, the visible experience is <strong lang="ar">أكاديمية العباقرة</strong> (Academy of Geniuses) —
+              an educational game interface. In the background, Usage Access and Accessibility enforce policies set by the guardian.
+            </p>
+            <p>
+              On the parent side, <strong lang="ar">حماية الأطفال</strong> provides linking, app blocking, screen-time policy,
+              alerts, reports, and messages. Parent and child apps talk to a shared Python Flask server deployed on Render
+              (<code>parental-server-4mms.onrender.com</code>).
+            </p>
+            <p>
+              The stack includes the original Kotlin Android project (<code>MYRana</code>) and a Flutter/Dart port
+              (<code>myrana_flutter</code> with native Kotlin enforcement on Android. iOS UI is limited (no native blocking).
+            </p>
+            <div class="ar-names">
+              <span class="chip" lang="ar">حماية الأطفال — Parent</span>
+              <span class="chip" lang="ar">أكاديمية العباقرة — Child</span>
+              <span class="chip">No GPS / location</span>
+            </div>
+          </div>
+          <figure class="about-visual">
+            <img src="assets/images/thesis-fig-13.jpg" alt="MYRana system architecture: parent app, child app, Flask server, SQLite, Gmail OTP, Render" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Features -->
+    <section id="features">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Features</span>
+          <h2>What the system actually does</h2>
+          <p>Capabilities verified in the MYRana / Flutter codebase and graduation documentation — not marketing fiction.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card reveal">
+            <div class="icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+            </div>
+            <h3>Parent–Child linking (OTP + CHILD code)</h3>
+            <p>Guardian verifies Gmail with OTP, pastes <code>CHILD-XXXXXXXX</code>, completes a 6-digit link code, and names the child device.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+            </div>
+            <h3>App block &amp; freeze</h3>
+            <p>Parent sends block/freeze/allow commands by package or app name. Enforcement uses foreground detection and Accessibility on Android.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <h3>Screen time &amp; sleep schedule</h3>
+            <p>Daily limits and sleep windows via screen-time policy APIs. Usage is collected with Usage Access and synced to the server.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v10H4z"/><path d="M8 19h8"/><path d="M4 9h16"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <h3>Content / site filtering</h3>
+            <p>Accessibility service matches blocked domains and risky keywords in monitored browsers and apps, then warns and alerts the guardian.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 016 6c0 4-6 10-6 10S6 13 6 9a6 6 0 016-6z"/><circle cx="12" cy="9" r="2"/></svg>
+            </div>
+            <h3>Background monitoring</h3>
+            <p>Foreground service, WorkManager loops, and heartbeat keep policies active even when the academy UI is closed.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"/><path d="M10 19a2 2 0 004 0"/></svg>
+            </div>
+            <h3>Alerts, reports &amp; messages</h3>
+            <p>Usage and content alerts on the parent dashboard, activity reports, and guardian messages to linked child devices — including multi-child accounts.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Screenshots -->
+    <section id="screenshots">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Screenshots &amp; diagrams</span>
+          <h2>Project visuals from documentation</h2>
+          <p>Architecture diagrams and in-app screenshots extracted from the graduation project Word document (A Stealthy Cybersecurity.docx).</p>
+        </div>
+        <div class="shots">
+          <figure class="shot reveal">
+            <div class="shot-media">
+              <img src="assets/images/thesis-fig-13.jpg" alt="System architecture diagram" />
+            </div>
+            <figcaption>
+              <h3>System architecture</h3>
+              <p>Parent app, child app, Flask, SQLite, Gmail OTP, Render.</p>
+            </figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <div class="shot-media">
+              <img src="assets/images/thesis-fig-12.jpg" alt="Data flow diagram for authentication, policies, and monitoring" />
+            </div>
+            <figcaption>
+              <h3>Data flow (DFD)</h3>
+              <p>Authentication, policies/commands, monitoring and reports.</p>
+            </figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <div class="shot-media">
+              <img src="assets/images/thesis-fig-11.jpg" alt="UML use case diagram for MYRana" />
+            </div>
+            <figcaption>
+              <h3>Use case model</h3>
+              <p>Guardian, child device, and OTP email service. Diagram may show older “location” ideas — the shipped apps do not track GPS.</p>
+            </figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <div class="shot-media">
+              <img src="assets/images/figure-parent.png" alt="Parent dashboard screenshot" />
+            </div>
+            <figcaption>
+              <h3>Parent dashboard</h3>
+              <p>Linked children, blocks, screen time, alerts.</p>
+            </figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <div class="shot-media">
+              <img src="assets/images/figure-child.png" alt="Child academy app screenshot" />
+            </div>
+            <figcaption>
+              <h3>Child academy</h3>
+              <p>Educational game UI with background monitoring.</p>
+            </figcaption>
+          </figure>
+          <figure class="shot reveal">
+            <div class="shot-media">
+              <img src="assets/images/figure-linking.png" alt="Device linking flow screenshot" />
+            </div>
+            <figcaption>
+              <h3>Linking flow</h3>
+              <p>Gmail OTP + CHILD code + 6-digit link code.</p>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Objectives -->
+    <section id="objectives">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Objectives</span>
+          <h2>Research &amp; product goals</h2>
+          <p>Aligned with the Stealthy Cyber Parenting Framework aims documented in the thesis materials.</p>
+        </div>
+        <ol class="obj-list">
+          <li class="reveal">
+            <span class="num">1</span>
+            <div>
+              <strong>Design a child-friendly game interface</strong>
+              <p>Embed monitoring inside أكاديمية العباقرة to reduce the psychological pressure of overt surveillance tools.</p>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="num">2</span>
+            <div>
+              <strong>Deliver secure parental control</strong>
+              <p>Enable guardians to track app usage, manage screen time, and control content from حماية الأطفال.</p>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="num">3</span>
+            <div>
+              <strong>Keep protection durable</strong>
+              <p>Background services, permission checks, and authenticated linking reduce easy circumvention of policies.</p>
+            </div>
+          </li>
+          <li class="reveal">
+            <span class="num">4</span>
+            <div>
+              <strong>Support oversight with reports and alerts</strong>
+              <p>Provide structured usage visibility and event-driven alerts without requiring constant live watching.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 6. Benefits -->
+    <section id="benefits">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Benefits</span>
+          <h2>Who gains what</h2>
+        </div>
+        <div class="grid-2">
+          <ul class="benefit-list">
+            <li class="reveal">
+              <span class="num">P</span>
+              <div>
+                <strong>For parents / guardians</strong>
+                <p>One account can link multiple children; set blocks and screen-time policy; receive content and usage alerts; send messages.</p>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="num">C</span>
+              <div>
+                <strong>For children (ages ~5–13)</strong>
+                <p>Primary UI is an educational academy game — not a “parental control” dashboard — while safety policies still apply.</p>
+              </div>
+            </li>
+          </ul>
+          <ul class="benefit-list">
+            <li class="reveal">
+              <span class="num">F</span>
+              <div>
+                <strong>For families</strong>
+                <p>Balances digital safety with trust: technical controls without GPS stalking or inventing capabilities the apps do not have.</p>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="num">T</span>
+              <div>
+                <strong>For technical demonstration</strong>
+                <p>End-to-end graduation stack: Android (Kotlin/Flutter), Flask REST, SQLite, Render, Gmail OTP — reproducible on two phones.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Core Value -->
+    <section id="value">
+      <div class="container reveal">
+        <div class="value-banner">
+          <span class="eyebrow">Core value</span>
+          <h2>Protection that stays present — without feeling like a cage</h2>
+          <p>
+            MYRana’s core idea is stealthy cybersecurity parenting:
+            strong enforcement on Android (Usage Access + Accessibility + policies),
+            secure OTP / CHILD-code linking, and a disguised child experience —
+            so digital safety and psychological comfort can coexist.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. App Profile -->
+    <section id="profile">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">App profile</span>
+          <h2>Product facts</h2>
+        </div>
+        <div class="reveal">
+          <table class="profile-table">
+            <tbody>
+              <tr>
+                <th>Application Name</th>
+                <td>MYRana — parent <span lang="ar">حماية الأطفال</span> · child <span lang="ar">أكاديمية العباقرة</span></td>
+              </tr>
+              <tr>
+                <th>Platform</th>
+                <td>Android (Flutter + native Kotlin enforcement). iOS UI limited (no native app blocking).</td>
+              </tr>
+              <tr>
+                <th>Language</th>
+                <td>Arabic UI · English technical title (Stealthy Cyber Parenting Framework)</td>
+              </tr>
+              <tr>
+                <th>Category</th>
+                <td>Parental Control / Cybersecurity</td>
+              </tr>
+              <tr>
+                <th>Target age</th>
+                <td>Children (approx. 5–13); parent/guardian monitors</td>
+              </tr>
+              <tr>
+                <th>Tech stack</th>
+                <td>Kotlin, Dart/Flutter, Python Flask, SQLite, Render, Gmail OTP / Resend</td>
+              </tr>
+              <tr>
+                <th>Live server</th>
+                <td><a href="https://parental-server-4mms.onrender.com/health" rel="noopener" target="_blank">parental-server-4mms.onrender.com</a></td>
+              </tr>
+              <tr>
+                <th>Developer</th>
+                <td>
+                  <!-- TODO: Replace with student / team name when confirmed in project records. Do not invent university or author names. -->
+                  Graduation project author — <em>details to be filled by the project team</em>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="todo-note">Developer name left unset intentionally: thesis metadata uses placeholders only.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. FAQ -->
+    <section id="faq">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">FAQ</span>
+          <h2>Common questions</h2>
+        </div>
+        <div class="faq reveal">
+          <div class="faq-item">
+            <button class="faq-q" type="button" aria-expanded="false">
+              Does MYRana track GPS location?
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a">
+              No. The implemented apps do not request location permissions or collect GPS coordinates.
+              Monitoring covers usage stats, blocked apps/sites, screen-time policy, alerts, and secure linking — not location.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" type="button" aria-expanded="false">
+              How are parent and child devices linked?
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a">
+              The child registers and gets a <code>CHILD-XXXXXXXX</code> code. The parent verifies Gmail via OTP,
+              pastes the child code, receives a 6-digit link code by email, and completes the link.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" type="button" aria-expanded="false">
+              Why does the child app look like a game?
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a">
+              أكاديمية العباقرة is the stealth interface: educational gameplay for the child while monitoring and enforcement continue in the background.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" type="button" aria-expanded="false">
+              Which permissions does the child device need?
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a">
+              Android Usage Access and Accessibility (and related battery/notification settings as prompted).
+              These power usage reporting, app blocking, and content filtering — not location.
+            </div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q" type="button" aria-expanded="false">
+              Is there an iOS version?
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="faq-a">
+              Flutter includes limited iOS UI/REST stubs. Full enforcement (blocking, Accessibility, Usage Stats) targets Android.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Contact -->
+    <section id="contact">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">Contact</span>
+          <h2>Send a message</h2>
+          <p>Client-side validation only — no backend is connected on this landing page.</p>
+        </div>
+        <div class="contact-wrap reveal">
+          <aside class="contact-info">
+            <h3>Project links</h3>
+            <ul>
+              <li>
+                <strong>API health</strong>
+                <a href="https://parental-server-4mms.onrender.com/health" target="_blank" rel="noopener">Render server status</a>
+              </li>
+              <li>
+                <strong>Legal</strong>
+                <a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Use</a>
+              </li>
+              <li>
+                <strong>Scope</strong>
+                Graduation / educational demonstration of parental cybersecurity controls.
+              </li>
+            </ul>
+          </aside>
+          <form class="contact-form" id="contact-form" novalidate>
+            <div id="form-success" class="form-success" tabindex="-1" role="status">
+              Thank you — your message passed validation. (Demo only: nothing was sent to a server.)
+            </div>
+            <div class="form-row">
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" autocomplete="name" required />
+              <span class="error" id="name-error"></span>
+            </div>
+            <div class="form-row">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required />
+              <span class="error" id="email-error"></span>
+            </div>
+            <div class="form-row">
+              <label for="subject">Subject</label>
+              <input id="subject" name="subject" type="text" required />
+              <span class="error" id="subject-error"></span>
+            </div>
+            <div class="form-row">
+              <label for="message">Message</label>
+              <textarea id="message" name="message" rows="5" required></textarea>
+              <span class="error" id="message-error"></span>
+            </div>
+            <button class="btn btn-primary" type="submit">Submit</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 11. Footer -->
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h3>MYRana</h3>
+        <p lang="ar" dir="rtl">حماية الأطفال · أكاديمية العباقرة</p>
+        <p>A Stealthy Cybersecurity-Based Parental Monitoring System — graduation project landing page.</p>
+      </div>
+      <div>
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#screenshots">Screenshots</a></li>
+          <li><a href="#profile">App Profile</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="terms.html">Terms of Use</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© 2026 MYRana — Educational graduation project</span>
+      <span>Does not collect GPS location</span>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

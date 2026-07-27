@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- نكهة ولي الأمر: لا Accessibility ولا Foreground ولا BootReceiver.
+         الواجهة + REST فقط — الإنفاذ على جهاز الطفل. -->
+    <application/>
+</manifest>
