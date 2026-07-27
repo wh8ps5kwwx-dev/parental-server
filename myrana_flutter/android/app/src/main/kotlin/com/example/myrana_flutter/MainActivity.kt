@@ -1,6 +1,8 @@
 ﻿package com.example.myrana_flutter
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -8,12 +10,15 @@ import io.flutter.plugin.common.MethodChannel
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.myrana.core.ChildContextStore
 import com.example.myrana.enforcement.AccessibilityHelper
 import com.example.myrana.enforcement.EnforcementEngine
 import com.example.myrana.enforcement.PolicyFilterCache
 import com.example.myrana.enforcement.UsageAccessHelper
 import com.example.myrana.enforcement.UsageStatsCollectorLite
+import com.example.myrana.permissions.MediaCapturePermissions
 import com.example.myrana.service.ForegroundMonitorService
 import com.example.myrana.util.BatteryLevelHelper
 import com.example.myrana_flutter.native.InstalledAppsCollector
@@ -28,6 +33,7 @@ import kotlinx.coroutines.launch
 class MainActivity : FlutterActivity() {
 
     private val ioScope = CoroutineScope(Dispatchers.IO)
+    private var pendingMediaResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -230,9 +236,64 @@ class MainActivity : FlutterActivity() {
                     )
                 }
                 "isFamilyControlsAvailable" -> result.success(false)
+                "hasCameraPermission" ->
+                    result.success(MediaCapturePermissions.hasCamera(this))
+                "hasMicrophonePermission" ->
+                    result.success(MediaCapturePermissions.hasMicrophone(this))
+                "requestCameraPermission" ->
+                    requestRuntimePermission(Manifest.permission.CAMERA, result)
+                "requestMicrophonePermission" ->
+                    requestRuntimePermission(Manifest.permission.RECORD_AUDIO, result)
+                "requestMediaCapturePermissions" ->
+                    requestRuntimePermissions(MediaCapturePermissions.permissions, result)
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun requestRuntimePermission(permission: String, result: MethodChannel.Result) {
+        if (ContextCompat.checkSelfPermission(this, permission) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            result.success(true)
+            return
+        }
+        if (pendingMediaResult != null) {
+            result.success(false)
+            return
+        }
+        pendingMediaResult = result
+        ActivityCompat.requestPermissions(this, arrayOf(permission), REQ_MEDIA)
+    }
+
+    private fun requestRuntimePermissions(perms: Array<String>, result: MethodChannel.Result) {
+        val missing = perms.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            result.success(true)
+            return
+        }
+        if (pendingMediaResult != null) {
+            result.success(false)
+            return
+        }
+        pendingMediaResult = result
+        ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_MEDIA)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQ_MEDIA) return
+        val pending = pendingMediaResult ?: return
+        pendingMediaResult = null
+        val ok = grantResults.isNotEmpty() &&
+            grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+        pending.success(ok)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -245,5 +306,6 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL_USAGE = "com.example.myrana/usage_stats"
         private const val CHANNEL_ENFORCEMENT = "com.example.myrana/enforcement"
         private const val REQ_NOTIFICATION = 42
+        private const val REQ_MEDIA = 43
     }
 }

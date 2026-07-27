@@ -17,6 +17,7 @@ import com.example.myrana.permissions.ChildPermissionsConsent
 import com.example.myrana.permissions.ChildPermissionsGate
 import com.example.myrana.enforcement.BlocklistCatalogLoader
 import com.example.myrana.permissions.ChildProjectRuntime
+import com.example.myrana.permissions.MediaCapturePermissions
 import com.example.myrana.permissions.PermissionCoordinator
 import com.example.myrana.permissions.SystemPermissions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -46,10 +47,20 @@ class ChildPermissionsActivity : AppCompatActivity() {
         }
         refreshUi()
         if (bulkGrantActive) {
-            openNextSystemPermissionIfNeeded()
+            startBulkGrant()
         }
         if (!granted && ChildPermissionsConsent.hasUserConsented(this)) {
             Toast.makeText(this, R.string.permissions_notification_declined, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val requestMediaCapture = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        MediaCapturePermissions.markPromptDone(this)
+        refreshUi()
+        if (bulkGrantActive) {
+            openNextSystemPermissionIfNeeded()
         }
     }
 
@@ -139,6 +150,10 @@ class ChildPermissionsActivity : AppCompatActivity() {
             requestNotifications.launch(PermissionCoordinator.notificationPermission)
             return
         }
+        if (MediaCapturePermissions.shouldOfferPrompt(this)) {
+            requestMediaCapture.launch(MediaCapturePermissions.permissions)
+            return
+        }
         openNextSystemPermissionIfNeeded()
     }
 
@@ -179,6 +194,8 @@ class ChildPermissionsActivity : AppCompatActivity() {
             add(statusLine(ChildPermissionEvaluator.Kind.ACCESSIBILITY))
             add(statusLine(ChildPermissionEvaluator.Kind.NOTIFICATION))
             add(statusLine(ChildPermissionEvaluator.Kind.BATTERY))
+            add(statusLine(ChildPermissionEvaluator.Kind.CAMERA))
+            add(statusLine(ChildPermissionEvaluator.Kind.MICROPHONE))
         }.joinToString("\n")
 
         progress.visibility = if (ready) View.GONE else View.VISIBLE
@@ -211,6 +228,16 @@ class ChildPermissionsActivity : AppCompatActivity() {
                 counted -> getString(R.string.permissions_status_battery_ok)
                 consented && !system -> getString(R.string.permissions_status_battery_missing)
                 else -> getString(R.string.permissions_status_battery_pending_consent)
+            }
+            ChildPermissionEvaluator.Kind.CAMERA -> when {
+                counted -> getString(R.string.permissions_status_camera_ok)
+                consented && !system -> getString(R.string.permissions_status_camera_missing)
+                else -> getString(R.string.permissions_status_camera_pending_consent)
+            }
+            ChildPermissionEvaluator.Kind.MICROPHONE -> when {
+                counted -> getString(R.string.permissions_status_microphone_ok)
+                consented && !system -> getString(R.string.permissions_status_microphone_missing)
+                else -> getString(R.string.permissions_status_microphone_pending_consent)
             }
         }
     }

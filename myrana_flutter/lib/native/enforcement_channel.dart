@@ -243,6 +243,51 @@ class EnforcementChannel {
     }
   }
 
+  /// هل مُنحت صلاحية الكاميرا لتطبيق الطفل؟
+  static Future<bool> hasCameraPermission() async {
+    if (!isAndroid) return false;
+    try {
+      final v = await _enforcement.invokeMethod<bool>('hasCameraPermission');
+      return v ?? false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// هل مُنحت صلاحية الميكروفون لتطبيق الطفل؟
+  static Future<bool> hasMicrophonePermission() async {
+    if (!isAndroid) return false;
+    try {
+      final v = await _enforcement.invokeMethod<bool>('hasMicrophonePermission');
+      return v ?? false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// طلب صلاحية الكاميرا من النظام (حوار أندرويد).
+  static Future<bool> requestCameraPermission() async {
+    if (!isAndroid) return false;
+    try {
+      final v = await _enforcement.invokeMethod<bool>('requestCameraPermission');
+      return v ?? false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// طلب صلاحية الميكروفون من النظام (حوار أندرويد).
+  static Future<bool> requestMicrophonePermission() async {
+    if (!isAndroid) return false;
+    try {
+      final v =
+          await _enforcement.invokeMethod<bool>('requestMicrophonePermission');
+      return v ?? false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   /// حالة المنصة من الطبقة الأصلية.
   static Future<Map<String, dynamic>> getPlatformStatus() async {
     if (!isNativeMobile) {
@@ -335,6 +380,8 @@ class EnforcementChannel {
         'usage': authorized,
         'accessibility': authorized,
         'battery': true,
+        'camera': false,
+        'microphone': false,
         'mandatory_ok': authorized && hasTokens,
         'ios_ui_ok': true,
         'family_controls': authorized,
@@ -345,16 +392,22 @@ class EnforcementChannel {
         'usage': false,
         'accessibility': false,
         'battery': false,
+        'camera': false,
+        'microphone': false,
         'mandatory_ok': false,
       };
     }
     final usage = await hasUsageAccess();
     final a11y = await isAccessibilityEnabled();
     final battery = await isIgnoringBatteryOptimizations();
+    final camera = await hasCameraPermission();
+    final mic = await hasMicrophonePermission();
     return {
       'usage': usage,
       'accessibility': a11y,
       'battery': battery,
+      'camera': camera,
+      'microphone': mic,
       'mandatory_ok': usage && a11y,
     };
   }

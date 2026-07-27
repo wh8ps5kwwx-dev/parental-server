@@ -14,7 +14,10 @@ object SystemPermissions {
         val accessibility: Boolean,
         val notifications: Boolean,
         val battery: Boolean,
+        val camera: Boolean,
+        val microphone: Boolean,
     ) {
+        /** الإلزامي للرقابة: استخدام + وصول فقط — الكاميرا/الميكروفون اختياريان. */
         val mandatoryReady: Boolean get() = usage && accessibility
     }
 
@@ -24,6 +27,8 @@ object SystemPermissions {
         notifications = !PermissionCoordinator.needsPostNotificationsPermission() ||
             PermissionCoordinator.hasNotificationPermission(context),
         battery = BatteryOptimizationHelper.isIgnoringOptimizations(context),
+        camera = MediaCapturePermissions.hasCamera(context),
+        microphone = MediaCapturePermissions.hasMicrophone(context),
     )
 
     /**
@@ -52,6 +57,8 @@ object SystemPermissions {
         ACCESSIBILITY,
         NOTIFICATION,
         BATTERY,
+        CAMERA,
+        MICROPHONE,
     }
 
     fun needsRuntimeNotificationRequest(context: Context): Boolean =

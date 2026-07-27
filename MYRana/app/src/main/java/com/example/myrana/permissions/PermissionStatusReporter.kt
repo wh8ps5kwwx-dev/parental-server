@@ -12,6 +12,8 @@ object PermissionStatusReporter {
             "accessibility" to snap.accessibility,
             "notifications" to snap.notifications,
             "battery" to snap.battery,
+            "camera" to snap.camera,
+            "microphone" to snap.microphone,
             "mandatory_ok" to snap.mandatoryReady,
             "granted_count" to ChildPermissionEvaluator.countedGrantedCount(context),
         )

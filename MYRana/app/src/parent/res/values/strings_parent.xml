@@ -126,7 +126,7 @@
     <string name="parent_permissions_all_ok">صلاحيات جوال الطفل الأساسية مفعّلة ✓</string>
     <string name="parent_permissions_incomplete">بعض الصلاحيات غير مفعّلة على جوال الطفل — فعّلي الوصول وبيانات الاستخدام</string>
     <string name="parent_permissions_unknown">صلاحيات الطفل: بانتظار أول اتصال من جوال الطفل</string>
-    <string name="parent_permissions_status">الاستخدام %1$s | الوصول %2$s | الإشعارات %3$s | البطارية %4$s</string>
+    <string name="parent_permissions_status">الاستخدام %1$s | الوصول %2$s | الإشعارات %3$s | البطارية %4$s | الكاميرا %5$s | الميكروفون %6$s</string>
 
     <!-- رأس التطبيق واللوحة الجديدة -->
     <string name="parent_header_title">حماية الأطفال</string>

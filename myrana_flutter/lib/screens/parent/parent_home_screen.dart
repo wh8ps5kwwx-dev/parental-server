@@ -64,6 +64,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
+  String _permLabel(dynamic value) {
+    if (value == true) return 'ممنوحة ✓';
+    if (value == false) return 'غير ممنوحة';
+    return '—';
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<AppSession>();
@@ -114,6 +120,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       Text('وقت اليوم: ${d.todaySeconds ~/ 60} دقيقة'),
                       Text('تنبيهات اليوم: ${d.alertsToday}'),
                       Text('الصلاحيات: ${d.permissionsOk ? 'مفعّلة' : 'غير مفعّلة'}'),
+                      Text(
+                        'صلاحية الكاميرا: ${_permLabel(d.permissions['camera'])}',
+                      ),
+                      Text(
+                        'صلاحية الميكروفون: ${_permLabel(d.permissions['microphone'])}',
+                      ),
                       Text('البطارية: ${d.batteryPct >= 0 ? '${d.batteryPct}%' : '—'}'),
                       Text('الجهاز: ${d.deviceName.isEmpty ? '—' : d.deviceName}'),
                     ],

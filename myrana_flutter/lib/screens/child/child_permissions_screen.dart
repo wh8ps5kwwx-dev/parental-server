@@ -16,6 +16,8 @@ class _ChildPermissionsScreenState extends State<ChildPermissionsScreen>
   bool _usage = false;
   bool _a11y = false;
   bool _battery = false;
+  bool _camera = false;
+  bool _microphone = false;
   bool _monitor = false;
   String _note = '';
   Map<String, dynamic> _iosStatus = {};
@@ -72,10 +74,14 @@ class _ChildPermissionsScreenState extends State<ChildPermissionsScreen>
     final usage = await EnforcementChannel.hasUsageAccess();
     final a11y = await EnforcementChannel.isAccessibilityEnabled();
     final battery = await EnforcementChannel.isIgnoringBatteryOptimizations();
+    final camera = await EnforcementChannel.hasCameraPermission();
+    final mic = await EnforcementChannel.hasMicrophonePermission();
     setState(() {
       _usage = usage;
       _a11y = a11y;
       _battery = battery;
+      _camera = camera;
+      _microphone = mic;
       if (!_usage || !_a11y) {
         _note = 'فعّلي الصلاحيات أدناه ثم ارجعي للتطبيق واضغطي «تحديث الحالة».';
       } else if (_monitor) {
@@ -358,7 +364,9 @@ class _ChildPermissionsScreenState extends State<ChildPermissionsScreen>
           if (EnforcementChannel.isAndroid) ...[
             const Text(
               'للرقابة الفعلية يحتاج تطبيق الطفل صلاحيات أندرويد. '
-              'اضغطي على كل صف لفتح إعدادات النظام.',
+              'اضغطي على كل صف لفتح إعدادات النظام أو طلب الإذن. '
+              'صلاحية الكاميرا والميكروفون اختيارية وتُبلَّغ لولي الأمر كحالة جاهزية — '
+              'وليست تصويراً أو تنصتًا صامتاً.',
               textAlign: TextAlign.right,
             ),
             const SizedBox(height: 12),
@@ -419,6 +427,52 @@ class _ChildPermissionsScreenState extends State<ChildPermissionsScreen>
                 trailing: Icon(
                   _battery ? Icons.check_circle : Icons.battery_saver,
                   color: _battery ? Colors.green : null,
+                ),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                onTap: () async {
+                  await EnforcementChannel.requestCameraPermission();
+                  if (!mounted) return;
+                  await _refresh();
+                },
+                title: const Text(
+                  'صلاحية الكاميرا',
+                  textAlign: TextAlign.right,
+                ),
+                subtitle: Text(
+                  _camera
+                      ? 'ممنوحة ✓ — جاهزية التطبيق (ليست تصويراً صامتاً في الخلفية)'
+                      : 'اختيارية — اضغطي لطلب الإذن من النظام؛ تُبلَّغ الحالة لولي الأمر',
+                  textAlign: TextAlign.right,
+                ),
+                trailing: Icon(
+                  _camera ? Icons.check_circle : Icons.photo_camera_outlined,
+                  color: _camera ? Colors.green : null,
+                ),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                onTap: () async {
+                  await EnforcementChannel.requestMicrophonePermission();
+                  if (!mounted) return;
+                  await _refresh();
+                },
+                title: const Text(
+                  'صلاحية الميكروفون',
+                  textAlign: TextAlign.right,
+                ),
+                subtitle: Text(
+                  _microphone
+                      ? 'ممنوحة ✓ — جاهزية التطبيق (ليست تنصتًا صامتاً في الخلفية)'
+                      : 'اختيارية — اضغطي لطلب الإذن من النظام؛ تُبلَّغ الحالة لولي الأمر',
+                  textAlign: TextAlign.right,
+                ),
+                trailing: Icon(
+                  _microphone ? Icons.check_circle : Icons.mic_none,
+                  color: _microphone ? Colors.green : null,
                 ),
               ),
             ),

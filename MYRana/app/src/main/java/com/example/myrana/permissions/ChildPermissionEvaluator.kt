@@ -15,6 +15,8 @@ object ChildPermissionEvaluator {
         ACCESSIBILITY,
         NOTIFICATION,
         BATTERY,
+        CAMERA,
+        MICROPHONE,
     }
 
     val trackableKinds: List<Kind> = Kind.values().toList()
@@ -27,6 +29,8 @@ object ChildPermissionEvaluator {
             Kind.ACCESSIBILITY -> snap.accessibility
             Kind.NOTIFICATION -> snap.notifications
             Kind.BATTERY -> snap.battery
+            Kind.CAMERA -> snap.camera
+            Kind.MICROPHONE -> snap.microphone
         }
     }
 

@@ -25,6 +25,12 @@
     <string name="permissions_status_accessibility_pending_consent">○ خدمة الوصول: بانتظار موافقتك</string>
     <string name="permissions_status_notifications_pending_consent">○ الإشعارات: بانتظار موافقتك</string>
     <string name="permissions_status_battery_pending_consent">○ البطارية: بانتظار موافقتك</string>
+    <string name="permissions_status_camera_pending_consent">○ صلاحية الكاميرا: بانتظار موافقتك</string>
+    <string name="permissions_status_microphone_pending_consent">○ صلاحية الميكروفون: بانتظار موافقتك</string>
+    <string name="permissions_status_camera_ok">✓ صلاحية الكاميرا: ممنوحة (جاهزية — ليست تصويراً صامتاً)</string>
+    <string name="permissions_status_camera_missing">○ صلاحية الكاميرا: اختيارية — اطلبيها من النظام</string>
+    <string name="permissions_status_microphone_ok">✓ صلاحية الميكروفون: ممنوحة (جاهزية — ليست تنصتًا صامتاً)</string>
+    <string name="permissions_status_microphone_missing">○ صلاحية الميكروفون: اختيارية — اطلبيها من النظام</string>
     <string name="permissions_consent_label">أوافق على منح الصلاحيات المطلوبة لحماية الطفل ومراقبة الاستخدام</string>
     <string name="permissions_btn_grant_all">أوافق وأمنح الصلاحيات</string>
     <string name="permissions_consent_required">فعّلي خانة الموافقة أولاً</string>

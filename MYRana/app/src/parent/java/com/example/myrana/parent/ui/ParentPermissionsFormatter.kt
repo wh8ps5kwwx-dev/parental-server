@@ -16,6 +16,8 @@ object ParentPermissionsFormatter {
             label(context, permissions["accessibility"]),
             label(context, permissions["notifications"]),
             label(context, permissions["battery"]),
+            label(context, permissions["camera"]),
+            label(context, permissions["microphone"]),
         )
     }
 
@@ -29,7 +31,14 @@ object ParentPermissionsFormatter {
         return "$header\n$line"
     }
 
-    private val permKeys = listOf("usage", "accessibility", "notifications", "battery")
+    private val permKeys = listOf(
+        "usage",
+        "accessibility",
+        "notifications",
+        "battery",
+        "camera",
+        "microphone",
+    )
 
     fun grantedCount(permissions: Map<String, Any?>): Int =
         permKeys.count { permissions[it] == true }
